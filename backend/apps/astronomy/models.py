@@ -260,7 +260,7 @@ class Exoplanet(models.Model):
     # "지구 대비 0.8 ~ 1.5배 크기" 같은 조건 검색이 이 컬럼들을 거친다.
 
     equilibrium_temp_k = models.DecimalField(
-        max_digits=10, decimal_places=8, null=True, blank=True
+        max_digits=10, decimal_places=2, null=True, blank=True
     )
     orbital_period_days = models.DecimalField(
         max_digits=16, decimal_places=8, null=True, blank=True
