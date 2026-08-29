@@ -139,7 +139,7 @@ class OrbitalData(models.Model):
     first_observation_date = models.DateField(null=True, blank=True)
     last_observation_date = models.DateField(null=True, blank=True)
     data_arc_days = models.IntegerField(null=True, blank=True)
-    observation_used = models.IntegerField(null=True, blank=True)
+    observations_used = models.IntegerField(null=True, blank=True)
 
     # 이심률: 비율값이므로 보통 1을 넘지 않거나 작다.
     # — 궤도가 완벽한 원에서 얼마나 벗어났는지를 나타내는 비율
@@ -208,8 +208,8 @@ class HostStar(models.Model):
     )
     # ⬆️ 핵심 인덱스 중 하나 (문서 02 — 4.1절, 굵게 표시된 4개 중 하나)
     # "거리 100광년 이하" 같은 검색 조건이 이 컬럼을 거쳐간다.
-    # 단위가 파섹(pc)이다. 광년(AU)으로 변환하는 계산은 DB에 저장하지 않고
-    # 추후 서비스 레이어(백엔드)에서 처리 (문서 02 — 3.4절 → "저장은 pc, 표시는 AU")
+    # 단위가 파섹(pc)이다. 광년(ly)으로 변환하는 계산은 DB에 저장하지 않고
+    # 추후 서비스 레이어(백엔드)에서 처리 (문서 02 — 3.4절 → "저장은 pc, 표시는 ly")
 
     spectral_type = models.CharField(max_length=30, null=True, blank=True)
     temperature_k = models.DecimalField(
@@ -260,7 +260,7 @@ class Exoplanet(models.Model):
     # "지구 대비 0.8 ~ 1.5배 크기" 같은 조건 검색이 이 컬럼들을 거친다.
 
     equilibrium_temp_k = models.DecimalField(
-        max_digits=16, decimal_places=8, null=True, blank=True
+        max_digits=10, decimal_places=8, null=True, blank=True
     )
     orbital_period_days = models.DecimalField(
         max_digits=16, decimal_places=8, null=True, blank=True
