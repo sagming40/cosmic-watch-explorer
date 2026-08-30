@@ -15,6 +15,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()   # .env 파일을 읽어서 환경변수로 등록
+NASA_API_KEY = os.getenv('NASA_API_KEY')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
