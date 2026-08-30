@@ -59,9 +59,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 완료 마일스톤 | **M0 — 개발 환경 구성 ✅** |
-| 다음 작업 | M1 진행 중 — `apps/astronomy/services/exoplanet_archive.py` 작성 시작 (TAP_URL, TAP_QUERY 상수까지 안내받음, 타이핑 전 세션 종료) |
-| 최근 병합 커밋 | `feat(M1): NASA NeoWs Feed API 수집 서비스 구현` |
+| 마지막 완료 마일스톤 | **M1 — 데이터 계층 ✅** |
+| 다음 작업 | M2 착수 — `main`에서 `M2-핵심내용` 브랜치 새로 파기 |
+| 최근 병합 커밋 | `merge(M1): 데이터 계층 및 NASA 수집 서비스 구현 (#1)` |
 
 ### 환경 요약
 
@@ -80,6 +80,43 @@
 ## 기록
 
 <!-- 최신 항목을 위에 추가한다 -->
+
+---
+
+## 2026-08-31 (월/새벽) — M1 완료: Exoplanet Archive 수집 + Admin 등록
+
+### [완료] `services/exoplanet_archive.py` — `fetch_exoplanets()` 구현 및 검증
+
+- TAP(Table Access Protocol) 방식으로 NASA Exoplanet Archive 수집. `nasa_neo.py`의 `requests.get → raise_for_status → .json()` 흐름 그대로 재사용.
+- `ps` 테이블에서 `default_flag = 1` 조건 필수 확인 — 같은 행성이 여러 논문 값으로 중복 등록되는 걸 방지 (한 행성 = 여러 행, 대표 판본만 골라야 함).
+- `HostStar` → `Exoplanet` 순서로 `update_or_create` 저장 (FK 순서 제약 때문). 둘 다 관측값이라 `get_or_create`가 아닌 `update_or_create` 사용 — CloseApproach(불변 이력)와의 구분 원칙 그대로 적용.
+- `_to_decimal` 헬퍼를 그대로 재사용 (내부에서 이미 `Decimal(str(value))` 방식으로 float 정밀도 문제를 방어하고 있었음 — 재작업 불필요).
+
+**shell 검증 결과**
+- NASA 수신 6,354개 행 = `Exoplanet.objects.count()` 6,354건 — 누락 없이 전부 저장 확인.
+- `radius_earth IS NULL` 1,612건 — NASA 원본 NULL을 임의값으로 바꾸지 않았음을 증명.
+- `manage.py fetch_exoplanets` 재실행 시 동일 결과(멱등성 확인) — `UNIQUE(name)`/`UNIQUE(planet_name)` + `update_or_create` 조합 정상 동작.
+
+### [완료] Django Admin 등록
+
+- `Neo`, `HostStar`, `Exoplanet` 세 모델 등록. `is_hazardous`, `discovery_method` 필터 추가.
+- Admin에서 Neo 6건, Exoplanet 6,354건(페이지네이션 정상) 조회 확인.
+
+### [문서] 오류 정정
+
+- `05_milestones.md` 147번째 줄에 "테이블 9개" 오기가 v1.1 정정에서 누락돼 있었음 — 이번에 8개로 정정.
+- `02_database_design.md` 7장 코드블록을 `apps/astronomy`/`apps/watchlist` 두 개로 분리 (2026-08-25 기록에 예정돼 있던 작업).
+- `04_api_specification.md` 10.1절의 "테이블 9개" 표기도 8개로 동일하게 정정.
+
+**M1 완료 기준 7개 전부 충족.**
+
+**오늘 커밋**
+- `feat(M1): NASA Exoplanet Archive TAP 수집 서비스 및 커맨드 구현`
+- `feat(M1): Django Admin에 Neo/HostStar/Exoplanet 등록`
+- `docs(M1): 마일스톤 완료 처리 및 DEVLOG 갱신` (이 커밋 자체)
+
+**다음에 할 일**
+- M2 착수. `04_api_specification.md`의 엔드포인트 17개 구현 시작 — `05_milestones.md` 5장 작업 목록 순서(공통 → NEO API → Exoplanet API → 인증·Watchlist)대로 진행.
 
 ---
 
