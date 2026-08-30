@@ -6,11 +6,19 @@
 | 문서명 | DB 설계서 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.0 |
-| 최종 수정일 | 2026-08-21 |
+| 버전 | v1.1 |
+| 최종 수정일 | 2026-08-31 |
 | DBMS | MariaDB (InnoDB / utf8mb4) |
 | 상태 | 확정 |
- 
+
+**변경 이력**
+
+| 버전 | 일자 | 내용 |
+|---|---|---|
+| v1.0 | 2026-08-21 | 최초 작성 |
+| v1.1 | 2026-08-31 | 7장 Django 모델 코드블록을 `apps/astronomy/models.py` / `apps/watchlist/models.py` 두 개로 분리 (구현 시 앱 2개로 나눈 실제 구조와 일치시킴, 원래는 코드블록 하나에 전부 포함돼 있었음) |
+
+
 ---
  
 ## 0. 이 문서의 범위
@@ -762,8 +770,26 @@ class Exoplanet(models.Model):
  
     def __str__(self):
         return self.planet_name
+
+
+class NeoFetchLog(models.Model):
+    fetch_date    = models.DateField(unique=True)
+    fetched_at    = models.DateTimeField(auto_now_add=True)
+    element_count = models.IntegerField(default=0)
+    is_success    = models.BooleanField(default=True)
  
- 
+    class Meta:
+        db_table = 'neo_fetch_log'
+``` 
+
+```python
+# apps/watchlist/models.py
+
+from django.db import models
+from django.conf import settings
+from apps.astronomy.models import Neo, Exoplanet
+
+
 class NeoWatchlist(models.Model):
     user       = models.ForeignKey(settings.AUTH_USER_MODEL,
                                    on_delete=models.CASCADE,
@@ -790,18 +816,8 @@ class ExoplanetWatchlist(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['user', 'exoplanet'], name='uk_ew_user_ep')
         ]
- 
- 
-class NeoFetchLog(models.Model):
-    fetch_date    = models.DateField(unique=True)
-    fetched_at    = models.DateTimeField(auto_now_add=True)
-    element_count = models.IntegerField(default=0)
-    is_success    = models.BooleanField(default=True)
- 
-    class Meta:
-        db_table = 'neo_fetch_log'
 ```
- 
+
 ---
  
 ## 8. 검색 쿼리 예시 (Django ORM)
