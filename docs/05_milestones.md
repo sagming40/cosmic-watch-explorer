@@ -6,8 +6,8 @@
 | 문서명 | 마일스톤 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.0 |
-| 최종 수정일 | 2026-08-24 |
+| 버전 | v1.1 |
+| 최종 수정일 | 2026-08-30 |
 | Tier | 1 (매 세션 / 매 마일스톤 갱신) |
 
 **변경 이력**
@@ -15,6 +15,7 @@
 | 버전 | 일자 | 내용 |
 |---|---|---|
 | v1.0 | 2026-08-24 | 최초 작성. M0~M6 구간 및 완료 기준 확정. 소요 기간은 잠정 추정치 |
+| v1.1 | 2026-08-30 | M1 범위 표 "모델 9개" → "모델 8개" 정정 (설계 문서 작성 시 auth_user를 잘못 포함해 계산한 오류) |
 
 ---
 
@@ -63,7 +64,7 @@ M0 완료 시점에 M1~M6 추정치 재조정
 | # | 마일스톤 | 범위 | 잠정 소요 | 상태 |
 |---|---|---|---|---|
 | M0 | 개발 환경 구성 | Django + MariaDB + Git | 3~5일 (실측 1일) | ✅ |
-| M1 | 데이터 계층 | 모델 9개 + NASA 수집 서비스 | 1.5~2주 | ⬜ |
+| M1 | 데이터 계층 | 모델 8개 + NASA 수집 서비스 | 1.5~2주 | 🔄 |
 | M2 | 백엔드 완성 | API 17개 + 인증 + Watchlist | 2~3주 | ⬜ |
 | M3 | 프론트 기반 | React 연결 + NEO 화면 | 1.5~2주 | ⬜ |
 | M4 | **v1.0 완성** | 외계행성 + 인증 + Watchlist + 크기비교 | 2~3주 | ⬜ |
@@ -125,18 +126,18 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 #### 모델
 
-- [ ] `apps/astronomy/models.py` — `Neo`, `CloseApproach`, `OrbitalData`, `HostStar`, `Exoplanet`, `NeoFetchLog`
-- [ ] `apps/watchlist/models.py` — `NeoWatchlist`, `ExoplanetWatchlist`
-- [ ] `makemigrations` → 생성된 SQL 확인 (`sqlmigrate`)
-- [ ] `migrate` 실행
-- [ ] 마이그레이션 파일 커밋
+- [x] `apps/astronomy/models.py` — `Neo`, `CloseApproach`, `OrbitalData`, `HostStar`, `Exoplanet`, `NeoFetchLog`
+- [x] `apps/watchlist/models.py` — `NeoWatchlist`, `ExoplanetWatchlist`
+- [x] `makemigrations` → 생성된 SQL 확인 (`sqlmigrate`)
+- [x] `migrate` 실행
+- [x] 마이그레이션 파일 커밋
 
 #### NASA 수집 서비스
 
-- [ ] `services/nasa_neo.py` — `fetch_feed(date)` 구현
-- [ ] 숫자 문자열 → Decimal 형변환 처리
-- [ ] `"2026-Aug-21 03:16"` 형식 파싱
-- [ ] `NeoFetchLog` 기록
+- [x] `services/nasa_neo.py` — `fetch_feed(date)` 구현
+- [x] 숫자 문자열 → Decimal 형변환 처리
+- [x] `"2026-Aug-21 03:16"` 형식 파싱
+- [x] `NeoFetchLog` 기록
 - [ ] `services/exoplanet_archive.py` — TAP 쿼리로 필요한 컬럼만 SELECT
 - [ ] `manage.py fetch_exoplanets` 커스텀 커맨드
 - [ ] Django Admin 등록 (데이터 확인용)
