@@ -51,6 +51,7 @@ class InvalidDate(exceptions.APIException):
     status_code = 400
     default_code = "INVALID_DATE"
     default_detail = "날짜는 YYYY-MM-DD 형식이어야 합니다." 
+    is_custom_error = True   # ⭐ 추가
     
 
 class InvalidCredentials(exceptions.APIException):
@@ -59,18 +60,21 @@ class InvalidCredentials(exceptions.APIException):
     # 아이디가 없는 건지 비밀번호가 틀린 건지 절대 구분해서 말하지 않는다.
     # M2 완료 기준 ─ "로그인 실패 응답에 아이디 존재 여부가 드러나지 않는다."
     default_detail = "아이디 또는 비밀번호가 올바르지 않습니다."
+    is_custom_error = True   # ⭐ 추가
     
     
 class AlreadyExists(exceptions.APIException):
     status_code = 409
     default_code = "ALREADY_EXISTS"
     default_detail = "이미 관심 목록에 등록된 항목입니다."
+    is_custom_error = True   # ⭐ 추가
 
 
 class UpstreamError(exceptions.APIException):
     status_code = 503
     default_code = "UPSTREAM_ERROR"
     default_detail = "NASA 데이터 서버에 연결할 수 없습니다."
+    is_custom_error = True   # ⭐ 추가
     
 
 def custom_exception_handler(exc, context):
@@ -92,11 +96,11 @@ def custom_exception_handler(exc, context):
     status_code = response.status_code
     
     # ③ code 정하기
-    #   만들어둔 예외는 default_code가 대문자(예: "INVALID_DATE"), 
-    #   DRF 기본 예외는 소문자(예: "not_found", "throttled")라는 차이를 이용한다.
-    #   비유: 여권 색깔만 보고 내국인/외국인 줄을 세우는 것
+    #   만들어둔 예외를 문자열 생김새(대/소문자 여부)로 추측하지 않는다. 
+    #   각 예외 클래스에 is_custom_error = True를 직접 선언해두었으므로, 그 값을 그대로 읽는다.
+    #   비유: 옷차림만으로 정직원 여부를 추측하지 않고 사원증 자체를 확인하는 것.
+    is_our_own = getattr(exc, "is_custom_error", False)
     raw_code = getattr(exc, "default_code", "") or ""
-    is_our_own = raw_code.isupper()
     
     if is_our_own:
         code = raw_code
