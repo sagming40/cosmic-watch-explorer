@@ -42,9 +42,19 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    'apps.astronomy',
-    'apps.watchlist',
+    "rest_framework",  # ⭐ M2 추가
+    "apps.astronomy",
+    "apps.watchlist",
 ]
+
+# DRF 전역 설정
+# 값이 "함수 자체"가 아니라 "함수까지 가는 경로 문자열"인 것이 핵심이다.
+# settings,py는 Django가 가장 먼저 읽는 파일이라, 여기서 실제 함수를 import 해버리면
+# 아직 준비되지 않은 App을 끌어오다 순환 참조가 나기 쉽다.
+# 따라서, "주소만 적어두고, 필요해질 때 그 주소로 찾아가는" 방식을 사용한다.
+REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "config.exception_handler.custom_exception_handler"
+}
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
