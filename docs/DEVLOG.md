@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M1 — 데이터 계층 ✅** |
-| 다음 작업 | M2 착수 — `main`에서 `M2-핵심내용` 브랜치 새로 파기 |
+| 다음 작업 | M2 진행중 — 공통 섹션(exception_handler/pagination/throttle) 완료, NEO API(`GET /api/neo/`) 구현 착수 |
 | 최근 병합 커밋 | `merge(M1): 데이터 계층 및 NASA 수집 서비스 구현 (#1)` |
 
 ### 환경 요약
@@ -80,6 +80,56 @@
 ## 기록
 
 <!-- 최신 항목을 위에 추가한다 -->
+
+---
+
+## 2026-08-31 (월) — M2: 공통 섹션(exception_handler/pagination/throttle) 구현
+
+### [완료] `config/exception_handler.py` — 공통 오류 응답 형식 구현
+
+- `04_api_specification.md` 1.4절 봉투 형식대로 재포장. 커스텀 예외 4종(`InvalidDate`, `InvalidCredentials`, `AlreadyExists`, `UpstreamError`) 정의.
+- shell에서 6개 케이스(404 / 400 검증실패 / 400 커스텀 / 401 / 429 / 알 수 없는 예외) 응답 형식 검증 완료.
+
+### [완료] 리팩터링 — 예외 판정 방식을 `isupper()`에서 명시적 플래그로 변경
+
+- 초기 구현은 `default_code.isupper()`로 "우리가 만든 예외인지"를 판정했으나, `AlreadyExists`의 `default_code` 오타(`ALREADY_EXIST`, S 누락)를 발견하면서 이 방식의 위험성이 드러남 — 오타가 대문자로 났다면 조용히 잘못된 `code`가 그대로 나갔을 것.
+- 각 커스텀 예외에 `is_custom_error = True` 명시적 플래그 추가, 판정 로직을 `getattr(exc, "is_custom_error", False)`로 변경. 플래그를 깜빡해도 `getattr` 기본값(`False`)으로 안전하게 착지하도록 설계.
+
+### [완료] `config/pagination.py` — 커스텀 페이지네이션 구현
+
+- `04_api_specification.md` 1.5절 형식(`page`, `page_size`, `total_pages`)으로 응답 재구성. `max_page_size=100` 상한 설정.
+- 아직 실제 목록 API가 없어 shell에서 클래스 로드만 검증 — 진짜 페이지 분할 동작은 `GET /api/exoplanets/` 구현 시 함께 확인 예정.
+- 커밋 후 docstring 오탈자(`total_page`→`total_pages`) 별도 발견해 정정 커밋 추가.
+
+### [완료] DRF 스로틀 설정 등록 (`neo_fetch: 30/hour`)
+
+- `settings.py`에 `DEFAULT_THROTTLE_CLASSES`(`ScopedRateThrottle`), `DEFAULT_THROTTLE_RATES` 등록.
+- 실제 적용(`throttle_scope = 'neo_fetch'`)은 `GET /api/neo/` 뷰 구현 시 진행 예정.
+
+### [환경설정] 커밋 스테이징 실수 → force push로 복구
+
+**증상**
+`git add pagination.py` 상태에서 커밋 메시지는 스로틀(`settings.py`) 내용으로 작성해 push. 내용물과 메시지가 어긋난 커밋이 원격에 올라감.
+
+**원인**
+`git add`는 기존 staging 내용에 "추가"하는 명령이라, `git reset --soft HEAD~1`로 커밋을 되돌린 뒤에도 이전에 add해둔 파일이 staging에 남아있었음. 여기에 다른 파일을 추가로 add하면서 두 파일이 섞여 커밋됨.
+
+**해결**
+`git reset --soft HEAD~1`로 커밋만 취소(파일 변경 내용은 유지) → `git restore --staged`로 불필요한 파일 스테이징 해제 → 파일별로 나눠 재커밋 → `git push --force-with-lease`로 원격 히스토리 교체.
+
+**배운 것**
+- `git add`는 "새로 스테이징"이 아니라 "기존에 더하기"다. `reset --soft` 직후엔 `git status`로 staging 상태를 먼저 확인해야 한다.
+- push 후에도 **혼자 쓰는 feature 브랜치**라면 `--force-with-lease`로 안전하게 히스토리를 고쳐 쓸 수 있다. (`main`이나 공유 브랜치였다면 안 됨.)
+
+**오늘 커밋**
+- `feat(M2): 공통 오류 응답 형식(exception_handler) 구현`
+- `refactor(M2): 예외 판정 방식을 isupper()에서 명시적 플래그로 변경`
+- `feat(M2): 커스텀 페이지네이션(CommonPagination) 구현`
+- `feat(M2): DRF 스로틀 설정 등록 (neo_fetch: 30/hour)`
+- `fix(M2): pagination.py docstring 오탈자 정정`
+
+**다음에 할 일**
+- NEO API 구현 착수 — `GET /api/neo/` (캐시 판정 → NASA 호출 → 요약 계산 → 응답), 달 거리(LD) 환산 로직, `GET /api/neo/{nasa_id}/`, `GET /api/neo/{nasa_id}/approaches/` 순서로.
 
 ---
 

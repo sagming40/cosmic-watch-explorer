@@ -66,7 +66,7 @@ M0 완료 시점에 M1~M6 추정치 재조정
 |---|---|---|---|---|
 | M0 | 개발 환경 구성 | Django + MariaDB + Git | 3~5일 (실측 1일) | ✅ |
 | M1 | 데이터 계층 | 모델 8개 + NASA 수집 서비스 | 1.5~2주 (실측: 8/25~8/31, 약 6일) | ✅ |
-| M2 | 백엔드 완성 | API 17개 + 인증 + Watchlist | 2~3주 | ⬜ |
+| M2 | 백엔드 완성 | API 17개 + 인증 + Watchlist | 2~3주 | 🔄 |
 | M3 | 프론트 기반 | React 연결 + NEO 화면 | 1.5~2주 | ⬜ |
 | M4 | **v1.0 완성** | 외계행성 + 인증 + Watchlist + 크기비교 | 2~3주 | ⬜ |
 | M5 | 완성도 | 상태 화면 + 반응형 + 접근성 | 1~1.5주 | ⬜ |
@@ -165,9 +165,9 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 #### 공통
 
-- [ ] `config/exception_handler.py` — 공통 오류 응답 형식
-- [ ] 커스텀 페이지네이션 (`page`, `total_pages` 포함)
-- [ ] DRF 스로틀 설정 (NASA 호출 구간)
+- [x] `config/exception_handler.py` — 공통 오류 응답 형식
+- [x] 커스텀 페이지네이션 (`page`, `total_pages` 포함)
+- [x] DRF 스로틀 설정 (NASA 호출 구간)
 
 #### NEO API
 
