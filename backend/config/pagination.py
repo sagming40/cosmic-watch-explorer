@@ -26,7 +26,7 @@ class CommonPagination(PageNumberPagination):
     def get_paginated_response(self, data):
         """
         DRF DEFAULT: {"count", "next", "previous", "results"}
-        CUSTOM: {"count", "page", "page_size", "total_page", "results"}
+        CUSTOM: {"count", "page", "page_size", "total_pages", "results"}
         
         self.page는 Django Paginator가 이미 계산해준 "현재 페이지 객체"
         여기서 필요한 숫자를 그대로 꺼내 쓴다 — 직접 나눗셈을 할 필요 없음.
