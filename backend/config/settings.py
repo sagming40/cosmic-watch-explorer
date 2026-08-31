@@ -53,7 +53,9 @@ INSTALLED_APPS = [
 # 아직 준비되지 않은 App을 끌어오다 순환 참조가 나기 쉽다.
 # 따라서, "주소만 적어두고, 필요해질 때 그 주소로 찾아가는" 방식을 사용한다.
 REST_FRAMEWORK = {
-    "EXCEPTION_HANDLER": "config.exception_handler.custom_exception_handler"
+    "EXCEPTION_HANDLER": "config.exception_handler.custom_exception_handler",
+    "DEFAULT_PAGINATION_CLASS": "config.pagination.CommonPagination",  # ⭐ M2 추가
+    "PAGE_SIZE": 20,  # ⭐ M2 추가 — (DEFAULT_PAGINATION_CLASS와 짝을 이뤄야 동작함)
 }
 
 MIDDLEWARE = [
