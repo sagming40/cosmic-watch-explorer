@@ -56,6 +56,18 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "config.exception_handler.custom_exception_handler",
     "DEFAULT_PAGINATION_CLASS": "config.pagination.CommonPagination",  # ⭐ M2 추가
     "PAGE_SIZE": 20,  # ⭐ M2 추가 — (DEFAULT_PAGINATION_CLASS와 짝을 이뤄야 동작함)
+
+    # ⭐ M2 추가
+    # ScopedRateThrottle을 사용하는 views만 골라서 제한을 건다.
+    # 지금은 등록만 해두고, 실제 적용은 GET /api/neo views 에서
+    # throttle_classes = [ScopedRateThrottle], 
+    # throttle_scope = 'neo_fetch'를 붙일 때 이뤄진다.
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "neo_fetch": "30/hour",
+    },
 }
 
 MIDDLEWARE = [
