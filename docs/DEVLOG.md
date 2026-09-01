@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M1 — 데이터 계층 ✅** |
-| 다음 작업 | M2 진행중 — 공통 섹션(exception_handler/pagination/throttle) 완료, NEO API(`GET /api/neo/`) 구현 착수 |
+| 다음 작업 | M2 진행중 — NEO 대시보드(`GET /api/neo/`) 구현·검증 완료. 다음은 `GET /api/neo/{nasa_id}/`(상세) |
 | 최근 병합 커밋 | `merge(M1): 데이터 계층 및 NASA 수집 서비스 구현 (#1)` |
 
 ### 환경 요약
@@ -75,11 +75,93 @@
 | Frontend 린터 | ESLint |
 | Vite 프록시 | `/api` → `localhost:8000` 설정 완료 |
 
+> ⚠️ **DB는 기기별로 완전히 독립돼 있다.** Git으로 공유되는 건 마이그레이션 파일뿐이고, 실제 테이블 데이터는 기기마다 따로다. 기기를 옮기면 `migrate` + `fetch_feed`/`fetch_exoplanets` 재실행이 필요하다. (2026-09-01 학교 PC에서 실측 — 아래 기록 참고)
+
 ---
 
 ## 기록
 
 <!-- 최신 항목을 위에 추가한다 -->
+
+---
+
+## 2026-09-01 (화) — M2: NEO 대시보드 API 구현 (`GET /api/neo/`)
+
+### [완료] `apps/astronomy/units.py` — 달 거리(LD) 환산 유틸
+
+- `04_api_specification.md` 5.1절 설계 결정 ② 그대로 — `384400`을 이 파일 한 곳에만 두고, 프로젝트 전체가 여기서 꺼내 쓰도록 함.
+- `km_to_lunar_distance()` — `_to_decimal`(M1)과 동일하게 `Decimal(str(value))` 방식으로 부동소수점 오차 방어. `ROUND_HALF_UP`으로 반올림 방식 명시(Python 기본은 은행가 반올림이라 사람이 기대하는 결과와 다름).
+- shell 검증: `307520.4km → 0.80 LD`(문서 예시값과 일치), DB의 실제 `Decimal` 값으로도 왕복 정상 확인.
+
+### [완료] `apps/astronomy/serializers.py` — NEO 응답 serializer
+
+- `ApproachDetailSerializer`, `NeoApproachSerializer` 작성. **시작점을 `Neo`가 아닌 `CloseApproach`로 설계** — "오늘 접근하는 소행성 목록"은 실제로는 "오늘 날짜의 접근 사건들, 각각 어느 소행성 소속인지"라는 질문이기 때문 (`02_database_design.md` 8.2절 쿼리 패턴과 대응).
+- `miss_distance_ld`는 모델에 없는 계산값이라 `SerializerMethodField`로 처리.
+- `settings.py`에 `COERCE_DECIMAL_TO_STRING: False` 추가 — DRF `DecimalField` 기본값이 문자열 응답이라, 문서 5.1절 예시(따옴표 없는 숫자)와 형식이 어긋나는 걸 발견해 전역 설정으로 수정.
+- `JSONRenderer().render()`까지 통과시켜 실제 JSON 형태로 숫자 타입 확인.
+
+### [완료] `apps/astronomy/views.py` — 캐시 판정 로직
+
+- `_parse_query_date()`, `_ensure_date_cached()` 작성. `02_database_design.md` 3.7절 캐싱 로직(`neo_fetch_log` 확인 후 미스일 때만 NASA 호출) 그대로 구현.
+- `fetch_feed()`가 실패 시 원본 예외(`requests` 예외)를 그대로 노출하지 않고 `UpstreamError`로 통역해 던지도록 설계 — 서비스 계층과 뷰 계층의 언어를 분리.
+
+### [환경설정] 학교 PC에서 처음 겪은 "기기별 DB 독립" 문제
+
+**증상**
+```
+MySQLdb.ProgrammingError: (1146, "Table 'cosmic_watch.close_approach' doesn't exist")
+```
+집 PC에서 M1을 이미 마쳤는데, 학교 PC에서 검증 스크립트를 돌리자 테이블 자체가 없다는 오류 발생.
+
+**원인**
+`showmigrations` 확인 결과 `astronomy` 앱의 마이그레이션이 전부 `[ ]`(미적용) 상태였음. Git으로 공유되는 건 마이그레이션 **파일**뿐이고, 그 파일을 실제 DB에 적용하는 `migrate` 명령은 기기마다 따로 실행해야 한다는 걸 이번에 처음 실제로 겪음.
+
+**해결**
+`py manage.py migrate`로 테이블 생성 → `fetch_feed('2026-08-21')`, `py manage.py fetch_exoplanets`로 데이터 재수집(Neo 6건, Exoplanet 6,354건, HostStar 4,764건 — 집 PC 기록과 정확히 일치 확인).
+
+**배운 것**
+"두 기기를 오간다"는 프로젝트 전제가 이론으로만 있다가 오늘 실제로 부딪힘. 앞으로 기기를 바꿀 때마다 `showmigrations` → `migrate` → 데이터 재수집을 세션 시작 체크리스트에 넣어야 한다.
+
+### [백엔드] `GET /api/neo/` — NeoDashboardView 구현 및 스로틀 함정
+
+`NeoDashboardView(APIView)` 작성 — 캐시 판정 → (미스 시) NASA 호출 → `select_related`로 목록 조회 → 파이썬 순회로 요약(`summary`) 계산 → 응답. `apps/astronomy/urls.py` 신규, `config/urls.py`에 `api/` prefix 연결.
+
+브라우저 검증으로 M2 완료 기준 항목 확인:
+- `summary`+`cache`+`results`가 한 응답에 담김
+- 같은 날짜 재조회 시 `is_cached: true` + NASA 요청 로그 미발생 (연속 6회 새로고침으로 확인)
+- 새 날짜 조회 시 `is_cached: false` + NASA 호출 로그 발생
+- 형식 오류 날짜(`2026/08/21`) → `400 INVALID_DATE` 정상 응답
+
+#### [백엔드] 스로틀이 캐시 히트 요청까지 카운트하던 문제
+
+**증상**
+`neo_fetch: 2/hour`로 한도를 임시로 낮춰 검증하던 중, **캐시 히트 요청(이미 저장된 날짜 재조회)인데도** 3번째 요청에서 `429 Too Many Requests` 발생. 캐시 미스(NASA 실제 호출)만 세야 하는데 히트도 세고 있었음.
+
+**원인**
+`throttle_scope`를 뷰 클래스에 등록해두면, `settings.py`의 `DEFAULT_THROTTLE_CLASSES`(전역 등록)로 인해 DRF가 `dispatch()` 단계에서 **매 요청마다 자동으로** `check_throttles()`를 실행한다. `get()` 안에 수동으로 넣어둔 스로틀 검사 코드는 이 자동 검사보다 늦게 실행되므로, 캐시 히트 요청조차 자동 검사 단계에서 이미 카운트되고 있었다.
+
+1차 수정(`get_throttles()`를 오버라이드해 빈 목록 반환)을 적용했는데도 여전히 스로틀이 전혀 안 걸리는 반대 증상이 발생 — 원인은 `throttle_scope`를 **`thorttle_scope`로 오타** 내서, `ScopedRateThrottle`이 `getattr`로 이 속성을 못 찾아 "제한 없음"으로 판단했기 때문. 응답 JSON의 `cache.is_cached` 필드도 `is_cashed`로 오타나 있어 문서 명세와 어긋나 있었음 — 둘 다 에러 없이 조용히 넘어가는 유형이라 실제로 브라우저에서 확인하지 않았으면 몰랐을 버그.
+
+**해결**
+- `get_throttles()`를 오버라이드해 `dispatch()` 단계의 자동 검사를 무력화(`[]` 반환)
+- `get()` 내부, **캐시 미스가 확정된 시점에만** `ScopedRateThrottle()`을 직접 생성해 `allow_request()`로 수동 검사
+- `thorttle_scope` → `throttle_scope`, `is_cashed` → `is_cached` 오타 정정
+- 재검증: 캐시 히트 6회 연속 200(카운트 안 됨) / 캐시 미스 2회까지 200, 3번째에서 429(`2/hour` 한도와 정확히 일치) 확인 후 `30/hour`로 원상복구
+
+**배운 것**
+- DRF `APIView`는 `throttle_scope` 속성 존재 여부만으로 `dispatch()` 단계 자동 검사를 켠다 — "캐시 미스일 때만 세고 싶다" 같은 조건부 스로틀링은 `throttle_classes`를 클래스에 등록하는 방식으론 불가능하고, `get_throttles()`를 오버라이드해 자동 검사를 끈 뒤 원하는 시점에 수동으로 검사해야 한다.
+- `getattr(obj, "속성명", 기본값)` 패턴은 오타가 나도 예외 없이 기본값으로 조용히 착지한다 — `is_custom_error` 플래그(M2 세션 초반)에서도 똑같은 함정을 이미 겪었는데, 오늘 `throttle_scope`에서 또 걸림. **속성 이름에 의존하는 코드는 반드시 실제 동작(로그/응답)으로 검증**해야지, 에러가 안 났다고 정상이라 믿으면 안 된다.
+
+**오늘 커밋**
+- `feat(M2): 달 거리(LD) 환산 유틸 구현`
+- `feat(M2): NEO API 응답용 serializer 구현`
+- `feat(M2): NEO 대시보드 캐시 판정 로직 구현`
+- `feat(M2): NEO 대시보드 뷰 및 URL 라우팅 구현`
+- `fix(M2): 스로틀이 캐시 히트 요청까지 카운트하던 문제 수정`
+
+**다음에 할 일**
+- `GET /api/neo/{nasa_id}/`(상세) 구현 — `is_watchlisted` 필드는 인증 붙기 전이라 일단 `false` 고정으로 두고, 접근 기록 5건 제한 로직부터.
+- 그다음 `GET /api/neo/{nasa_id}/approaches/`(전체 접근 기록, 페이지네이션 적용 첫 사례가 됨 — `CommonPagination` 실전 검증 기회).
 
 ---
 
