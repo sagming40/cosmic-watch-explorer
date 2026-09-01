@@ -78,10 +78,20 @@ class NeoDashboardView(APIView):
     """
     GET /api/neo — 문서 04, 5.1절 대시보드.
     """  
-    throttle_classes = [ScopedRateThrottle]
     throttle_scope = "neo_fetch"
-    # 단순히 "이 뷰가 neo_fetch라는 이름표를 사용할 수 있다"는 선언이다.
-    # 실제 카운트 지점은 get() 안에서 직접 정한다. (아래 참고)
+    # ⚠️ throttle_classes는 여기 등록하지 않는다.
+    #
+    # settings.py의 DEFAULT_THROTTLE_CLASSES가 전역으로 ScopedRateThrottle을
+    # 지정해뒀기 때문에, throttle_scope만 있어도 DRF가 dispatch() 단계에서
+    # 캐시 히트/미스 상관없이 "요청마다 자동으로" 검사를 실행해버린다.
+    # 셀프 스로틀링 검증 — 실제로 이 함정에 걸렸다 (캐시 히트 요청 → 429)
+    
+    def get_throttles(self):
+        # dispatch()의 자동 검사를 무력화한다.
+        # 빈 목록을 주면 자동으로 검사할 throttle이 없어져, 
+        # initial() 단계에서 아무 일도 일어나지 않는다.
+        # 실제 검사는 get() 안, cache miss가 확정된 순간에 직접한다.
+        return []
     
     def get(self, request):
         target_date = _parse_query_date(request.query_params.get("date"))
@@ -91,12 +101,13 @@ class NeoDashboardView(APIView):
         # ① 캐시 판정 먼저 — 여기서 미스가 확정되면 그 즉시 throttle을 직접 체크한다.
         log = NeoFetchLog.objects.filter(fetch_date=target_date).first()
         if log is None:
-            # ⭐ self throttling — "발주 버튼을 누르기 직전에만" 계산대 POS기를 켠다.
-            # DRF의 기본 동작(check_throttles를 dispatch 단계에서 자동 호출)을 사용하지 않고,
-            # 캐시 미스가 확정된 이 지점에서만 수동으로 호출한다.
-            # 즉, 대시보드를 몇 번 열든(캐시 히트) 이 줄 자체가 실행되지 않으므로 
-            # throttle 카운트에 전혀 반영되지 않는다.
-            self.check_throttles(request)
+            # ⭐ 실제 self throttling — 직접 인스턴스를 만들어 검사한다.
+            # get_throttles()가 [](빈 목록)을 주는 한, 이 검사가 유일한 검사이다.
+            throttle = ScopedRateThrottle()
+            if not throttle.allow_request(request, self):
+                # DRF 자동 검사와 동일한 방식으로 429 throw/
+                # throttle.wait() = "몇 초 후에 다시 시도"하라는 안내 시간
+                self.throttled(request, throttle.wait())
             
             try:
                 fetch_feed(target_date.strftime("%Y-%m-%d"))
@@ -146,7 +157,7 @@ class NeoDashboardView(APIView):
                 "closest_km": closest_km,
             },
             "cache": {
-                "is_cashed": is_cached,
+                "is_cached": is_cached,
                 "fetched_at": fetched_at,
             },
             "results": NeoApproachSerializer(approaches, many=True).data,
