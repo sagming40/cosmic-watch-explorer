@@ -53,4 +53,101 @@ def _ensure_date_cached(target_date):
     
     # fetch_feed가 방금 neo_fetch_log에 기록을 남겼으므로,
     # 이 시점의 "지금"이 곧 fetched_at이다.
-    return False, timezone.now()    
+    return False, timezone.now() 
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+
+from .models import CloseApproach
+from .serializers import NeoApproachSerializer
+from .units import km_to_lunar_distance
+
+# sort 파라미터 → 실제 정렬 기준 컬럼 매핑
+# 비유: "거리 순", "속도 순", "크기 순" 정렬 버튼을 누르면 
+# 주방(ORM)이 읽을 수 있는 실제 컬럼명("miss_distance_km")으로 바꿔주는 번역표
+SORT_FIELD_MAP = {
+    "distance": "miss_distance_km",
+    "velocity": "-velocity_km_s",    # 빠른 순 = 내림차순이 자연스러움
+    "size": "-neo__diameter_max_m",
+}   
+
+
+class NeoDashboardView(APIView):
+    """
+    GET /api/neo — 문서 04, 5.1절 대시보드.
+    """  
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "neo_fetch"
+    # 단순히 "이 뷰가 neo_fetch라는 이름표를 사용할 수 있다"는 선언이다.
+    # 실제 카운트 지점은 get() 안에서 직접 정한다. (아래 참고)
+    
+    def get(self, request):
+        target_date = _parse_query_date(request.query_params.get("date"))
+        sort = request.query_params.get("sort", "distance")
+        body = request.query_params.get("body", "Earth")
+        
+        # ① 캐시 판정 먼저 — 여기서 미스가 확정되면 그 즉시 throttle을 직접 체크한다.
+        log = NeoFetchLog.objects.filter(fetch_date=target_date).first()
+        if log is None:
+            # ⭐ self throttling — "발주 버튼을 누르기 직전에만" 계산대 POS기를 켠다.
+            # DRF의 기본 동작(check_throttles를 dispatch 단계에서 자동 호출)을 사용하지 않고,
+            # 캐시 미스가 확정된 이 지점에서만 수동으로 호출한다.
+            # 즉, 대시보드를 몇 번 열든(캐시 히트) 이 줄 자체가 실행되지 않으므로 
+            # throttle 카운트에 전혀 반영되지 않는다.
+            self.check_throttles(request)
+            
+            try:
+                fetch_feed(target_date.strftime("%Y-%m-%d"))
+            except Exception as exc:
+                raise UpstreamError() from exc
+            
+            is_cached = False
+            fetched_at = timezone.now()
+        else:
+            is_cached = True
+            fetched_at = log.fetched_at
+        
+        # ② 목록 조회 — 02_database_design.md 8.2절 쿼리 패턴    
+        order_field = SORT_FIELD_MAP.get(sort, "miss_distance_km")
+        queryset = (
+            CloseApproach.objects
+            .filter(approach_date=target_date, orbiting_body=body)
+            .select_related("neo")
+            .order_by(order_field)
+        )        
+        
+        # list() 한 번에 메모리로 끌어온다.
+        # 이 줄 이후로는 DB를 다시 왕복하지 않고, 아래 요약 계산도 전부
+        # Python list 위에서만 이루어진다.
+        # 설계 결정 ① — 요약과 목록이 같은 데이터에서 나와야 함
+        approaches = list(queryset)
+        
+        # ③ 요약 계산 — 별도 query 없이 방금 가져온 list를 순회한다.
+        total_count = len(approaches)
+        hazardous_count = sum(1 for ca in approaches if ca.neo.is_hazardous)
+        
+        if approaches:
+            closest = min(approaches, key=lambda ca: ca.miss_distance_km)
+            closest_km = closest.miss_distance_km
+            closest_ld = km_to_lunar_distance(closest_km) 
+        else:
+            # 그날 접근이 0건 이었던 경우 — NULL 그대로 유지.
+            closest_km = None
+            closest_ld = None
+            
+        return Response({
+            "date": target_date.isoformat(),
+            "summary": {
+                "total_count": total_count,
+                "hazardous_count": hazardous_count,
+                "closest_ld": closest_ld,
+                "closest_km": closest_km,
+            },
+            "cache": {
+                "is_cashed": is_cached,
+                "fetched_at": fetched_at,
+            },
+            "results": NeoApproachSerializer(approaches, many=True).data,
+        })        
