@@ -68,6 +68,9 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "neo_fetch": "30/hour",
     },
+    
+    # ⭐ M2 추가 — Decimal을 문자열이 아닌 숫자로 응답 (문서 04 — 5.1절)
+    "COERCE_DECIMAL_TO_STRING": False,
 }
 
 MIDDLEWARE = [
