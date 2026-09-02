@@ -246,7 +246,26 @@ def fetch_neo_detail(nasa_id):
     url = NASA_LOOKUP_URL.format(asteroid_id=nasa_id)
 
     response = requests.get(url, params=params, timeout=10)
+
+    if response.status_code == 404:
+        # Feed 목록엔 이름이 있었지만 Lookup 카탈로그엔 상세 카드가 없는 ID. (서버 장애 아님)
+        # "상세 데이터가 없는 소행성"은 UpstreamError로 취급하지 않고 조용히 "궤도 정보 없음"으로 종료한다.
+        # NASA 원본에 값이 없으면 null로 남긴다는 원칙 ― units.py의 None 처리와 같은 결이다.
+        #
+        # →
+        # Feed 목록엔 이름이 있었지만 Lookup 조회가 404를 반환한 경우.
+        # 주의: 같은 ID가 재요청 시 정상 응답한 사례가 있어, "영구적으로 카탈로그에 없음"이라고
+        # 단정할 수 없다 — NASA 서버 쪽의 일시적 응답 문제일 가능성도 있다.
+        # 그래도 크래시시키기보다 "이번엔 궤도 정보 없이 넘어간다"가 더 안전한 선택이라 이렇게 처리한다.
+        print(f"[fetch_neo_detail] {nasa_id}: NASA Lookup 404 ― 궤도 정보 없이 종료")
+        neo = Neo.objects.filter(nasa_id=nasa_id).first()
+        return neo, 0, False
+
     response.raise_for_status()
+    # 응답 상태 코드가 200번대(성공)가 아니면 예외(에러)를 던져서 함수를 중단시키는 역할
+    #
+    # 404 상태 코드가 아닌 4xx/5xx 상태 코드는 여기서 그대로 예외로 올라간다. 
+    # ― 진짜 서버 장애, API 키 문제 등
     data = response.json()
 
     # ① Neo 본체 ― Feed와 달리 designation까지 채운다
