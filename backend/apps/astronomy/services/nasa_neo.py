@@ -49,6 +49,54 @@ def _parse_datetime_utc(datetime_full_str):
     # 받는 쪽(DB)에서 헷갈릴 일이 없음
 
 
+def _save_close_approaches(neo, approach_list):
+    """
+    접근 기록 목록을 DB에 저장한다. 새로 저장된 건수를 반환.
+
+    Feed(날짜별 목록)와 Lookup(소행성별 전체) 두 창구 모두
+    close_approach_data를 '똑같은 모양'으로 반환하기 때문에 이 함수 하나를 공유한다.
+
+    비유: 들어온 서류의 양식이 같으면 접수창구가 어디였든
+    서류함에 꽂는 방법은 하나여야 한다. 창구마다 꽂는 법이 다르면
+    나중에 양식이 바뀔 때 한 창구만 고치고 다른 창구는 잊어버린다. 
+    """    
+    saved_count = 0
+
+    for approach in approach_list:
+        approach_datetime = _parse_datetime_utc(approach.get("close_approach_date_full"))
+        if approach_datetime is None:
+            continue
+        # 날짜 parsing에 실패한 data는 조용히 건너뜀
+        # 수백 건 중 하나가 이상하다 해도 전체 수집이 멈추면 안된다.
+
+        _, created = CloseApproach.objects.get_or_create(
+            neo=neo,
+            approach_datetime_utc=approach_datetime,
+            orbiting_body=approach.get("orbiting_body", ""),
+            defaults={
+                "approach_date": approach.get("close_approach_date"),
+                "velocity_km_s": _to_decimal(
+                    approach["relative_velocity"]["kilometers_per_second"]
+                ),
+                "velocity_km_h": _to_decimal(
+                    approach["relative_velocity"]["kilometers_per_hour"]
+                ),
+                "miss_distance_km": _to_decimal(approach["miss_distance"]["kilometers"]),
+                "miss_distance_au": _to_decimal(approach["miss_distance"]["astronomical"]),
+            },
+        )
+        # update_or_create가 아닌 get_or_create를 사용하는 이유
+        # neo + approach_datetime_utc + orbiting_body = UniqueConstraint(uk_ca_unique) 조합.
+        # 이미 있다면 그냥 두고, 없으면 새로 생성
+        # → 같은 소행성을 Feed로 한 번, Lookup으로 또 한 번 수집해도
+        #   겹치는 접근 기록은 중복 저장 되지 않는다.
+
+        if created:
+            saved_count += 1
+
+    return saved_count        
+
+
 def fetch_feed(date_str):
     """
     NASA NeoWs Feed API에서 특정 날짜의 소행성 접근 데이터를 가져와 DB에 저장한다.
@@ -117,41 +165,10 @@ def fetch_feed(date_str):
         # 반환값(객체, 생성여부)이 Tuple이다. 두번째 값은 언더스코어(_)로 버림.
         # "이 값은 사용하지 않는 값이므로 이름을 붙일 필요가 없다" ─ Python의 관례
 
-        # ② 소행성의 접근 기록 저장
-        for approach in neo_data.get("close_approach_data", []):
-            approach_datetime = _parse_datetime_utc(approach.get("close_approach_date_full"))
-            if approach_datetime is None:
-                continue
-            # 날짜 parsing에 실패한 data는 조용히 건너뜀
-            # 소행성 수천 개 중 하나가 이상하다 해도 전체 수집이 멈추면 안된다.
-
-            _, created = CloseApproach.objects.get_or_create(
-                neo=neo,
-                approach_datetime_utc=approach_datetime,
-                orbiting_body=approach.get("orbiting_body", ""),
-                defaults={
-                    "approach_date": approach.get("close_approach_date"),
-                    "velocity_km_s": _to_decimal(
-                        approach["relative_velocity"]["kilometers_per_second"]
-                    ),
-                    "velocity_km_h": _to_decimal(
-                        approach["relative_velocity"]["kilometers_per_hour"]
-                    ),
-                    "miss_distance_km": _to_decimal(approach["miss_distance"]["kilometers"]),
-                    "miss_distance_au": _to_decimal(approach["miss_distance"]["astronomical"]),
-                },
-            )
-            # update_or_create가 아닌 get_or_create를 사용한 이유
-            #
-            # neo, approach_datetime_utc, orbiting_body
-            # ─ CloseApproach의 UniqueConstraint(uk_ca_unique) 조합이다.
-            # 세 값의 같은 행이 이미 존재한다면 그냥 두고, 없으면 새로 생성
-            # 즉, 같은 날짜로 fetch_feed를 중복으로 돌려도 이미 존재하는 접근 기록은
-            # 조용히 건너뛰고 새로 생성되지 않는다. (M1 완료 기준)
-            # "중복 실행이 되어도 행 수가 늘어나지 않는다"는 전제를 구현한 지점이다.
-
-            if created:
-                saved_approach_count += 1
+        # ② 소행성의 접근 기록 저장 — 공통 함수에 위임
+        saved_approach_count += _save_close_approaches(
+            neo, neo_data.get("close_approach_data", [])
+        )
 
     # ③ 발주 장부에 "해당 날짜 수집 완료"라고 기록
     NeoFetchLog.objects.update_or_create(
