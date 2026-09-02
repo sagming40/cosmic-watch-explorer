@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M1 — 데이터 계층 ✅** |
-| 다음 작업 | M2 진행중 — NEO 대시보드(`GET /api/neo/`) 구현·검증 완료. 다음은 `GET /api/neo/{nasa_id}/`(상세) |
+| 다음 작업 | M2 진행중 — NEO 대시보드(`GET /api/neo/`) + 상세 수집 서비스(`fetch_neo_detail`, Lookup API) 구현·검증 완료. 다음은 `ApproachRowSerializer`/`NeoDetailSerializer` → `GET /api/neo/{nasa_id}/` 뷰 → `GET /api/neo/{nasa_id}/approaches/`(페이지네이션 첫 실전 검증) |
 | 최근 병합 커밋 | `merge(M1): 데이터 계층 및 NASA 수집 서비스 구현 (#1)` |
 
 ### 환경 요약
@@ -82,6 +82,77 @@
 ## 기록
 
 <!-- 최신 항목을 위에 추가한다 -->
+
+---
+
+## 2026-09-02 (수) — M2: NEO 상세 수집 서비스(NASA Lookup API) 구현
+
+### [완료] `services/nasa_neo.py` — 접근 기록 저장 로직 공통화
+
+- Feed와 Lookup이 `close_approach_data`를 같은 모양으로 주는 걸 확인 → `_save_close_approaches()`로 저장 로직 공통화. `fetch_feed()`가 이 함수를 호출하도록 변경(동작 변화 없음, shell 재검증 완료).
+- `Neo` 본체 저장 로직은 의도적으로 분리 유지 — Feed와 Lookup의 필드 구성이 다름(Lookup만 `designation` 제공). "겉모양이 비슷하다"가 아니라 "함께 변할 이유가 있는가"를 합칠 기준으로 삼음.
+
+### [설계] Feed API로는 상세 화면(5.2/5.3)을 채울 수 없다는 것을 발견
+
+- shell로 DB 상태 확인 중 `OrbitalData: 0`, 소행성 36개가 전부 `접근 1건`인 것을 발견.
+- NASA NeoWs가 Feed(날짜별 목록, 궤도 정보 없음)와 Lookup(소행성 개별 조회, 궤도+전체 접근 기록 포함) 두 창구로 나뉘어 있고, M1의 `fetch_feed()`만으론 상세 API 데이터를 채울 수 없다는 걸 오늘 처음 확인.
+- A안(상세 조회 시점에 Lookup 호출) 채택. `orbital_data` 행 존재 여부 자체가 캐시 판정 역할을 하도록 설계 — `neo_fetch_log`(날짜 단위 장부)는 건드리지 않음.
+
+### [완료] `services/nasa_neo.py` — `fetch_neo_detail(nasa_id)` 구현
+
+- `_to_int()`, `_parse_orbit_determination_datetime()` 헬퍼 추가. 궤도 결정 시각(`"2021-05-24 17:55:05"`)과 접근 시각(`"2026-Aug-21 03:16"`)의 날짜 포맷이 서로 달라 파서를 분리.
+- `Neo.designation`을 Lookup 응답으로 채움(Feed 응답엔 없는 필드).
+- 궤도 정보는 `update_or_create` — NASA가 관측이 쌓일 때마다 재계산해 여러 버전을 주므로 최신 값만 유지 (M1의 HostStar/Exoplanet과 같은 판단).
+
+### [외부API] 오타 → 함수 뒤바뀜 연쇄
+
+**증상**
+`NASA_LOOKUP_URL`에 `nasa.gov` → `vasa.gov` 오타(n↔v 인접 키)로 `NameResolutionError` 발생. 고친 뒤 이어서 404 처리 코드를 붙여넣는 과정에서 `fetch_neo_detail()`이 아닌 `fetch_feed()` 안에 잘못 삽입됨 — `fetch_feed()`가 `NASA_LOOKUP_URL`을 호출하게 되며 두 함수가 동시에 깨짐.
+
+**원인**
+단순 오타 + 코드 조각을 엉뚱한 함수 자리에 붙여넣음. Pylance는 `nasa_id`(엉뚱한 함수 안에서 참조된 변수)만 잡아냈고, "함수가 통째로 뒤바뀐 것" 자체는 정적 분석으로 못 잡음.
+
+**해결**
+`fetch_feed()`는 `NASA_FEED_URL` 사용으로 원복, 404 분기는 `fetch_neo_detail()`로 이동. 두 함수 모두 shell 재시작 후 재검증.
+
+**배운 것**
+- 파일을 고쳐도 이미 켜진 shell엔 반영 안 됨 — `import`는 최초 1회만 파일을 읽어 메모리에 고정하므로, 코드 수정 후엔 shell을 껐다 켜야 함.
+- 코드 조각을 다른 함수 자리에 잘못 붙여넣는 실수는 "이름이 존재하는가"만 보는 정적 분석기로 못 잡는다. 함수 단위로 diff를 다시 훑어보는 습관 필요.
+
+### [외부API] Lookup 404 재현 안 됨 — 영구 부재로 단정 불가
+
+**증상**
+`fetch_neo_detail("2437844")` 최초 호출 시 `404`. 몇 분 뒤 같은 ID 재호출하니 궤도 정보까지 정상 저장.
+
+**원인**
+불명. Lookup 카탈로그가 정적 참조 데이터라면 같은 ID가 404→200으로 바뀔 이유가 없어, NASA 서버 쪽 일시적 응답 문제로 추정.
+
+**해결**
+404를 "이 ID는 영구적으로 데이터 없음"으로 단정하지 않고 "이번 요청이 404"로 처리하도록 주석·로그 톤 조정. `UpstreamError`로 죽이지 않고 궤도 정보 없이 조용히 종료.
+
+**배운 것**
+서드파티 API의 에러 코드를 그대로 믿지 않는다 — 관찰된 사실 이상으로 단정적인 주석을 달지 않는다.
+
+### [설계] 5.2/5.3 응답 형식 통일 결정 (구현은 다음 세션)
+
+- `03_user_scenarios_and_uiux.md`의 `ApproachTable` 컴포넌트가 상세(5건)와 "더 보기"(전체) 화면에서 공유되는 걸 확인 → 두 응답의 접근 기록 필드 구성을 통일하기로 결정.
+- `ApproachRowSerializer(ApproachDetailSerializer)` — 기존 7필드에 `approach_date` 1개만 상속으로 추가하는 설계로 확정. `04_api_specification.md` 5.2 예시는 이 구현이 실제로 만들어진 뒤(다음 세션) 맞춰 수정 예정 — 아직 없는 구현에 문서를 먼저 맞추지 않음.
+
+**shell 검증 결과 (최종)**
+- `fetch_neo_detail("2357621")` — 접근 1건 → 21건, `designation` 채워짐, `orbital_data` 정상, 재실행해도 행 안 늘어남(멱등성)
+- 추가 수집(`2437844`, `3645793`, `3694987`) — `CloseApproach` 총 374건, `orbiting_body` 분포: `Earth 161 / Merc 114 / Venus 94 / Moon 3 / Mars 2`
+- 가짜 ID(`0000000`)로 404 분기 강제 재현 — `neo=None, count=0, orbit_saved=False` 정상 확인
+
+**오늘 커밋**
+- `refactor(M2): 접근 기록 저장 로직을 공통 함수로 분리`
+- `feat(M2): NEO 상세 수집 서비스(NASA Lookup) 구현`
+- `fix(M2): Lookup 카탈로그에 없는 ID(404) 처리 추가`
+
+**다음에 할 일**
+- `ApproachRowSerializer`(상속) + `NeoDetailSerializer` 작성
+- `NeoDetailView`(`GET /api/neo/{nasa_id}/`) — `orbital_data`는 `select_related`, `recent_approaches`(최근 5건)는 `order_by(...)[:5]`로 DB에서 직접 자르기(N+1 방지)
+- `NeoApproachListView`(`GET /api/neo/{nasa_id}/approaches/`) — `CommonPagination` 첫 실전 투입, `body` 필터 기본값은 오늘 확보한 분포(`Earth` 다수) 참고해 확정
+- 구현 후 `04_api_specification.md` 5.2 예시에 `approach_date`/`miss_distance_au`/`velocity_km_h` 반영
 
 ---
 
