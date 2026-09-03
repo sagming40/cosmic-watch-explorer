@@ -1,10 +1,15 @@
 from datetime import datetime
 
 from django.utils import timezone
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 
-from config.exception_handler import InvalidDate, UpstreamError
-from .models import NeoFetchLog
-from .services.nasa_neo import fetch_feed
+from config.exception_handler import InvalidDate, UpstreamError, ResourceNotFound   # ⭐ ResourceNotFound 추가
+from .models import Neo, CloseApproach, NeoFetchLog   # ⭐ Neo 추가
+from .serializers import NeoApproachSerializer, NeoDetailSerializer   # ⭐ NeoDetailSerializer 추가
+from .services.nasa_neo import fetch_feed, fetch_neo_detail   # ⭐ fetch_neo_detail 추가
+from .units import km_to_lunar_distance
 
 
 def _parse_query_date(date_str):
@@ -55,14 +60,6 @@ def _ensure_date_cached(target_date):
     # 이 시점의 "지금"이 곧 fetched_at이다.
     return False, timezone.now() 
 
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
-
-from .models import CloseApproach
-from .serializers import NeoApproachSerializer
-from .units import km_to_lunar_distance
 
 # sort 파라미터 → 실제 정렬 기준 컬럼 매핑
 # 비유: "거리 순", "속도 순", "크기 순" 정렬 버튼을 누르면 
@@ -162,3 +159,69 @@ class NeoDashboardView(APIView):
             },
             "results": NeoApproachSerializer(approaches, many=True).data,
         })        
+
+
+class NeoDetailView(APIView):
+    """
+    GET /api/neo/{nasa_id}/ ─ 문서 04, 5.2절 상세.
+
+    ⚠️ 이 view도 조건부로 NASA를 호출한다.
+    04_api_specification.md 420행 ─ "이 endpoint만 NASA API를 호출한다."는 문장은
+    5.1절만 존재했을 때의 전제이다. 문서 정리 시 갱신 필요.
+    """
+    throttle_scope = "neo_detail_fetch"
+
+    def get_throttles(self):
+        # NeoDashboardView와 같은 이유 ─ orbital_data 캐시 미스가
+        # 확정된 순간에만 직접 검사한다. dispatch()의 자동 검사는 꺼둔다.
+        return []
+
+    def get(self, request, nasa_id):
+        # ① Neo 행 자체가 없으면 즉시 404. NASA는 호출하지 않는다.
+        #   ─ 존재하지 않는 ID를 계속 두드려도 NASA로 나가지 않도록.
+        #
+        # select_related("orbital_data")를 미리 걸어두는 이유:
+        # OneToOneField 관계는 값이 없어도 예외없이 None으로 채워진다. (LEFT JOIN 이기 때문)
+        # 아래에서 getattr 없이 바로 neo.orbital_data로 확인 가능.
+        neo = (
+            Neo.objects
+            .select_related("orbital_data")
+            .filter(nasa_id=nasa_id)
+            .first()
+        )
+        if neo is None:
+            raise ResourceNotFound("해당 소행성을 찾을 수 없습니다.")
+
+        # ② 궤도 정보가 비어 있으면(=이 소행성을 한 번도 Lookup 한 적 없음)
+        #   그 시점에 처음으로 NASA를 호출한다. ─ cache miss가 확정된 순간 selh throttling
+        #
+        # →
+        #
+        # ⚠️ select_related("orbital_data")를 걸어놨어도 이 결과는 바뀌지 않는다.
+        # select_related는 "쿼리를 한 번 더 왕복하지 않도록 미리 LEFT JOIN 해둔다"는 뜻일 뿐,
+        # "관계가 비어 있어도 조용히 None을 준다"는 약속이 아니다.
+        # 반대편(OneToOneField)이 비어 있으면 Django는 그 사실을 예외로 알려준다.
+        # → NeoDetailSerializer.get_orbital_data에서 이미 썼던 것과 똑같은 패턴을
+        #   여기서도 그대로 써야 한다. (같은 문제를 두 번째로 만난 것)
+        orbital = getattr(neo, "orbital_data", None)
+        if orbital is None:
+            throttle = ScopedRateThrottle()
+            if not throttle.allow_request(request, self):
+                self.throttled(request, throttle.wait())
+
+            try:
+                neo, _, _ = fetch_neo_detail(nasa_id)
+                # fetch_neo_detail이 돌려주는 neo로 통째로 교체한다.
+                # Lookup에만 있는 designation 같은 field가 이 시점에 새로 채워지기 때문에,
+                # ①에서 가져온 예전 neo를 계속 사용하면 갱신된 값을 놓친다.
+                # 
+                # 이 neo는 select_related가 걸리지 않은 '새 조회 결과'이다.
+                # 아래에서 orbital_data에 접근하면 Django가 그 시점에 query를 한 번더 날린다.
+                # ─ 목록이 아니라 객체 하나뿐인 상세 페이지라 N+1 걱정은 없다.
+            except Exception as exc:
+                raise UpstreamError() from exc
+            # NASA Lookup이 404를 준 경우는 fetch_neo_detail 내부에서 이미 처리되어
+            # 여기까지 예외없이 내려온다. ─ orbital_data가 None인 채로 응답된다.
+            # ⭐ 값이 없으면 없는대로. 억지로 채우지 않는다.
+
+        return Response(NeoDetailSerializer(neo).data)    

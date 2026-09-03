@@ -37,7 +37,7 @@ DEFAULT_MESSAGE_BY_STATUS = {
 FALLBACK_MESSAGE = "요청을 처리하지 못했습니다."
 
 
-# ────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────
 # cosmic-watch-explorer 전용 예외들
 #
 # DRF 기본 제공 예외(NotFound, ValidationError 등)로는
@@ -46,7 +46,7 @@ FALLBACK_MESSAGE = "요청을 처리하지 못했습니다."
 #
 # views 사용 규칙 명시 → raise InvaliDate()
 # 이렇게 규칙을 정해두면 위 handler가 자동으로 봉투에 담아 보낸다. 
-# ────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────
 class InvalidDate(exceptions.APIException):
     status_code = 400
     default_code = "INVALID_DATE"
@@ -74,6 +74,22 @@ class UpstreamError(exceptions.APIException):
     status_code = 503
     default_code = "UPSTREAM_ERROR"
     default_detail = "NASA 데이터 서버에 연결할 수 없습니다."
+    is_custom_error = True   # ⭐ 추가
+
+
+class ResourceNotFound(exceptions.APIException):
+    """
+    소행성·외계행성·Watchlist 항목 등 '특정 Resource가 없음'을 나타내는 404.
+
+    DRF 기본 NotFound를 사용하지 않는 이유:
+    custom_exception_handler는 is_custom_error=True인 예외만 detail 텍스트를
+    그대로 사용하고, 나머지는 전부 공용 문구로 덮어쓴다.
+    DRF 기본 예외의 영어 원문이 새어나가는 걸 막는 안전장치인데, 
+    직접 지정한 한글 메시지까지 같이 막히는 부작용이 있어 이 class로 우회한다.
+    """
+    status_code = 404
+    default_code = "NOT_FOUND"
+    default_detail = "요청하신 항목을 찾을 수 없습니다."
     is_custom_error = True   # ⭐ 추가
     
 

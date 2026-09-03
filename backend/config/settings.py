@@ -67,6 +67,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "neo_fetch": "30/hour",
+        "neo_detail_fetch": "30/hour",   # ⭐ 추가 ─ NeoDetailView 전용 계량기
     },
     
     # ⭐ M2 추가 — Decimal을 문자열이 아닌 숫자로 응답 (문서 04 — 5.1절)
