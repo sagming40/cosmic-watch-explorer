@@ -8,6 +8,7 @@ NEO API 응답을 만드는 serializers.
 """
 
 from rest_framework import serializers
+from django.utils import timezone   # ⭐ 추가
 from .units import km_to_lunar_distance
 
 
@@ -126,13 +127,20 @@ class NeoDetailSerializer(serializers.Serializer):
 
     def get_recent_approaches(self, obj):
         """
-        최근 5건만. [:LIMIT] slicing은 Django가 SQL의 LIMIT 5로 번역한다.
+        오늘 이후 가장 가까운 예정 접근 5건.
+        Cosmic "watch" ― 이미 지나간 접근보다 "다음 접근은 언제인가"가
+        모니터링 목적에 더 맞는다고 판단하여 미래 접근 기준으로 결정.
+        04_api_specification.md 5.2절엔 "최근 5건"으로만 적혀 있어 모호했던 부분이다.
+        → 문서 업데이트 필요. 이 정의를 명시할 것
 
-        slicing을 제외하면 접근 기록 374건을 전부 Python memory로 끌어온 뒤
-        5개만 남기고 버리게 된다. 창고에서 재고를 통째로 트럭에 싣고 와서
-        5개만 꺼내 사용하는 것과, 처음부터 5개만 실어오는 것의 차이.
+        미래 접근이 5건 미만이면 값이 있는 만큼만 내려준다 ― 억지로 과거로 채우지 않는다.
+        (02_database_design.md 1.1절 ― NULL 보존 원칙)
         """
-        rows = obj.approaches.order_by("-approach_datetime_utc")[:self.RECENT_APPROACH_LIMIT]
+        rows = (
+            obj.approaches
+            .filter(approach_datetime_utc__gte=timezone.now())
+            .order_by("approach_datetime_utc")[:self.RECENT_APPROACH_LIMIT]
+        )
         return ApproachRowSerializer(rows, many=True).data
 
     def get_approach_count(self, obj):
