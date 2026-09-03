@@ -33,6 +33,115 @@ class ApproachDetailSerializer(serializers.Serializer):
         return km_to_lunar_distance(obj.miss_distance_km)
 
 
+class ApproachRowSerializer(ApproachDetailSerializer):
+    """
+    문서 02 ― 5.3절(접근 기록 전체) 목록 한 줄. 5.2절의 recent_approaches도 이 클래스를 사용한다.
+
+    ApproachDetailSerializer를 상속받고 approach_date 하나만 더 얹는다.
+    비유: 도시락 안에 반찬 한 가지를 추가한 것 ― 원래 있었던 밥과 반찬들을 그대로 물려받는다.
+
+    통일을 하는 이유: 03_user_scenarios_and_uiux.md의 ApproachTable 컴포넌트가
+    상세 화면(5건)과 "더 보기" 화면(전체) 양 쪽에서 공유된다.
+    두 응답 필드 구성이 다르면 FE 단에서 화면을 각각 다르게 처리해야 한다.
+    """
+    approach_date = serializers.DateField()
+    # 부모의 7개 필드는 건드리지 않는다. 여기에 적힌 것만 추가된다.
+    # 출력 순서 상 approach_date가 맨 뒤로 가는데, JSON은 키 순서가 의미 없으니 상관없다.
+
+
+class OrbitalDataSerializer(serializers.Serializer):
+    """
+    궤도 정보 14개 필드. 04_api_specification.md 5.2절 orbital_data 블록 그대로.
+
+    전부 null 허용 필드이다. NASA가 관측이 부족한 소행성의 궤도를 전부 계산해둔 것이 아니다.
+    ― 없는 값은 없는 채로 내려보낸다. (02_database_design.md 1.1절 ― null을 임의 값으로 바꾸지 않는다.)
+    """ 
+    orbit_id = serializers.CharField()
+    orbit_determination_datetime_utc = serializers.DateTimeField()
+    first_observation_date = serializers.DateField()
+    last_observation_date = serializers.DateField()
+    data_arc_days = serializers.IntegerField()
+    observations_used = serializers.IntegerField()
+
+    # 자릿수는 models.py의 선언과 글자까지 맞춘다.
+    # 여기서 자릿수를 줄이면 DB에 있는 정밀값이 응답에서 잘려나간다.
+    eccentricity = serializers.DecimalField(max_digits=14, decimal_places=10)
+    semi_major_axis_au = serializers.DecimalField(max_digits=14, decimal_places=10)
+    inclination_deg = serializers.DecimalField(max_digits=12, decimal_places=8)
+    orbital_period_days = serializers.DecimalField(max_digits=16, decimal_places=8)
+    perihelion_distance_au = serializers.DecimalField(max_digits=14, decimal_places=10)
+    aphelion_distance_au = serializers.DecimalField(max_digits=14, decimal_places=10) 
+
+    orbit_class_type = serializers.CharField()
+    orbit_class_description = serializers.CharField()
+
+
+class NeoDetailSerializer(serializers.Serializer):
+    """
+    문서 02 ― 5.2절 상세 응답. 이 serializer만 시작점이 Neo다.
+    5.1절은 CloseApproach가 시작점. ― "오늘의 접근 사건들"이 질문이었으니까.
+    5.2절은 "이 소행성이 어떤 행성인가"가 질문이라 주어가 바뀐다.
+    """      
+    RECENT_APPROACH_LIMIT = 5
+    # '5'라는 숫자는 02번 문서 5.2절 설계 결정 ②에서 온 숫자이다. 코드안에 흩뜨려 놓지 않고,
+    # 이 곳에만 둔다. 384400(1 LD/달 거리 상수)units.py에만 둔 것과 같은 이유
+     
+    nasa_id = serializers.CharField()
+    name = serializers.CharField()
+    designation = serializers.CharField()
+    absolute_magnitude = serializers.DecimalField(max_digits=6, decimal_places=3)
+    diameter_min_m = serializers.DecimalField(max_digits=14, decimal_places=4)
+    diameter_max_m = serializers.DecimalField(max_digits=14, decimal_places=4)
+    is_hazardous = serializers.BooleanField()
+    is_sentry_object = serializers.BooleanField()
+    jpl_url = serializers.URLField()
+
+    is_watchlisted = serializers.SerializerMethodField()
+    orbital_data = serializers.SerializerMethodField()
+    recent_approaches = serializers.SerializerMethodField()
+    approach_count = serializers.SerializerMethodField()
+
+    def get_is_watchlisted(self, obj):
+        # M2 인증·watchlist endpoint가 붙기 전까지는 항상 False.
+        # 문서 02 ― 설계 결정 ① "비로그인 사용자에게는 항상 false"가 이미 정상 동작이다.
+        # 지금 False로 고정해두는 것은 임시방편이 아니라 절반은 완성이 된 상태이다.
+        # 추후 request.user를 확인한 후 판정하는 코드로 채운다.
+        return False
+
+    def get_orbital_data(self, obj):
+        """
+        궤도 정보가 아직 없는 소행성이라면 null을 내려준다.
+
+        ⚠️ 여기서 obj.orbital_data를 그냥 사용하면 안 된다.
+        OneToOneField의 '뒤쪽'은 행이 없을 때 None이 아니라 예외를 던진다.
+        RelatedObjectDoesNotExist ― 1인 1사물함인데 그 사람이 사용할 사물함이 없는 상황
+
+        다행이 이 예외를 AttributeError의 자식으로 만들어두었다. (Django)
+        덕분에 getattr(..., None)이 그대로 통한다 ― M1에서 쓰던 안전망과 같은 패턴
+        """  
+        orbital = getattr(obj, "orbital_data", None)
+        if orbital is None:
+            return None
+        return OrbitalDataSerializer(orbital).data
+
+    def get_recent_approaches(self, obj):
+        """
+        최근 5건만. [:LIMIT] slicing은 Django가 SQL의 LIMIT 5로 번역한다.
+
+        slicing을 제외하면 접근 기록 374건을 전부 Python memory로 끌어온 뒤
+        5개만 남기고 버리게 된다. 창고에서 재고를 통째로 트럭에 싣고 와서
+        5개만 꺼내 사용하는 것과, 처음부터 5개만 실어오는 것의 차이.
+        """
+        rows = obj.approaches.order_by("-approach_datetime_utc")[:self.RECENT_APPROACH_LIMIT]
+        return ApproachRowSerializer(rows, many=True).data
+
+    def get_approach_count(self, obj):
+        # 위 5건이 아니라 '전체' 개수. FE에서 approach_count > 5로
+        # "더보기" 버튼을 띄울지 판단한다. (문서 02 ― 설계 결정 ②)
+        # .count()는 행을 가져오지 않고 DB에 SELECT COUNT(*)만 물어본다.
+        return obj.approaches.count()
+
+
 class NeoApproachSerializer(serializers.Serializer):
     """
     대시보드 목록 한 줄. 소스는 CloseApproach 인스턴스이다. (Neo 아님)
