@@ -1,14 +1,16 @@
 from datetime import datetime
 
 from django.utils import timezone
+from rest_framework import generics   # ⭐ 추가 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
-from config.exception_handler import InvalidDate, UpstreamError, ResourceNotFound   # ⭐ ResourceNotFound 추가
-from .models import Neo, CloseApproach, NeoFetchLog   # ⭐ Neo 추가
-from .serializers import NeoApproachSerializer, NeoDetailSerializer   # ⭐ NeoDetailSerializer 추가
-from .services.nasa_neo import fetch_feed, fetch_neo_detail   # ⭐ fetch_neo_detail 추가
+from config.exception_handler import InvalidDate, UpstreamError, ResourceNotFound
+from config.pagination import CommonPagination   # ⭐ 추가
+from .models import Neo, CloseApproach, NeoFetchLog
+from .serializers import NeoApproachSerializer, NeoDetailSerializer, ApproachRowSerializer   # ⭐ ApproachRowSerializer 추가
+from .services.nasa_neo import fetch_feed, fetch_neo_detail
 from .units import km_to_lunar_distance
 
 
@@ -224,4 +226,45 @@ class NeoDetailView(APIView):
             # 여기까지 예외없이 내려온다. ─ orbital_data가 None인 채로 응답된다.
             # ⭐ 값이 없으면 없는대로. 억지로 채우지 않는다.
 
-        return Response(NeoDetailSerializer(neo).data)    
+        return Response(NeoDetailSerializer(neo).data)
+
+
+class NeoApproachListView(generics.ListAPIView):
+    """
+    GET /api/neo/{nasa_id}/approaches/ ─ 문서 04, 5.3절 접근 기록 전체
+
+    5.1/5.2와 다르게 NASA 호출을 하지 않는다. DB에 이미 저장된 CloseApproach를
+    그대로 나열하고 페이지만 나누는 "순수 조회" 역할이기 때문에 Throttle도 필요없다.
+    ─ Throttle은 항상 "NASA를 부르는 지점"에만 걸었다. → 해당 사항 없음 
+    """
+    serializer_class = ApproachRowSerializer
+    # pagination_class는 settings.py에 DEFAULT_PAGINATION_CLASS로 이미 전역
+    # 적용되어 있어 생략이 되어도 동작은 같다. 그래도 명시를 해두면,
+    # "이 view는 pagination을 사용한다"는게 코드 단계에서 바로 확인 가능하다.
+    pagination_class = CommonPagination
+
+    def get_queryset(self):
+        nasa_id = self.kwargs["nasa_id"]
+
+        # ① 부모 Resource(Neo) 존재 여부를 먼저 확인한다.
+        #   5.2와 같은 원칙 ─ "접근 기록 0건"과 "그런 소행성 자체가 없음"을 구분한다.
+        #   확인을 하지 않으면 오타로 잘못된 ID를 입력해도 200 + []이 출력되어,
+        #   사용자가 착각하게 된다 → "이 소행성은 접근 기록이 없구나"
+        if not Neo.objects.filter(nasa_id=nasa_id).exists():
+            raise ResourceNotFound("해당 소행성을 찾을 수 없습니다.")
+
+        queryset = CloseApproach.objects.filter(neo__nasa_id=nasa_id)
+
+        # ② body 필터 ─ 문서 5.3 기본값은 '(전체)'. 5.1의 기본값 'Earth'와 다르다.
+        #   Earth를 default 값으로 걸면 지구가 아닌 접근들이 조용히 사라진다.
+        #   확보한 분포가 필터 없이 그대로 정상 출력 되어야 함 
+        #   ─ Earth 161 / Merc 114 / Venus 94 / Moon 3 / Mars 2
+        body = self.request.query_params.get("body")
+        if body:
+            queryset = queryset.filter(orbiting_body=body)
+
+        # ③ 과거 → 미래 시간순. '전체 기록'을 훑어보는 용도라 연대기처럼 읽히게 된다.
+        #   NeoDetailView.recent_approaches의 '앞으로 다가올 순'과는 목적이 달라
+        #   정렬 방향도 다르다 ─ "다음에 어떤 소행성이 다가오나" / "전체 역사"
+        return queryset.order_by("approach_datetime_utc")    
+    
