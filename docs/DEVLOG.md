@@ -117,12 +117,39 @@
 - 420행 "이 엔드포인트만 NASA API를 호출한다" → 5.2도 조건부 호출함을 반영해 정정.
 - 5.3에 없던 "정렬"·"응답 404" 절 신설 — 구현하면서 새로 결정된 사항이라 원래 문서엔 없었음.
 
+### [Git] 원격 history 재작성 후 다른 기기에서 `git pull` ─ merge conflict
+
+**증상**
+집 PC(clone만 해두고 작업 이력 없음)에서 `git pull`을 실행하자 `backend/apps/astronomy/urls.py`, `views/.py` 두 파일에서 merge conflict 발생. Pylance가 파일 당 최대 16개 오류(`Expected expression`, `"[" was not closed` 등)를
+쏟아냄 ─ 실제로는 문법이 깨진 것이 아니라 git이 conflict 마커 (`<<<<<<< HEAD` / `=======` / `>>>>>>>`)를 파일에 그대로 삽입해서 생긴 표면적 오류.
+
+**원인**
+직전에 노트북에서 커밋 메시지 오타(`최원` → `가장 먼`)를 고치기 위해 `git rebase -i` + `git push --force-with-lease`로 원격 history를 재작성함. 집 PC는 그 사실을 모른 채(마지막 `fetch` 시점 기준으로) 옛날 커밋 3개를 그대로 가진 상태였고 `git pull`(=fetch+merge)이 "내용은 같지만 hash가 다른 두 판본"을 강제 merge하려다 충돌.
+
+**해결**
+집 PC엔 지킬 local commit이 없었으므로(clone 후 작업 이력 없음), merge로 풀지 않고 원격을 그대로 덮어씀
+```bash
+git fetch origin
+git reset --hard origin/M2-backend-api
+```
+
+**배운 것**
+- rebase/amend.force-push로 **history를 재작성한 뒤에는, 그 branch를 가진 다른 기기에서 무심코 `git pull` 하면 안 된다** `pull`은 merge를 전제로 하는데, 재작성된 history는 merge가 아니라 연격을 그대로 반영(`reset --hard`)해야 깔끔하다.
+- 안전한 순서: `git fetch` → `git log HEAD..origin/<브랜치> --oneline`으로 뭐가 왔는지를 먼저 확인 → local에 지킬 것이 있으면 `stash` → 없으면 바로 `reset --hard`.
+- Pylance의 문법 오류 개수만 보고 "코드가 심각하게 망가졌다"고 판단하면 안된다. ─ 원인이 merge conflict 마커였던 것처럼, **오류의 개수보다 오류의 성격(어떤 종류의 오류인가)을 먼저 찾아내야 한다.**
+
+### [환경] 집 PC ─ NEO 데이터 backfill
+
+`neo`(36)/`close_approach`(36)/`neo_fetch_log`(8)는 이전에 이미 채워진 상태였으나 `orbital_data`만 0건. `fetch_neo_detail("2357621")` 1회 실행으로 궤도 정보 1건 + 접근 기록 20건(56건으로 증가) 확보 ─ 다른 두 기기와 동일 ID(`2357621`)로 검증 가능한 상태 확보.
+
 **오늘 커밋**
 - `feat(M2): NeoApproachListView 구현 (GET /api/neo/{nasa_id}/approaches/)`
 - `docs(M2): DEVLOG 갱신 및 NEO 상세·접근기록 API 완료 반영`
+- `docs(M2): DEVLOG에 Git history 재작성·집 PC 동기화 트러블슈팅 기록`
 
 **다음에 할 일**
 - M2 나머지 — Exoplanet API, 인증·Watchlist (다음 세션)
+- (참고) 세 기기(학교 PC/노트북/집 PC) 모두 코드·문서·DB schema 동기화 완료. 집 PC는 NEO 데이터가 최소 상태이므로 필요 시 추가 fetch 필요
 
 ---
 
