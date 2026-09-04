@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M1 — 데이터 계층 ✅** |
-| 다음 작업 | M2 진행중 — NEO 대시보드(`GET /api/neo/`) + 상세 수집 서비스(`fetch_neo_detail`, Lookup API) 구현·검증 완료. 다음은 `ApproachRowSerializer`/`NeoDetailSerializer` → `GET /api/neo/{nasa_id}/` 뷰 → `GET /api/neo/{nasa_id}/approaches/`(페이지네이션 첫 실전 검증) |
+| 다음 작업 | M2 진행중 — NEO API 3개(`GET /api/neo/`, `GET /api/neo/{nasa_id}/`, `GET /api/neo/{nasa_id}/approaches/`) 구현·검증 완료. 다음은 Exoplanet API(`filters.py` 다중 조건 검색, 광년 ↔ 파섹 변환) 또는 인증 · Watchlist 중 택 1 |
 | 최근 병합 커밋 | `merge(M1): 데이터 계층 및 NASA 수집 서비스 구현 (#1)` |
 
 ### 환경 요약
@@ -82,6 +82,125 @@
 ## 기록
 
 <!-- 최신 항목을 위에 추가한다 -->
+
+---
+
+## 2026-09-04 (금) — M2: NEO 접근 기록 API + 문서 정리
+
+### [완료] `NeoApproachListView` 구현 (`GET /api/neo/{nasa_id}/approaches/`)
+
+- `generics.ListAPIView` 첫 사용 — `APIView`로 매번 직접 짜던 것과 달리, `get_queryset()`만 채우면 페이지네이션·응답 조립을 DRF가 대신 처리(`get_paginated_response()`가 `CommonPagination`을 자동 호출).
+- NASA를 호출하지 않는 순수 DB 조회라 Throttle 미적용 — Throttle은 "NASA를 부르는 지점"에만 건다는 원칙 재확인.
+- `body` 필터 기본값을 5.1의 `Earth`와 다르게 `(전체)`로 결정 — 5.3은 "전체 기록"이 목적이라 기본값이 다르면 213건이 조용히 사라지는 문제를 사전에 인지.
+- 정렬은 사용자 선택 없이 `approach_datetime_utc` 오름차순(과거→미래) 고정 — "전체 기록을 훑는" 용도라 연대기처럼 고정 순서로 결정.
+
+### [백엔드] 오타 3종 — 파일 로딩 시점에 즉시 터지는 것과, 요청이 와야 터지는 것
+
+**증상**
+1. `pagination_class = CommonPagination` — import 누락으로 `NameError`, 서버 기동/파일 로딩 시점에 즉시 발생
+2. `Neo.objects.filter(nasa_id)` — `nasa_id=nasa_id` 키워드 누락, 요청 시점에 `Q` 객체 관련 에러
+3. `urls.py`의 `<str:nasa_id/>` — 슬래시가 꺾쇠 안쪽에 들어가 라우팅 등록 자체가 실패할 뻔함
+
+**원인**
+1번은 다른 파일(`pagination.py`)에서 만든 클래스를 참조만 하고 import를 안 함. 2번은 `filter()`가 키워드 인자를 기대하는데 위치 인자로 던짐 — 문법 자체는 파이썬 관점에서 유효해서 방치될 뻔함. 3번은 "닫는 꺾쇠 앞에 슬래시" 습관이 "닫는 꺾쇠 뒤에 슬래시"여야 하는 자리에 그대로 적용됨.
+
+**해결**
+1번은 `from config.pagination import CommonPagination` 추가. 2번은 `filter(nasa_id=nasa_id)`로 키워드 명시. 3번은 `<str:nasa_id>/`로 위치 수정.
+
+**배운 것**
+- import 누락은 파일이 로드되는 즉시 터지고(서버 기동 시), 필터 키워드 누락은 그 필터가 실제로 실행되는 요청이 와야 터진다 — 같은 "결국 에러 남" 부류도 **언제 발각되는지**가 다르므로, 에러가 없다고 안심하지 않고 실제 코드 경로를 하나씩 요청해봐야 한다.
+
+### [문서] `04_api_specification.md` v1.2 — 실제 구현 기준으로 정리
+
+- 5.2 `recent_approaches` 응답 예시에 `approach_date`/`miss_distance_au`/`velocity_km_h` 반영 (5.3과 필드 구성 통일 결정의 실제 반영).
+- 5.2 "설계 결정 ③" 신설 — `recent_approaches`가 "최근"이 아니라 **미래 접근 5건**이라는 정의를 명문화. 구현 중 이름과 동작이 어긋났던 걸 늦게 발견해서 문서에 정의를 명시적으로 남김.
+- 420행 "이 엔드포인트만 NASA API를 호출한다" → 5.2도 조건부 호출함을 반영해 정정.
+- 5.3에 없던 "정렬"·"응답 404" 절 신설 — 구현하면서 새로 결정된 사항이라 원래 문서엔 없었음.
+
+**오늘 커밋**
+- `feat(M2): NeoApproachListView 구현 (GET /api/neo/{nasa_id}/approaches/)`
+- `docs(M2): DEVLOG 갱신 및 NEO 상세·접근기록 API 완료 반영`
+
+**다음에 할 일**
+- M2 나머지 — Exoplanet API, 인증·Watchlist (다음 세션)
+
+---
+
+## 2026-09-03 (목) — M2: NEO 상세 API 구현 (`GET /api/neo/{nasa_id}/`)
+
+### [완료] `ApproachRowSerializer`/`OrbitalDataSerializer`/`NeoDetailSerializer` 구현
+
+- `ApproachRowSerializer(ApproachDetailSerializer)` — 어제(9/2) 확정한 설계대로 상속만으로 `approach_date` 1개 추가.
+- `OrbitalDataSerializer` — 궤도 정보 14필드, 전부 NULL 허용(NASA가 관측 부족한 소행성의 궤도를 다 계산해두지 않음).
+
+### [백엔드] 타이핑 오타 2건 — 둘 다 재발성 오타
+
+**증상**
+`OrbitalDataSerializer` 필드명이 모델과 안 맞아 `AttributeError`. `date_arc_days`(→`data_arc_days`), `observation_used`(→`observations_used`) 순서로 두 번 걸림.
+
+**원인**
+`date_arc_days`는 `date`/`data` 인접 오타. `observation_used`는 **M1 `models.py` 타이핑 때 이미 한 번 겪었던 오타의 재발**(DEVLOG 2026-08-29) — 같은 필드를 다른 파일에서 다시 타이핑하며 똑같이 틀림.
+
+**해결**
+철자 수정 후 shell 재시작해 재검증(수정 파일은 shell 재시작 전까진 반영 안 됨을 재확인).
+
+**배운 것**
+`observations_used`는 개인적으로 반복되는 함정 필드 — 이 필드를 다시 타이핑할 일이 있으면 한 번 더 의심할 것.
+
+### [설계] `recent_approaches`가 "최근"이 아니라 "가장 먼 미래"를 반환하던 문제
+
+**증상**
+`order_by("-approach_datetime_utc")[:5]`로 만든 `recent_approaches`가 2091~2152년(65~126년 뒤) 접근을 반환. "최근"이라는 이름과 정반대.
+
+**원인**
+CloseApproach는 과거·미래 접근을 모두 포함하는데, 내림차순은 "가장 큰 값"(=데이터상 가장 먼 미래)을 먼저 뽑는다. "최신순"이라는 이름의 직관과 실제 동작(가장 나중)이 어긋남.
+
+**해결**
+A안 채택 — "오늘 이후 가장 가까운 예정 접근"으로 재정의. `approach_datetime_utc__gte=timezone.now()` 필터 + 오름차순 정렬로 변경. 예정 접근이 5건 미만인 소행성은 있는 만큼만 반환(과거로 억지로 안 채움, NULL 보존 원칙과 같은 결).
+프로젝트명 "Cosmic **Watch**"가 결정 근거 — 이미 지나간 접근보다 "다음에 언제 오는가"가 감시 목적에 더 부합한다고 판단.
+
+**배운 것**
+`-`(내림차순) 정렬은 "최신순"을 보장하지 않는다. 데이터에 미래 값이 섞여 있으면 "가장 큰 값"과 "가장 최근"이 다른 것을 가리킬 수 있다.
+
+### [백엔드] `ResourceNotFound` 예외 추가 — 커스텀 메시지가 조용히 덮어써지는 문제 발견
+
+**증상**
+`raise NotFound("해당 소행성을 찾을 수 없습니다.")`로 직접 문구를 넣어도, 실제 응답엔 `exception_handler.py`의 공용 문구가 나갈 뻔함(사전 발견, 실제 배포 전).
+
+**원인**
+`custom_exception_handler`가 `is_custom_error=True`인 예외만 `detail` 텍스트를 그대로 쓰고, 나머지는 전부 공용 문구로 덮어쓰도록 설계돼 있음(DRF 기본 예외의 영어 원문이 새어나가는 걸 막는 안전장치인데, 직접 지정한 한글 메시지까지 같이 막힘).
+
+**해결**
+`InvalidDate`/`AlreadyExists`와 같은 패턴으로 `ResourceNotFound(is_custom_error=True)` 신설. Watchlist 등 다른 404 상황에도 재사용 가능하도록 리소스 종류를 특정하지 않는 이름으로 설계.
+
+**배운 것**
+프로젝트 초반에 만든 안전장치(영어 메시지 차단)가, 나중에 추가하는 정상적인 커스터마이징까지 막을 수 있다 — 안전장치를 설계할 때 "이게 나중에 막게 될 정상 케이스는 없는가"를 같이 생각해야 함.
+
+### [백엔드] `select_related`가 관계 부재를 막아주지 않는다는 오해
+
+**증상**
+`select_related("orbital_data")`를 걸어놨는데도 `neo.orbital_data is None` 비교에서 `RelatedObjectDoesNotExist` 예외 발생.
+
+**원인**
+`select_related`는 "쿼리를 한 번 더 왕복하지 않도록 미리 LEFT JOIN 해둔다"는 뜻일 뿐, "관계가 비어 있어도 조용히 `None`을 준다"는 약속이 아님. `OneToOneField` 반대편이 비어 있으면 Django는 그 사실을 예외로 알린다 — `NeoDetailSerializer.get_orbital_data`에서 이미 `getattr(obj, "orbital_data", None)`로 방어했던 것과 정확히 같은 문제를 view에서 새로 짜다 다시 만남.
+
+**해결**
+`getattr(neo, "orbital_data", None)` 패턴으로 통일.
+
+**배운 것**
+같은 함정을 서로 다른 파일(serializer / view)에서 각각 만날 수 있다 — 한쪽에서 이미 푼 문제라도, 다른 파일에서 비슷한 코드를 새로 짤 땐 같은 방어가 필요한지 다시 확인해야 함.
+
+**shell/서버 검증 결과**
+- `NeoDetailSerializer` — `nasa_id=2357621`(정상 케이스, `orbital_data` 14필드·`approach_count=21`) / `nasa_id=3761271`(미래 접근 0건, `recent_approaches: []` 에러 없이 정상)
+- `NeoDetailView` — 캐시 히트(`2357621`, NASA 미호출) / 캐시 미스(`3761271`, `fetch_neo_detail` 호출 후 200) / 재요청 시 캐시 히트 전환 확인(같은 ID 두 번째 요청에서 NASA 미호출) / 존재하지 않는 ID(`9999999`) 404, 메시지 정확히 일치
+
+**오늘 커밋**
+- `feat(M2): ApproachRowSerializer 및 NeoDetailSerializer 구현`
+- `fix(M2): recent_approaches가 가장 먼 미래를 반환하던 문제 수정`
+- `feat(M2): NeoDetailView 구현 (GET /api/neo/{nasa_id}/)`
+
+**다음에 할 일**
+- `NeoApproachListView`(`GET /api/neo/{nasa_id}/approaches/`) — `CommonPagination` 첫 실전 투입
 
 ---
 

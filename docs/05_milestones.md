@@ -6,8 +6,8 @@
 | 문서명 | 마일스톤 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.4 |
-| 최종 수정일 | 2026-09-02 |
+| 버전 | v1.5 |
+| 최종 수정일 | 2026-09-04 |
 | Tier | 1 (매 세션 / 매 마일스톤 갱신) |
 
 **변경 이력**
@@ -19,6 +19,7 @@
 | v1.2 | 2026-08-31 | M1 완료 처리 — 완료 기준 7개 전부 충족, 상태 🔄→✅. 147줄 "테이블 9개" 오기 정정 (v1.1에서 누락됐던 부분) |
 | v1.3 | 2026-09-01 | M2 NEO API 착수분 반영 — `GET /api/neo/`, 달 거리(LD) 환산 로직 완료 체크 |
 | v1.4 | 2026-09-02 | M2 NEO 상세 수집 서비스(`fetch_neo_detail`, NASA Lookup API) 반영 — 계획에 없던 작업 체크박스 신설 |
+| v1.5 | 2026-09-04 | M2 `GET /api/neo/{nasa_id}/`, `GET /api/neo/{nasa_id}/approaches/` 완료 체크. 404 응답 형식 완료 기준 충족 |
 
 ---
 
@@ -177,8 +178,8 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 - [x] 달 거리(LD) 환산 로직 (서버에서 계산)
 - [x] `services/nasa_neo.py` — `fetch_neo_detail(nasa_id)` 구현 (NASA Lookup API 수집)
       ⭐ 계획에 없던 작업 — Feed API로는 5.2/5.3에 필요한 궤도 정보·전체 접근 기록을 얻을 수 없음을 M2 진행 중 발견해 추가
-- [ ] `GET /api/neo/{nasa_id}/`
-- [ ] `GET /api/neo/{nasa_id}/approaches/`
+- [x] `GET /api/neo/{nasa_id}/`
+- [x] `GET /api/neo/{nasa_id}/approaches/`
 
 #### Exoplanet API
 
@@ -198,7 +199,7 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 - [ ] 브라우저에서 `/api/neo/?date=2026-08-21` 접속 시 `summary`와 `results`가 함께 담긴 JSON이 보인다
 - [ ] 같은 날짜를 두 번째 조회할 때 `cache.is_cached`가 `true`이고, Django 콘솔에 NASA 요청 로그가 찍히지 않는다
-- [ ] 존재하지 않는 `nasa_id` 조회 시 `04_api_specification.md` 1.4절 형식의 `404` 응답이 온다
+- [x] 존재하지 않는 `nasa_id` 조회 시 `04_api_specification.md` 1.4절 형식의 `404` 응답이 온다
 - [ ] 검색 조건 3개(`radius_min`, `radius_max`, `distance_max_ly`)를 동시에 걸었을 때 **SQL 로그에 조회 쿼리가 1회만** 찍힌다 (`select_related` 검증)
 - [ ] 계정 2개를 만들어 각각 다른 소행성을 Watchlist에 저장한 뒤, 교차 로그인하면 **서로의 항목이 보이지 않는다**
 - [ ] 같은 소행성을 두 번 `POST` 하면 `409`가 반환된다
