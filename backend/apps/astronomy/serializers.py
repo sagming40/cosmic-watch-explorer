@@ -10,6 +10,7 @@ NEO API 응답을 만드는 serializers.
 from rest_framework import serializers
 from django.utils import timezone   # ⭐ 추가
 from .units import km_to_lunar_distance
+from .units import parsec_to_light_year   # ⭐ 추가
 
 
 class ApproachDetailSerializer(serializers.Serializer):
@@ -171,4 +172,108 @@ class NeoApproachSerializer(serializers.Serializer):
     approach = serializers.SerializerMethodField()
     
     def get_approach(self, obj):
-        return ApproachDetailSerializer(obj).data 
+        return ApproachDetailSerializer(obj).data
+
+
+class HostStarBriefSerializer(serializers.Serializer):
+    """
+    문서 04 ─ 6.1절 목록 안에 들어가는 항성 정보. 딱 3개 field만.
+    
+    목록화면에는 "이 행성이 어느 별을 도는지, 얼마나 먼지"만 보이면 충분하다.
+    분광형·표면중력 같은 8개 fields를 20건 마다 전부 실어보내면
+    목록 화면이 사용하지도 않을 데이터로 응답 크기만 커진다.
+    """   
+    name = serializers.CharField()
+    distance_pc = serializers.DecimalField(max_digits=12, decimal_places=3)
+    distance_ly = serializers.SerializerMethodField()
+    
+    def get_distance_ly(self, obj):
+        # obj는 HostStar instance. distance_pc가 None이면
+        # parsec_to_light_year()이 이미 None을 그대로 반환한다.
+        return parsec_to_light_year(obj.distance_pc)  
+
+
+class HostStarDetailSerializer(HostStarBriefSerializer):
+    """
+    문서 04 ─ 6.2절 상세용 항성 정보. Breif를 상속해 5개 fields만 더 얹는다.
+    
+    ApproachRowSerializer가 ApproachDetailSerializer를 상속했던 것과 
+    똑같은 패턴 ─ 도시락에 반찬 5개를 추가하는 것.
+    id를 여기서 새로 추가하는 이유: 목록(Brief)에서는 항성을 클릭할 일이 없지만,
+    상세 화면에서는 host_star 자체의 식별자가 필요할 수 있다. (문서 04 예시 "id": 88로 명시되어 있음)
+    """    
+    id = serializers.IntegerField()
+    spectral_type = serializers.CharField(allow_null=True)
+    temperature_k = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    radius_solar = serializers.DecimalField(max_digits=12, decimal_places=6, allow_null=True)
+    mass_solar = serializers.DecimalField(max_digits=12, decimal_places=6, allow_null=True)
+    metallicity = serializers.DecimalField(max_digits=10, decimal_places=5, allow_null=True)
+    surface_gravity = serializers.DecimalField(max_digits=10, decimal_places=5, allow_null=True)
+
+
+class SiblingPlanetSerializer(serializers.Serializer):
+    """
+    문서 04 ─ 6.2절 sibling_planets array 한 줄.
+    id와 이름, 반지름만 ─ "같은 별에 이런 행성도 있다"는 안내용이라 목록/상세보다도 훨씬 가벼운 fields 구성이다.
+    """ 
+    id = serializers.IntegerField()
+    planet_name = serializers.CharField()
+    radius_earth = serializers.DecimalField(
+        max_digits=12, decimal_places=6, allow_null=True
+    )   
+
+
+class ExoplanetRowSerializer(serializers.Serializer):
+    """
+    문서 04 ─ 6.1절 목록 한 줄. 시작점은 Exoplanet 자신이다.
+    (NeoApproachSerializer가 CloseApproach에서 시작해 obj.neo로 넘어갔던 것과
+    반대 방향 ─ 여기는 Exoplanet에서 obj.host_star로 넘어간다.)
+    """
+    id = serializers.IntegerField()
+    planet_name = serializers.CharField()
+    radius_earth = serializers.DecimalField(max_digits=12, decimal_places=6, allow_null=True)
+    mass_earth = serializers.DecimalField(max_digits=14, decimal_places=6, allow_null=True)
+    equilibrium_temp_k = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    orbital_period_days = serializers.DecimalField(max_digits=16, decimal_places=8, allow_null=True)
+    discovery_year = serializers.IntegerField(allow_null=True)
+    discovery_method = serializers.CharField(allow_null=True)
+    
+    host_star = HostStarBriefSerializer()
+    # ↑ source를 붙이지 않는 이유: Exoplanet.host_star가 field명 그대로 존재하는
+    # ForeignKey라, DRF가 obj.host_star를 알아서 찾아 HostStarBriefSerializer에 넘긴다.
+    # NeoApproachSerializer의 diameter_min_m이 source="neo.diameter_min_m"으로
+    # "점(.)으로 한 단계 더 들어간" 것과 달리, 여기는 field 이름 자체가 일치하여 source 지정이 필요 없다.
+
+
+class ExoplanetDetailSerializer(ExoplanetRowSerializer):
+    """
+    문서 04 ─ 6.2절 상세. Row의 8 fields + host_star를 그대로 물려받고
+    is_watchlisted / sibling_planets 2개만 새로 얹는다.
+    
+    ⚠️ host_star를 다시 선언해서 덮어쓴다 ─ 부모(Row)는 Brief를 사용하지만
+    상세는 Detail(8 fields)을 사용해야 하기 때문. 같은 이름 fields응 자식 class에서
+    다시 선언하면 부모 것을 덮어쓴다. ─ Python Class 상속의 기본 규칙이다.
+    """    
+    host_star = HostStarDetailSerializer()
+    
+    is_watchlisted = serializers.SerializerMethodField()
+    sibling_planets = serializers.SerializerMethodField()
+    
+    def get_is_watchlisted(self, obj):
+        # NeoDetailSerializer.get_is_watchlisted와 완전히 같은 이유로 항상 False.
+        # M2 인증·Watchlist가 붙기 전까지는 이게 정답이다.
+        return False
+    
+    def get_sibling_planets(self, obj):
+        """
+        같은 항성을 도는 '다른' 행성들. 자기 자신은 제외한다.
+        
+        obj.host_star.planets ─ Exoplanet.host_star의 related_name='planets'을
+        그대로 사용한다. (CloseApproach.neo의 related_name='approaches'와 같은 패턴)
+        문서 04 ─ 6.2절: "DB 구조 상 host_star.planets로 이미 접근 가능하므로 추가 비용이 거의 없다."
+        
+        exclude(pk=obj.pk) ─ "자기 자신 빼고 형제만" 걸러내는 부분.
+        이 과정이 없으면 자기 자신도 sibling_planets 목록에 나타나는 이상한 결과가 된다.
+        """
+        siblings = obj.host_star.planets.exclude(pk=obj.pk)
+        return SiblingPlanetSerializer(siblings, many=True).data

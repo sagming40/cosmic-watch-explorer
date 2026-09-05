@@ -1,6 +1,9 @@
 from datetime import datetime
 
 from django.utils import timezone
+from django.core.cache import cache   # ⭐ 추가
+from django.db.models import Count, Min, Max   # ⭐ 추가
+
 from rest_framework import generics   # ⭐ 추가 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,10 +11,15 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from config.exception_handler import InvalidDate, UpstreamError, ResourceNotFound
 from config.pagination import CommonPagination   # ⭐ 추가
-from .models import Neo, CloseApproach, NeoFetchLog
-from .serializers import NeoApproachSerializer, NeoDetailSerializer, ApproachRowSerializer   # ⭐ ApproachRowSerializer 추가
+
+from .models import Neo, CloseApproach, NeoFetchLog, Exoplanet, HostStar  # ⭐ Exoplanet, HostStar 추가
+from .serializers import (
+    NeoApproachSerializer, NeoDetailSerializer, ApproachRowSerializer,  # ⭐ ApproachRowSerializer 추가
+    ExoplanetRowSerializer, ExoplanetDetailSerializer, # ⭐ 추가
+)  
 from .services.nasa_neo import fetch_feed, fetch_neo_detail
-from .units import km_to_lunar_distance
+from .units import km_to_lunar_distance, parsec_to_light_year  # ⭐ parsec_to_light_year 추가
+from .filters import build_exoplanet_queryset  # ⭐ 추가
 
 
 def _parse_query_date(date_str):
@@ -266,5 +274,142 @@ class NeoApproachListView(generics.ListAPIView):
         # ③ 과거 → 미래 시간순. '전체 기록'을 훑어보는 용도라 연대기처럼 읽히게 된다.
         #   NeoDetailView.recent_approaches의 '앞으로 다가올 순'과는 목적이 달라
         #   정렬 방향도 다르다 ─ "다음에 어떤 소행성이 다가오나" / "전체 역사"
-        return queryset.order_by("approach_datetime_utc")    
+        return queryset.order_by("approach_datetime_utc")
+
+
+class ExoplanetListView(generics.ListAPIView):
+    """
+    GET /api/exoplanets/ ─ 문서 04, 6.1절 catalog 검색.
+    cosmic-watch-explorer 프로젝트 Backend의 핵심 기능 ─ NASA 호출 없이 DB에 있는
+    6,354건을 다중 조건으로 걸러 내는 순수 조회이므로 Throttle 대상이 아니다.
+    NeoApproachListView와 같은 이유 ─ NASA를 부르는 지점에만 계량기를 단다.
+    """ 
+    serializer_class = ExoplanetRowSerializer
+    pagination_class = CommonPagination
     
+    def get_queryset(self):
+        # build_exoplanet_quertset이 검증 실패 시 ValidationError를 그대로 throw
+        # try/except를 사용하지 않는 이유 ─ filters.py 문서화 그대로,
+        # exception_handler.py가 이미 dict detail을 fields로 포장해준다.
+        queryset, applied = build_exoplanet_queryset(self.request.query_params)
+        
+        # list()가 응답을 조립할 때 쓸 수 있도록 self에 잡깐 달아둔다.
+        # as_view()는 요청마다 새 인스턴스를 생성해주므로 다른 사용자 요청과 섞일 걱정은 없다.
+        # ─ NEO 뷰들도 전부 이 위에서 동작해왔다.
+        self.applied_filters = applied
+        return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """
+        CommonPagination이 만드는 5개 키(count/page/page_size/total_pages/results)에
+        applied_filters 하나만 얹는다.
+        
+        CommonPagination 클래스 자체를 건드리지 않는 이유
+        ─ 페이지네이션은 "몇 번째 페이지인지"민 알면 되는 부품이지, "무슨 조건으로 검색했는지" 까지는 알 필요가 없다.
+        NeoApproachListView도 같은 CommonPagination을 사용하는데, 
+        NeoApproachListView에는 applied_filters가 섞여 나가면 안된다.
+        """  
+        response = super().list(request, *args, **kwargs)
+        response.data["applied_filters"] = self.applied_filters
+        return response
+
+
+class ExoplanetDetailView(APIView):
+    """
+    GET /api/exoplanets/{id}/ ─ 문서 04, 6.2절 상세.
+    
+    NASA를 호출하지 않는다 
+    ─ Exoplanet 데이터는 최초 1회만 수집하면 추가 수집이 필요없는 데이터다.
+    즉, NEO 처럼 "궤도정보가 없으면 그 때 가져온다" 같은 조건부 호출이 필요없다.
+    
+    select_related("host_star")를 사용하여 미리 JOIN해 둔 이유 
+    ─ NeoDetailView가 orbital_data를 미리 당겨왔던 것과 같다.
+    """ 
+    def get(self, request, pk):
+        exoplanet = (
+            Exoplanet.objects
+            .select_related("host_star")
+            .filter(pk=pk)
+            .first()
+        )
+        if exoplanet is None:
+            raise ResourceNotFound("해당 외계행성을 찾을 수 없습니다.")
+        
+        return Response(ExoplanetDetailSerializer(exoplanet).data)
+
+# meta 응답을 저장해두는 cache key. 이 String이 두 번째 등장하면 안된다.
+# 상수로 한 곳에만 둔다. ─ LUNAR_DISTANCE_KM을 units.py 한 곳에만 둔 것과 같은 이유.
+EXOPLANET_META_CACHE_KEY = "exoplanet_meta"
+EXOPLANET_META_CACHE_TTL = 60 * 60  # 1시간 (문서 04 ─ 6.3절)
+
+
+class ExoplanetMetaView(APIView):
+    """
+    GET /api/exoplanets/meta/ ─ 문서 04, 6.3절 필터 선택지.
+    
+    ⚠️ 명세와 다른 방법으로 변경한 이유
+    
+    원래 설계 ─ @cache_page(60 * 60) 데코레이터
+    변경한 설계 ─ 직접 캐싱
+    
+    이유 세 가지:
+    1) cache_page는 본래 HTMLView를 전제로 만들어져 DRF Response와 궁합이 미묘하다.
+       ─ 렌더링 시점 문제로 우회 코드가 필요해진다.
+    2) neo_fetch_log 함수를 만들 때 세운 원칙과 결이 같다.
+       ─ 캐시 유/무 여부가 코드에서 눈으로 보여야 한다.
+    3) cache.get() 한 줄이 곧 이 API가 어떤 역할인지를 보여주는 문서가 된다.
+    
+    참고: DRF ScopedRateThrottle이 요청 횟수를 세는 곳도 이것과 같은 Django 기본 캐시이다. (LocMemCache)
+         서버를 재시작하면 이 cache도 같이 초기화 된다. ─ Self Throttling 검증에서 이미 마주쳤던 사실이다.
+    """          
+    def get(self, request):
+        cached = cache.get(EXOPLANET_META_CACHE_KEY)
+        if cached is not None:
+            return Response(cached)
+        
+        data = self._build_meta()
+        cache.set(EXOPLANET_META_CACHE_KEY, data, EXOPLANET_META_CACHE_TTL)
+        return Response(data)
+    
+    def _build_meta(self):
+        # ① 발견 방법별 개수 ─ NULL(미측정)은 드롭다운에 넣을 항목이 아니므로 제외.
+        # 03_user_scenarios_and_uiux.md 필터 드롭다운용
+        methods = (
+            Exoplanet.objects
+            .exclude(discovery_method__isnull=True)
+            .values("discovery_method")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )      
+        discovery_methods = [
+            {"value": row["discovery_method"], "count": row["count"]}
+            for row in methods
+        ]
+        
+        # ② 입력 필드 min/max ─ Min()/Max()는 NULL 행을 자동으로 건너뛴다.
+        # radius_earth IS NULL 1,612건이 있어도 이 집계엔 영향을 주지 않는다.
+        radius = Exoplanet.objects.aggregate(min=Min("radius_earth"), max=Max("radius_earth"))
+        mass = Exoplanet.objects.aggregate(min=Min("mass_earth"), max=Max("mass_earth"))
+        year = Exoplanet.objects.aggregate(min=Min("discovery_year"), max=Max("discovery_year"))
+        
+        # distance_ly는 DB에 존재하지 않는 계산 컬럼이다. 
+        # 저장 단위(pc)로 먼저 min/max를 구한 후 표시 단위(ly)로 변환한다.
+        # 거리는 pc가 커질수록 ly도 커지는 단조 증가 관계이다.
+        # 즉, "pc min(최솟값) → ly min(최솟값)"으로 순서가 뒤집히지 않는다.
+        distance_pc_range = HostStar.objects.aggregate(
+            min=Min("distance_pc"), max=Max("distance_pc")
+        )
+        
+        return {
+            "discovery_methods": discovery_methods,
+            "ranges": {
+                "radius_earth": {"min": radius["min"], "max": radius["max"]},
+                "mass_earth": {"min": mass["min"], "max": mass["max"]},
+                "discovery_year": {"min": year["min"], "max": year["max"]},
+                "distance_ly": {
+                    "min": parsec_to_light_year(distance_pc_range["min"]),
+                    "max": parsec_to_light_year(distance_pc_range["max"]),
+                },
+            },
+            "total_count": Exoplanet.objects.count(),
+        } 
