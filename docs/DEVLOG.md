@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M1 — 데이터 계층 ✅** |
-| 다음 작업 | M2 진행중 — NEO API 3개(`GET /api/neo/`, `GET /api/neo/{nasa_id}/`, `GET /api/neo/{nasa_id}/approaches/`) 구현·검증 완료. 다음은 Exoplanet API(`filters.py` 다중 조건 검색, 광년 ↔ 파섹 변환) 또는 인증 · Watchlist 중 택 1 |
+| 다음 작업 | M2 진행중 — NEO API 3개 + Exoplanet API 3개(`GET /api/exoplanets/`, `/{id}/`, `/meta/`) 구현·검증 완료. 다음은 인증 · Watchlist (M2 마지막 구간) |
 | 최근 병합 커밋 | `merge(M1): 데이터 계층 및 NASA 수집 서비스 구현 (#1)` |
 
 ### 환경 요약
@@ -82,6 +82,91 @@
 ## 기록
 
 <!-- 최신 항목을 위에 추가한다 -->
+
+---
+
+## 2026-09-05 (토) — M2: Exoplanet API 구현 (목록/상세/메타)
+
+### [완료] `filters.py`/`serializers.py`/`views.py` — Exoplanet API 3종 엔드포인트
+
+- `filters.py` 신규 — `ExoplanetSearchParams`(DRF Serializer를 검증용 "문지기"로 사용) + `build_exoplanet_queryset()`. 쿼리 파라미터 15개 중 "모르는 파라미터"(오타 등)는 조용히 무시, "아는 파라미터인데 값 타입이 틀림"은 400 + `fields`로 명시 — 두 종류의 "잘못됨"을 구분해서 처리하기로 결정.
+- `serializers.py` — `HostStarBriefSerializer`(목록용 3필드) → `HostStarDetailSerializer`(상속, 상세용 7필드 추가), `ExoplanetRowSerializer`(목록) → `ExoplanetDetailSerializer`(상속, `is_watchlisted`/`sibling_planets` 추가). `ApproachRowSerializer` 때 썼던 상속 패턴 재사용.
+- `views.py` — `ExoplanetListView`(`list()` 오버라이드로 `applied_filters` 추가), `ExoplanetDetailView`, `ExoplanetMetaView`(직접 캐싱) 구현.
+- 실측 검증: `sibling_planets`을 TRAPPIST-1로 확인(형제 6개, 알려진 7개 행성 중 자기 자신 제외), N+1 없음(쿼리 4회, `select_related` 정상), meta 캐싱은 같은 프로세스 안에서 쿼리 수 10 → 0으로 확인.
+
+### [백엔드] 오타 4종 — filters.py 3건 + serializers.py 1건
+
+**증상**
+1. `host_star__distance__pc__lte` — 밑줄이 하나 더 들어가 `FieldError: Unsupported lookup`
+2. `period_min`을 두 번 선언 — `period_max` 필드가 통째로 사라짐 (에러 없이 조용히 무시됨)
+3. `default = [F("planet_name")].asc(nulls_last=True)` — 괄호 위치가 어긋나 리스트에 `.asc()`를 호출하는 모양이 됨
+4. `SilblingPlanetSerializer` — 클래스는 `Sibling`으로 정확히 선언했는데 호출부에서만 `Silbling`으로 오타 (`i`/`b` 순서 바뀜)
+
+**원인**
+1, 3번은 파이썬/Django 문법상 유효해 보이지만 실행 시점에 터지는 종류. 2번은 같은 이름을 두 번 대입해도 에러가 안 나는 파이썬 특성 때문에 `period_max` 필드 자체가 존재하지 않게 됨 — 필터가 조용히 무효화됨. 4번은 클래스 "정의"는 멀쩡하고 "호출부"만 틀려서, `import` 시점엔 안 걸리고 그 메서드가 실제로 호출되는 순간(`ExoplanetDetailSerializer` 사용 시)에만 `NameError`가 남.
+
+**해결**
+전부 shell 검증 단계에서 발견해 즉시 수정.
+
+**배운 것**
+- 2번처럼 "필드가 조용히 사라지는" 오타는 에러 메시지가 아예 안 뜨고 200이 떨어지는 게 제일 위험하다 — 검증 항목에 "새로 추가한 파라미터가 실제로 필터링에 반영되는지"를 매번 넣어야 한다.
+- 4번처럼 "정의는 맞고 호출부만 틀린" 오타는 `date_arc_days`/`observations_used` 계열(선언 자체가 틀림)과 발견 시점이 다르다 — import만으로는 못 잡고, 그 코드 경로가 실제로 실행돼야 드러난다.
+
+### [설계] 정렬 시 NULL은 항상 뒤로 보낸다 (`nulls_last=True`)
+
+`distance_pc`/`radius_earth`/`mass_earth` 전부 NULL 가능 컬럼인데, MariaDB 기본 정렬은 오름차순일 때 NULL을 맨 앞에 둔다. `recent_approaches`가 "최근"이 아니라 "가장 먼 미래"를 반환했던 문제와 같은 계열 — 이번엔 정렬 방향이 아니라 NULL 위치가 직관과 어긋나는 경우. `host_star__distance_pc`로 실제 DB에서 정렬 결과 앞/뒤를 직접 눈으로 확인해 검증함.
+
+### [설계] `applied_filters`는 `CommonPagination`이 아니라 뷰의 `list()`에서 조립
+
+`CommonPagination`을 고쳐서 필드를 늘리는 대신, `ExoplanetListView.list()`를 오버라이드해 `super().list()` 결과에 키 하나만 얹는 방식으로 결정. 페이지네이션은 "몇 번째 페이지인지"만 알면 되는 부품이지 "무슨 조건으로 검색했는지"까지 알 필요가 없고, `CommonPagination`을 고치면 그걸 공유하는 `NeoApproachListView` 응답에도 불필요한 필드가 섞여 나갈 뻔했다.
+
+### [설계] `meta` 캐싱 — 명세의 `cache_page` 대신 직접 캐싱
+
+이유 세 가지: ① `cache_page`는 HTML 뷰 전제라 DRF `Response`와 렌더링 시점이 어긋나 우회 코드가 필요함 ② `neo_fetch_log`로 캐시 유무를 코드에서 보이게 만든 원칙과 결이 같음 ③ `cache.get()` 한 줄이 곧 문서 역할을 함. `04_api_specification.md` v1.3에 반영.
+
+### [환경] `LocMemCache`는 프로세스별로 독립 — `shell`에서 캐시 검증이 항상 실패하는 이유
+
+**증상**
+`runserver`로 `/api/exoplanets/meta/`를 두 번 호출해 캐시가 걸린 걸 확인했는데, 별도로 띄운 `manage.py shell`에서 `cache.get("exoplanet_meta")`를 치면 매번 `None`.
+
+**원인**
+Django 기본 캐시(`LocMemCache`)는 프로세스 자신의 메모리에만 값을 저장한다. `runserver`와 `shell`은 완전히 다른 두 프로세스라 서로의 메모리를 볼 수 없다 — `ScopedRateThrottle`이 요청 횟수를 세는 곳도 같은 캐시라, `runserver`를 재시작하면 계량기가 초기화된다는 사실(9/1 기록)의 반대쪽 얼굴.
+
+**해결**
+`django.test.Client`로 **같은 프로세스 안에서** 두 번 요청 → `django.db.connection.queries` 개수로 판정(값 비교보다 강한 증거). 첫 요청 10개 → 두 번째 요청 0개로 캐시 동작을 확인.
+
+**배운 것**
+캐시나 세션처럼 "프로세스 메모리에 사는" 것들은, 검증 도구(shell)와 실행 대상(runserver)이 같은 프로세스인지부터 확인해야 한다. 다르면 정상 동작도 실패로 보인다.
+
+### [환경] `django.test.Client`의 `ALLOWED_HOSTS` 함정
+
+**증상**
+위 캐시 검증에서 `Client().get(...)`을 호출하자 `DisallowedHost: Invalid HTTP_HOST header: 'testserver'` 발생. 이후 재요청 두 번 다 쿼리 수가 `(0, 0)`으로 나와, 하마터면 "캐시가 잘 동작한다"고 잘못 결론 낼 뻔함.
+
+**원인**
+`Client`는 가짜 요청의 `Host` 헤더를 기본값 `testserver`로 채우는데, `settings.py`의 `ALLOWED_HOSTS = []`엔 이 값이 없어 미들웨어 단계에서 요청 자체가 막힘. 뷰 코드는 한 줄도 실행되지 않았으므로 쿼리 수 `0`은 "캐시 히트"가 아니라 "애초에 안 들어감"이었음.
+
+**해결**
+`settings.ALLOWED_HOSTS = ["testserver"]`를 shell 세션 안에서만 임시로 추가(`.env`/`settings.py` 파일은 안 건드림) 후 재검증.
+
+**배운 것**
+쿼리 수나 응답 코드가 "기대한 값"과 우연히 같다고 바로 통과 처리하면 안 된다 — `(0, 0)`처럼 결과가 너무 깔끔하게 맞아떨어질수록, 그게 진짜 그 이유로 나온 값인지 로그나 예외를 한 번 더 확인해야 한다.
+
+### [설계] NEO 완료 기준 재검증 — "콘솔 로그 확인"은 실측 불가능한 기준이었음
+
+`05_milestones.md`의 "Django 콘솔에 NASA 요청 로그가 찍히지 않는다"는 문구를 실제로 검증하려 하니, `requests` 라이브러리는 기본적으로 아무 로그도 안 남겨 캐시 히트/미스 상관없이 콘솔이 항상 조용하다는 걸 발견. `NeoFetchLog`(UNIQUE 제약 있음) 행 수 비교로 판정 기준을 교체 — NASA를 두 번 불렀다면 반드시 에러가 나야 하므로 "속을 수 없는" 기준이 됨.
+
+### [리팩터링] `_ensure_date_cached()` 삭제
+
+M2 초반에 만들어둔 함수인데, "캐시 미스가 확정된 순간에만 throttle을 검사해야 한다"는 요구사항 때문에 로직이 `NeoDashboardView.get()` 안으로 통째로 인라인되면서 이 함수는 더 이상 아무 데서도 호출되지 않는 상태로 남아 있었다. 죽은 채로 두면 나중에 실수로 다시 호출해 throttle 순서가 깨진 코드가 생길 위험이 있어 삭제.
+
+**오늘 커밋**
+- `feat(M2): 외계행성 API 구현 (목록/상세/메타)`
+- `refactor(M2): 미사용 함수 _ensure_date_cached() 삭제`
+- `docs(M2): DEVLOG 갱신 및 Exoplanet API 완료 반영`
+
+**다음에 할 일**
+- M2 마지막 구간 — 인증 · Watchlist (다음 세션)
 
 ---
 

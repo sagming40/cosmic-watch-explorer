@@ -6,8 +6,8 @@
 | 문서명 | 마일스톤 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.5 |
-| 최종 수정일 | 2026-09-04 |
+| 버전 | v1.6 |
+| 최종 수정일 | 2026-09-05 |
 | Tier | 1 (매 세션 / 매 마일스톤 갱신) |
 
 **변경 이력**
@@ -20,6 +20,7 @@
 | v1.3 | 2026-09-01 | M2 NEO API 착수분 반영 — `GET /api/neo/`, 달 거리(LD) 환산 로직 완료 체크 |
 | v1.4 | 2026-09-02 | M2 NEO 상세 수집 서비스(`fetch_neo_detail`, NASA Lookup API) 반영 — 계획에 없던 작업 체크박스 신설 |
 | v1.5 | 2026-09-04 | M2 `GET /api/neo/{nasa_id}/`, `GET /api/neo/{nasa_id}/approaches/` 완료 체크. 404 응답 형식 완료 기준 충족 |
+| v1.6 | 2026-09-05 | M2 Exoplanet API(`filters.py`, 목록/상세/메타) 완료 체크. 파섹 → 광년 변환 체크박스 신설(계획에 없던 작업). N+1 완료 기준 문구 정정. NEO 캐시 완료 기준 2건 체크 |
 
 ---
 
@@ -177,17 +178,20 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 - [x] `GET /api/neo/` — 캐시 판정 → NASA 호출 → 요약 계산 → 응답
 - [x] 달 거리(LD) 환산 로직 (서버에서 계산)
 - [x] `services/nasa_neo.py` — `fetch_neo_detail(nasa_id)` 구현 (NASA Lookup API 수집)
-      ⭐ 계획에 없던 작업 — Feed API로는 5.2/5.3에 필요한 궤도 정보·전체 접근 기록을 얻을 수 없음을 M2 진행 중 발견해 추가
+      - ⭐ 계획에 없던 작업 — Feed API로는 5.2/5.3에 필요한 궤도 정보·전체 접근 기록을 얻을 수 없음을 M2 진행 중 발견해 추가
 - [x] `GET /api/neo/{nasa_id}/`
 - [x] `GET /api/neo/{nasa_id}/approaches/`
 
 #### Exoplanet API
 
-- [ ] `filters.py` — 다중 조건 검색
-- [ ] 광년 → 파섹 변환
-- [ ] `GET /api/exoplanets/`
-- [ ] `GET /api/exoplanets/{id}/`
-- [ ] `GET /api/exoplanets/meta/` (+ 1시간 캐싱)
+- [x] `filters.py` — 다중 조건 검색
+- [x] 광년 → 파섹 변환 (검색 조건 변환용, 반올림 없음)
+- [x] 파섹 → 광년 변환
+      - ⭐ 계획에 없던 작업 — 6.1/6.2 응답의 `distance_ly`, 6.3 `ranges.distance_ly`에 필요하다는 걸 구현 중 발견해 추가. 검색 조건용(ly→pc)과 반올림 정책이 다름 (표시용은 소수 2자리 반올림)
+- [x] `GET /api/exoplanets/`
+- [x] `GET /api/exoplanets/{id}/`
+- [x] `GET /api/exoplanets/meta/` (+ 1시간 캐싱)
+      - ※ 캐싱 구현 방식이 명세와 다름 — `cache_page` 대신 직접 캐싱으로 변경 (`04_api_specification.md` v1.3 반영, 사유는 해당 문서 6.3절 참조)
 
 #### 인증 · Watchlist
 
@@ -197,10 +201,12 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 ### 완료 기준
 
-- [ ] 브라우저에서 `/api/neo/?date=2026-08-21` 접속 시 `summary`와 `results`가 함께 담긴 JSON이 보인다
-- [ ] 같은 날짜를 두 번째 조회할 때 `cache.is_cached`가 `true`이고, Django 콘솔에 NASA 요청 로그가 찍히지 않는다
+- [x] 브라우저에서 `/api/neo/?date=2026-08-21` 접속 시 `summary`와 `results`가 함께 담긴 JSON이 보인다
+- [x] 같은 날짜를 두 번째 조회할 때 `cache.is_cached`가 `true`이고, `NeoFetchLog` 행 수가 조회 전후로 그대로다
+      - 원래 문구 "NASA 요청 로그가 찍히지 않는다"는 실측 불가능해 DB 행 수 비교로 교체 — `fetch_date`에 UNIQUE 제약이 있어 중복 호출 시 반드시 에러가 나므로 이 방식이 "속을 수 없다"
 - [x] 존재하지 않는 `nasa_id` 조회 시 `04_api_specification.md` 1.4절 형식의 `404` 응답이 온다
-- [ ] 검색 조건 3개(`radius_min`, `radius_max`, `distance_max_ly`)를 동시에 걸었을 때 **SQL 로그에 조회 쿼리가 1회만** 찍힌다 (`select_related` 검증)
+- [x] 검색 조건 3개(`radius_min`, `radius_max`, `distance_max_ly`)를 동시에 걸었을 때 **host_star 추가 조회가 0회**다 (`select_related` 검증)
+      - 원래 문구 "쿼리가 1회만"은 실측 불가능 — 페이지네이션의 COUNT 쿼리가 별도로 1회 더 나가 정상 구현도 2회가 나온다. "20건마다 host_star를 따로 조회하지 않는다"가 select_related 검증의 실제 목적이므로 문구를 이걸로 교체
 - [ ] 계정 2개를 만들어 각각 다른 소행성을 Watchlist에 저장한 뒤, 교차 로그인하면 **서로의 항목이 보이지 않는다**
 - [ ] 같은 소행성을 두 번 `POST` 하면 `409`가 반환된다
 - [ ] 로그아웃 후 `GET /api/watchlist/neo/` 호출 시 `401`이 반환된다
