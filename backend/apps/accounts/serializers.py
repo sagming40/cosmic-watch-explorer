@@ -59,7 +59,7 @@ class SignupSerializer(serializers.Serializer):
         # neo_watchlist의 UNIQUE 제약과 달리 "최종 방어선"이 없는 상테
         # MVP 규모에서는 감수하기로 결정. ─ 꼭 기록해둘것
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("이미 사용 중인 이메일입닌다.")
+            raise serializers.ValidationError("이미 사용 중인 이메일입니다.")
         return value
 
     def validate_password(self, value):
@@ -81,7 +81,7 @@ class SignupSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"password_confirm": ["비밀번호가 일치하지 않습니다."]}
             )
-            return attrs
+        return attrs
 
     def create(self, validated_data):
         # password_confirm은 User 모델에 없는 필드라 DB에 넣기 직전에 버린다.
@@ -102,5 +102,5 @@ class LoginSerializer(serializers.Serializer):
     "실제로 이 ID/PW 조합이 맞는지"는 view에서 authenticate()로 확인 
     ─ 형식 검증(serializer)과 인증 판정(view)의 책임을 분리해둔다.
     """
-    usernme = serializers.CharField()
+    username = serializers.CharField()
     password = serializers.CharField(write_only=True)
