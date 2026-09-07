@@ -61,6 +61,28 @@ class InvalidCredentials(exceptions.APIException):
     # M2 완료 기준 ─ "로그인 실패 응답에 아이디 존재 여부가 드러나지 않는다."
     default_detail = "아이디 또는 비밀번호가 올바르지 않습니다."
     is_custom_error = True   # ⭐ 추가
+
+
+class AuthRequired(exceptions.APIException):
+    """
+    '로그인이 필요한 요청인데 비로그인 상태'임을 나타내는 응답코드. "401"
+
+    DRF 기본 NotAuthenticated를 사용하지 않는 이유 ─ ResourceNotFound와 정확히 같은 계열의 우회이다.
+    DRF가 NotAuthenticated를 만나게 될 경우 HTTP 규칙을 지키려 한다.
+    ─ 응답 코드 401을 던질거라면 WWW-Authenticate 헤더로 '어떤 방식으로 인증해야하는지' 알려줘야 한다.
+    세션 쿠키 인증은 헤더로 인증을 내는 방식이 아니기 때문에 알려줄 내용이 없다.
+    즉, DRF에서 401 응답 코드를 403으로 강등시킨다. (안내할 방법이 없으면 401을 던지면 안된다고 판단하기 때문)
+
+    비유: 401 ─ "신분증을 제시해 주세요. 방법은 ~~~ 입니다." 그러나 방법을 알려주지 못하게 되면,
+         403 ─ "출입이 불가합니다." 라는 응답이 나가버린다.
+
+    이 프로젝트의 예외는 애초에 NotAuthenticated가 아니기 때문에,
+    이 강등 규칙에 걸리지 않는다. → "Logout 후 Watchlist GET 시 401" 충족.      
+    """
+    status_code = 401
+    default_code = "AUTH_REQUIRED"
+    default_detail = "로그인이 필요합니다."
+    is_custom_error = True
     
     
 class AlreadyExists(exceptions.APIException):
