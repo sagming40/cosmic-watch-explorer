@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M1 — 데이터 계층 ✅** |
-| 다음 작업 | M2 진행중 — NEO API 3개 + Exoplanet API 3개(`GET /api/exoplanets/`, `/{id}/`, `/meta/`) 구현·검증 완료. 다음은 인증 · Watchlist (M2 마지막 구간) |
+| 다음 작업 | M2 진행중 — 인증 API 5종 + Watchlist API 4종(NEO·Exoplanet) 구현·검증 완료. 남은 건 `is_watchlisted` 필드 연결(상세 응답)뿐. M2 완료 기준 4개(교차 로그인 격리·409·401·로그인 실패 미노출) 전부 실측 완료 |
 | 최근 병합 커밋 | `merge(M1): 데이터 계층 및 NASA 수집 서비스 구현 (#1)` |
 
 ### 환경 요약
@@ -82,6 +82,133 @@
 ## 기록
 
 <!-- 최신 항목을 위에 추가한다 -->
+
+---
+
+## 2026-09-08 (화) — M2: Watchlist API 구현 (M2 마지막 구간)
+
+### [환경] `django.test.Client` 사용 시 `DisallowedHost: testserver`
+
+**증상**
+Postman 대신 shell + `django.test.Client`로 교차 로그인 검증을 시도하니 `DisallowedHost: Invalid HTTP_HOST header: 'testserver'`.
+
+**원인**
+`test.Client`는 실제 네트워크 요청이 아니라 Django 내부적으로 가짜 요청을 만들어 뷰에 바로 찔러 넣는데, 이때 `Host` 헤더 기본값이 `testserver`다. `settings.py`의 `ALLOWED_HOSTS = []`가 이를 차단함. `runserver` + Postman 조합에서 문제없었던 이유는 로컬 개발 서버 특성상 이 검사가 관대하게 처리됐기 때문.
+
+**해결**
+`ALLOWED_HOSTS = ["testserver", "127.0.0.1", "localhost"]`로 변경.
+
+**배운 것**
+`test.Client`는 CSRF 검사도 기본적으로 건너뛴다(`enforce_csrf_checks=False`가 기본값) — 보안 계층이 뚫린 게 아니라, Django가 "내부 로직 검증용"으로 의도적으로 열어둔 경로. 실제 Postman/브라우저 접근에서는 CSRF가 여전히 정상 작동함을 별도로 확인했음.
+
+### [완료] `apps/watchlist` — Watchlist API 4종 (NEO·Exoplanet)
+
+- `NeoWatchlistView`/`ExoplanetWatchlistView` — `ListAPIView`가 아닌 `APIView` 사용. `DEFAULT_PAGINATION_CLASS`가 전역으로 걸려있어 `ListAPIView`를 쓰면 명세(7.2/7.5절)에 없는 `page`/`total_pages`가 응답에 딸려 나가기 때문 — `APIView`를 고르는 것 자체가 "이 목록은 페이징하지 않는다"는 표시.
+- **POST 대상(`nasa_id`/`exoplanet_id`)이 DB에 없을 때 `404`(`ResourceNotFound`)** — 명세 7.3/7.5절에 없던 구멍. `NeoDetailView`/`ExoplanetDetailView` 등 프로젝트 전체가 "리소스 없음 = 404"로 일관되어 있어 그 규칙을 그대로 확장하기로 결정(400으로 처리하는 `SlugRelatedField` 방식도 검토했으나, "최적"이 아니라 "이 코드베이스와의 일관성" 기준으로 기각).
+- 중복 저장은 `exists()` 사전 확인이 아닌 `IntegrityError` 캐치로 `409` 처리 — `UNIQUE(user, neo)` 제약(문서 02 — 3.6절)이 최종 방어선, 회원가입 email 유니크와 같은 패턴.
+- `DELETE`는 `user=request.user` 필터로 교차 삭제 원천 차단, 대상 유무와 무관하게 `200` 고정(문서 04 — 7.4절).
+- `HostStarMiniSerializer` 신규 추가 — 문서 04 7.5절 `host_star`는 `{name, distance_ly}` 2필드뿐인데 기존 `astronomy.HostStarBriefSerializer`(3필드)를 재사용하면 명세에 없는 `distance_pc`가 노출됨.
+- **known issue**: NEO 목록의 `next_approach` 계산에 N+1 존재(항목 수만큼 개별 쿼리). Exoplanet 목록의 N+1은 페이지 수백 개 규모라 반드시 잡아야 했지만, 관심 천체는 수십 건 규모라 응답값 정확성엔 영향 없어 허용하기로 결정(Exoplanet 목록은 `select_related`로 N+1 자체가 없음).
+
+**검증**: `django.test.Client`로 계정 2개(`client_a`, `client_b`) 독립 세션 생성 → 교차 로그인 격리를 GET·DELETE 양쪽에서 실측. 특히 DELETE는 응답이 `200`으로 항상 동일하게 나오므로, B가 A의 항목 삭제를 시도한 뒤 DB를 직접 조회(`NeoWatchlist.objects.filter(...).count()`)해 실제로는 삭제되지 않았음을 확인 — 응답 코드만으로는 "속을 수 있는" 지점이라 DB 레벨 확인이 필수였음. M2 완료 기준 4개(교차 로그인 격리·409·401·로그인 실패 미노출) 전부 실측 완료.
+
+### [환경설정] `wip:` 커밋 전략 실전 적용 — 세션이 여러 번 끊긴 작업을 하나의 커밋으로 재구성
+
+**상황**
+이번 세션은 학교 PC ↔ 집 PC ↔ 노트북을 오가며 여러 번 끊겼고, 끊길 때마다 Watchlist 코드가 "논리적으로 미완성"인 상태였다. 예전 같으면 이 시점에 커밋을 못 하고 다음 기기에서 처음부터 다시 짜거나, 억지로 미완성 상태를 "완성"으로 포장해 커밋하는 두 극단만 있었다.
+
+**적용한 전략**
+이전 세션(Question 채팅)에서 정한 규칙대로, 끊길 때마다 `type(M{n}):` 형식을 지키지 않는 임시 커밋(`wip: ...`)을 찍고 그대로 push. 실행 가능 여부·커밋 분리 원칙 등 정식 커밋 규칙은 `wip:` 커밋에는 적용하지 않음 — 어차피 나중에 사라질 세이브포인트이기 때문.
+
+**결과**
+`wip:` 커밋이 4개(`인증·Watchlist 코드 작성 완료`, `apps/watchlist/view.py 작성중`, `NextApproachSerializer get_next_approach 작성중`, `NextApproachSerializer 작성중`) 쌓였다. Postman + `test.Client` 검증이 전부 통과해 "논리 단위 완료" 시점이 되자, `git log --oneline`으로 직전 정식 커밋(`fix(M2): LoginSerializer...`) 위치를 확인한 뒤 `git reset --soft HEAD~4`로 4개를 되돌리고, 코드 변경사항은 그대로 스테이징된 상태로 남긴 채 `feat(M2): Watchlist API 구현 (NEO·Exoplanet)` 하나로 재커밋 → `git push --force-with-lease`.
+
+**배운 것**
+- `git reset --soft`는 "커밋 메시지 하나 고치기"(9/1 기록)뿐 아니라 "커밋 여러 개를 하나로 합치기"에도 그대로 응용된다 — 숫자(`HEAD~1` → `HEAD~4`)만 바뀔 뿐 원리는 동일.
+- `reset --soft` 직후 `git status`로 "astronomy 관련 파일이 섞여 들어오지 않았는지"(다른 미완성 작업과의 오염 여부)를 먼저 확인하는 절차가 중요 — 이번엔 깨끗했지만, 섞여 있었다면 `git add -p`로 나눠 커밋해야 했을 상황.
+- `--force-with-lease` push 후 다른 기기에서 이어 작업할 때는 반드시 `git fetch origin` + `git reset --hard origin/{branch}`로 로컬을 원격과 맞춰야 한다 — 옛 `wip` 히스토리가 로컬에 남아있으면 새로 정리된 히스토리와 충돌한다.
+
+**오늘 커밋**
+- `feat(M2): Watchlist API 구현 (NEO·Exoplanet)`
+
+**다음에 할 일**
+- `is_watchlisted` 필드 연결 (NEO·Exoplanet 상세 응답)
+- M2 문서 정리 — `05_milestones.md` 체크박스, `04_api_specification.md` 7장 반영(POST 404 처리, Exoplanet 응답 예시), DEVLOG 마무리 커밋
+
+---
+
+## 2026-09-07 (월) — M2: 인증 API 구현
+
+### [완료] `apps/accounts` — 인증 API 5종 (`csrf`/`me`/`signup`/`login`/`logout`)
+
+- `SignupSerializer` — username 정규식(영문/숫자/`_`, Django 기본 `UnicodeUsernameValidator`는 한글도 통과시켜 명세보다 느슨함), email 중복, `password_confirm` 대조, `AUTH_PASSWORD_VALIDATORS` 재사용.
+- `LoginView` — 실패 시 `400 INVALID_CREDENTIALS` (401 아님, 문서 04 — 1.3절 표에 명시). 아이디/비밀번호 중 어느 쪽이 틀렸는지 구분하지 않음.
+- `SignupView`/`LoginView` 둘 다 `login()` 호출로 가입·로그인 동시 처리.
+
+### [설계] `auth_user.email` 유니크 제약 — `RunSQL` 마이그레이션으로 우회
+
+Django `User.email`은 기본적으로 `unique=True`가 아니다. 정석은 `AbstractUser` 상속 커스텀 User 모델이지만, 이미 `astronomy`/`watchlist` 마이그레이션이 `auth.User`를 FK로 참조 중이라 지금 시점에 갈아끼우려면 마이그레이션 전체 폐기 + DB 재생성이 필요함 — 비용 대비 효과가 낮다고 판단해 기각.
+
+대신 `apps/accounts/migrations/0001_auth_user_email_unique.py`에서 `RunSQL`로 `auth_user.email`에 UNIQUE 인덱스(`uk_auth_user_email`)를 직접 추가. 유니크 제약은 원래 DB의 기능이지 Django의 기능이 아니므로, 모델을 못 건드려도 도착지(DB 스키마)는 커스텀 User와 동일.
+
+**known issue**: `User.email`은 `blank=True`라 미입력 시 `NULL`이 아닌 `''`이 들어가는데, MariaDB는 `''`을 정식 값으로 취급해 중복을 막는다 → "이메일 없는 계정"은 시스템 전체 최대 1개만 허용. MariaDB가 부분 유니크 인덱스(WHERE 조건부)를 지원하지 않아 우회 불가. `createsuperuser` 시 이메일 필수 입력할 것.
+
+**검증**: HeidiSQL에서 직접 `INSERT`로 중복 이메일 시도 → `Duplicate entry ... for key 'uk_auth_user_email'` 확인 (serializer 우회해도 DB가 막음). API 레벨도 `400` + `fields.email` 확인.
+
+### [백엔드] `SessionAuthentication`이 401을 403으로 강등시키는 문제
+
+**증상**
+`permission_classes = [IsAuthenticated]`만 붙이면, 로그아웃 상태의 요청이 M2 완료 기준이 요구하는 `401`이 아니라 `403 CSRF_FAILED`로 나감.
+
+**원인**
+DRF는 `NotAuthenticated`/`AuthenticationFailed` 예외를 만나면 `get_authenticate_header()`로 "401을 낼 때 안내할 인증 방식이 있는지" 확인하는데, `SessionAuthentication`은 이 메서드가 `None`을 반환한다. 안내할 방법이 없으면 DRF가 401을 403으로 강제 변경한다 — HTTP 규격상 401은 `WWW-Authenticate` 헤더로 방식을 알려줘야 하는데, 세션 쿠키 인증은 헤더로 안내할 방식 자체가 없기 때문.
+
+**해결**
+`config/exception_handler.py`에 `AuthRequired`(401, `AUTH_REQUIRED`, `is_custom_error=True`) 신설. `config/permissions.py`에 `IsAuthenticatedOr401`(`IsAuthenticated` 상속, `has_permission()` 실패 시 `False` 반환 대신 `AuthRequired()`를 직접 `raise`) 신설 — `ResourceNotFound`가 DRF 기본 `NotFound`를 우회했던 것과 정확히 같은 패턴.
+
+**배운 것**
+`throttle_scope` 오타(9/4 기록) 때와 같은 계열 — 코드는 정상으로 보이는데 실제 응답 코드만 명세와 다르게 나가는 유형. DRF의 "친절한 자동 처리"가 우리 명세와 어긋날 수 있다는 걸 두 번째로 확인함.
+
+### [백엔드] `LoginSerializer` 필드명 오타 + `SignupSerializer.validate()` 들여쓰기 오류
+
+**증상**
+로그인 요청이 항상 `400`(필드 누락)으로 실패. 회원가입은 비밀번호가 일치하는 정상 케이스에서만 `500`(`AttributeError`) 발생.
+
+**원인**
+1. `LoginSerializer.username`을 `usernme`으로 오타 — 인접 키 오타 계열(`observation_used`/`date_arc_days`와 같은 종류).
+2. `SignupSerializer.validate()`의 `return attrs`가 `if` 블록 안, `raise` 바로 다음 줄에 들여쓰기되어 있어 정상 도달 불가능한 죽은 코드가 됨. 비밀번호가 일치하는 정상 케이스에서 함수가 암묵적으로 `None`을 반환 → `create()`의 `validated_data.pop()`에서 `AttributeError`.
+
+**해결**
+`usernme` → `username` 정정. `return attrs`를 `if` 블록 밖으로 내어쓰기.
+
+**배운 것**
+직전까지의 테스트가 전부 "실패 케이스"(중복 이메일)만 거쳐서 `validate_email()` 단계에서 먼저 걸러졌기 때문에, 정작 정상 케이스를 태우는 이 두 버그가 발견되지 않고 있었다. 검증할 땐 실패 케이스뿐 아니라 정상(성공) 케이스도 반드시 같이 태워봐야 한다.
+
+### [백엔드] `SessionAuthentication`의 CSRF는 "세션의 로그인 여부"로 켜진다
+
+**증상**
+`signup` 성공(자동 로그인) 직후, 같은 세션으로 `login` API를 다시 호출하면 CSRF 토큰 없이는 `403 CSRF_FAILED`. 로그인 전 요청(최초 signup, 최초 login 시도)은 같은 헤더 없이도 통과했었는데 막힘.
+
+**원인**
+`SessionAuthentication.authenticate()`는 `request.user`가 "이미 인증된 상태"일 때만 `enforce_csrf()`를 실행한다. 비로그인 상태 요청은 검사를 건너뛰지만, 한 번 로그인된 세션은 그 이후의 모든 상태 변경 요청(POST/DELETE)에 CSRF 헤더를 요구한다 — `authenticate()`의 아이디/비번 판정과는 완전히 별개의 검사 단계.
+
+**해결**
+`GET /api/auth/csrf/`로 토큰 쿠키를 받아 `X-CSRFToken` 헤더에 실어 보내면 통과. 프론트에서는 axios(문서 04 — 2.2절)가 이 과정을 자동 처리.
+
+**배운 것**
+비로그인 상태에서의 API 테스트 성공이 로그인 상태에서도 그대로 통할 거라고 가정하면 안 된다. Watchlist POST/DELETE도 로그인 상태에서 호출하는 API라 전부 이 헤더가 필요 — 로그인이 새로 발생할 때마다(Django `login()`은 보안을 위해 매번 CSRF 토큰을 회전시킴) 토큰을 다시 받아야 한다는 것도 함께 확인.
+
+### [환경] 학교 PC로 기기 이동 시 마이그레이션 재적용 필요
+
+집(노트북)에서 만든 `accounts.0001` 마이그레이션 파일은 git pull로 왔지만, 실제 DB(`cosmic_watch`)에 적용하는 `migrate`는 기기마다 따로 실행해야 했다. DB는 기기별 독립이라는 원칙(9/1 기록)이 인증 관련 마이그레이션에도 동일하게 적용된 사례.
+
+**오늘 커밋**
+- `feat(M2): auth_user.email 유니크 인덱스 추가`
+- `feat(M2): 인증 API 구현 (csrf/me/signup/login/logout)`
+- `fix(M2): LoginSerializer 필드명 오타 및 SignupSerializer.validate() 들여쓰기 오류 수정`
+
+**다음에 할 일**
+- M2 마지막 구간 — Watchlist API 구현 (다음 세션)
 
 ---
 

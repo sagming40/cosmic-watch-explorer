@@ -6,8 +6,8 @@
 | 문서명 | 마일스톤 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.6 |
-| 최종 수정일 | 2026-09-05 |
+| 버전 | v1.7 |
+| 최종 수정일 | 2026-09-08 |
 | Tier | 1 (매 세션 / 매 마일스톤 갱신) |
 
 **변경 이력**
@@ -21,6 +21,7 @@
 | v1.4 | 2026-09-02 | M2 NEO 상세 수집 서비스(`fetch_neo_detail`, NASA Lookup API) 반영 — 계획에 없던 작업 체크박스 신설 |
 | v1.5 | 2026-09-04 | M2 `GET /api/neo/{nasa_id}/`, `GET /api/neo/{nasa_id}/approaches/` 완료 체크. 404 응답 형식 완료 기준 충족 |
 | v1.6 | 2026-09-05 | M2 Exoplanet API(`filters.py`, 목록/상세/메타) 완료 체크. 파섹 → 광년 변환 체크박스 신설(계획에 없던 작업). N+1 완료 기준 문구 정정. NEO 캐시 완료 기준 2건 체크 |
+| v1.7 | 2026-09-08 | M2 인증 API 5종 + Watchlist API 4종(NEO·Exoplanet) 완료 체크. 완료 기준 4개(교차 로그인 격리·409·401·로그인 실패 미노출) 전부 충족 확인. `is_watchlisted` 필드만 미완료 |
 
 ---
 
@@ -195,8 +196,8 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 #### 인증 · Watchlist
 
-- [ ] `GET /api/auth/csrf/`, `/me/`, `POST /login/`, `/signup/`, `/logout/`
-- [ ] Watchlist GET / POST / DELETE (NEO · Exoplanet)
+- [x] `GET /api/auth/csrf/`, `/me/`, `POST /login/`, `/signup/`, `/logout/`
+- [x] Watchlist GET / POST / DELETE (NEO · Exoplanet)
 - [ ] `is_watchlisted` 필드 (상세 응답에만)
 
 ### 완료 기준
@@ -207,10 +208,13 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 - [x] 존재하지 않는 `nasa_id` 조회 시 `04_api_specification.md` 1.4절 형식의 `404` 응답이 온다
 - [x] 검색 조건 3개(`radius_min`, `radius_max`, `distance_max_ly`)를 동시에 걸었을 때 **host_star 추가 조회가 0회**다 (`select_related` 검증)
       - 원래 문구 "쿼리가 1회만"은 실측 불가능 — 페이지네이션의 COUNT 쿼리가 별도로 1회 더 나가 정상 구현도 2회가 나온다. "20건마다 host_star를 따로 조회하지 않는다"가 select_related 검증의 실제 목적이므로 문구를 이걸로 교체
-- [ ] 계정 2개를 만들어 각각 다른 소행성을 Watchlist에 저장한 뒤, 교차 로그인하면 **서로의 항목이 보이지 않는다**
-- [ ] 같은 소행성을 두 번 `POST` 하면 `409`가 반환된다
-- [ ] 로그아웃 후 `GET /api/watchlist/neo/` 호출 시 `401`이 반환된다
-- [ ] 로그인 실패 응답에 아이디 존재 여부가 드러나지 않는다
+- [x] 계정 2개를 만들어 각각 다른 소행성을 Watchlist에 저장한 뒤, 교차 로그인하면 **서로의 항목이 보이지 않는다**
+      - GET 격리뿐 아니라 DELETE도 함께 검증 — B가 A의 항목 삭제를 시도하면 응답은 `200`으로 동일하게 나오므로, DB를 직접 조회해 실제로는 삭제되지 않았음까지 확인 (`django.test.Client` 두 세션 사용)
+- [x] 같은 소행성을 두 번 `POST` 하면 `409`가 반환된다
+      - NEO·Exoplanet 양쪽 모두 확인
+- [x] 로그아웃 후 `GET /api/watchlist/neo/` 호출 시 `401`이 반환된다
+- [x] 로그인 실패 응답에 아이디 존재 여부가 드러나지 않는다
+      - 존재하지 않는 아이디 / 아이디·비밀번호 둘 다 틀린 조합 모두 동일한 `INVALID_CREDENTIALS` 응답으로 확인
 
 > **여기서 멈추고 확인할 것**: M2가 끝나면 이 프로젝트의 백엔드는 사실상 완성이다. 이후 문제는 대부분 프론트 문제라고 판단해도 된다.
 

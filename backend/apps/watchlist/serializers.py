@@ -88,7 +88,7 @@ class NeoWatchlistCreateSerializer(serializers.Serializer):
     """
     POST /api/watchlist/neo/ 요청 검증용 문지기. 응답 조립에는 사용하지 않는다.
     SignupSerializer/LoginSerializer와 같은 결의 패턴 ─ "들어온 값이 유효한 형식인지"만 확인한다.
-    그 nasa_id가 실제로 존재하는가"는 view에서 별도로 확인한다. (형식 검증 / 존재 확인 분리).
+    "그 nasa_id가 실제로 존재하는가"는 view에서 별도로 확인한다. (형식 검증 / 존재 확인 분리).
     """
     nasa_id = serializers.CharField()
 

@@ -27,7 +27,7 @@ class NeoWatchlistView(APIView):
     """
     GET·POST /api/watchlist/neo/ ─ 문서 04, 7.2/7.3절
 
-    ListAPIView가 아닌 APIView인 이유 ─ settings.py의 DEFAULT_PAGINATON_CLASS가 전역으로 걸려있어서,
+    ListAPIView가 아닌 APIView인 이유 ─ settings.py의 DEFAULT_PAGINATION_CLASS가 전역으로 걸려있어서,
     ListAPIView를 사용하게 될 경우 CommonPagination이 자동으로 붙어 명세에는 없는 page/total_pages가
     응답에 딸려 나간다. Exoplanet 목록의 "페이징이 필요하다"는 표시로 pagination_class를 명시했다면,
     NeoWatchlistView는 반대로 APIView를 고르는 것 자체가 "이 목록은 페이징하지 않는다"는 표시이다.
@@ -60,7 +60,7 @@ class NeoWatchlistView(APIView):
         nasa_id = serializer.validated_data["nasa_id"]
         
         # ① 대상이 실제로 존재하는지 먼저 확인 ─ NeoDetailView와 같은 패턴
-        #   확인 없이 바로 저장을 시도할 경우 존재하지 않는 nasa_id도 FK 재약 위반으로
+        #   확인 없이 바로 저장을 시도할 경우 존재하지 않는 nasa_id도 FK 제약 위반으로
         #   500(IntegrityError)가 터져 사용자에게 원인 불명의 오류로 보인다.
         neo = Neo.objects.filter(nasa_id=nasa_id).first()
         if neo is None:
