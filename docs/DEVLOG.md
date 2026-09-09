@@ -85,6 +85,63 @@
 
 ---
 
+## 2026-09-09 (수) — M2: is_watchlisted 연결 및 M2 마일스톤 완료
+
+### [완료] `is_watchlisted` 필드 연결 (NEO·Exoplanet 상세)
+
+**증상**
+`NeoDetailSerializer`/`ExoplanetDetailSerializer.get_is_watchlisted`가 M2 초반부터 하드코딩된 `False`로 남아있었음. Watchlist API가 붙은 지금 실제 판정으로 교체해야 함.
+
+**원인**
+`is_watchlisted`는 "소행성 자체의 속성"이 아니라 "소행성 + 지금 보는 사람"의 관계값이라, serializer가 `request`를 알아야 판정 가능하다. `APIView`는 `ListAPIView`와 달리 `get_serializer_context()`를 자동으로 채워주지 않아 `context`를 직접 넘겨야 했음.
+
+**해결**
+- `get_is_watchlisted`: `self.context.get("request")`로 꺼내 비로그인/컨텍스트 없음이면 `False`, 로그인 상태면 `request.user.{neo|exoplanet}_watchlist.filter(...).exists()`로 판정.
+- `NeoDetailView`/`ExoplanetDetailView`: serializer 생성 시 `context={"request": request}` 추가.
+
+**배운 것**
+`exists()`는 행을 가져오지 않고 유/무만 묻는 쿼리(LIMIT 1)라 count()·first()보다 가볍다. related_name을 타고 들어가는 방식(`user.neo_watchlist`)을 선택해 astronomy↔watchlist 앱 간 양방향 import를 피함.
+
+### [환경] shell 검증 삽질 3연타
+
+**증상 1 — placeholder 미치환**
+`a.login(username="여기에_A계정", ...)`을 예시 그대로 실행 → `False` 반환되는데도 예외가 안 나서 뒷 단계가 전부 401로 실패한 걸 뒤늦게 발견.
+
+**증상 2 — 기기 이동 후 세션 초기화**
+노트북 → 학교 PC로 넘어가면서 `NameError: name 'Client' is not defined`. `manage.py shell`은 프로세스 단위라 임포트·변수가 기기를 넘어가면 전부 사라짐 — DB도 기기별로 독립이라 테스트 대상(`nasa_id`, 테스트 계정)도 새로 잡아야 했음.
+
+**증상 3 — email UNIQUE 충돌**
+`User.objects.create_user(username=..., password=...)`처럼 `email` 생략 시 빈 문자열(`''`)이 기본값으로 들어가는데, `auth_user.email`에 걸어둔 UNIQUE 인덱스가 이를 그대로 검사해 두 번째 계정 생성 시 `IntegrityError`.
+
+**해결**
+테스트 계정 생성 시 `email`을 서로 다르게 명시적으로 지정. 최종 검증: 비로그인 `False` / 저장 계정 `True` / 교차 계정 `False` — 같은 URL·같은 대상에서 값이 갈리는 것으로 교차 격리 실측 완료.
+
+**배운 것**
+`Client.login()` 실패는 예외가 아니라 `False` 반환으로만 티가 나서, 결과를 눈으로 확인 안 하고 넘어가면 뒤 단계가 전부 거짓 양성이 됨. 테스트 스크립트에서 `User` 생성 시 `email`은 매번 명시적으로 다르게 주는 습관 필요.
+
+### [Git] `wip:` 성격 커밋을 사후에 feat/docs로 재분리
+
+**증상**
+작업 중 세션이 끊겨 `git add -A`로 로직 변경(is_watchlisted)과 주석·문서 번호 정정을 한 커밋에 섞어서 push함.
+
+**해결**
+미병합 브랜치라 `git reset --soft HEAD~1`로 커밋만 되감고 → `git add -p`로 hunk 단위 선별 → `feat(M2)`/`docs(M2)` 두 커밋으로 재구성 → `git push --force-with-lease`로 원격 덮어씀.
+
+**배운 것**
+`--soft` reset은 커밋 기록만 되감고 변경 내용은 staged 상태로 보존한다. 미병합 브랜치에서의 force-push는 PR 병합 후 force-push와 완전히 다른 얘기 — 아직 아무도 이 히스토리를 보고 있지 않을 때만 안전함.
+
+PR #2 오픈 (`M2-backend-api` → `main`). M2 마일스톤 완료 처리 진행 중.
+
+**오늘 커밋**
+- `feat(M2): is_watchlisted 필드 연결 (NEO·Exoplanet 상세)`
+- `docs(M2): 코드 주석 오기 및 잔여 TODO 정리`
+- `docs(M2): 마일스톤 완료 처리 및 DEVLOG 갱신` (이 커밋 자체)
+
+**다음에 할 일**
+- M3 착수. `src/api/client.js`(axios 인스턴스) → 라우팅 → 디자인 토큰 → `Header` → NEO 대시보드(`DateNavigator`/`NeoSummary`/`NeoListItem`) 순서로 진행 (`05_milestones.md` 6장 작업 목록 순서 그대로).
+
+---
+
 ## 2026-09-08 (화) — M2: Watchlist API 구현 (M2 마지막 구간)
 
 ### [환경] `django.test.Client` 사용 시 `DisallowedHost: testserver`
