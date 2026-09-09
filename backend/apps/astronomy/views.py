@@ -158,8 +158,8 @@ class NeoDetailView(APIView):
         #   ─ 존재하지 않는 ID를 계속 두드려도 NASA로 나가지 않도록.
         #
         # select_related("orbital_data")를 미리 걸어두는 이유:
-        # OneToOneField 관계는 값이 없어도 예외없이 None으로 채워진다. (LEFT JOIN 이기 때문)
-        # 아래에서 getattr 없이 바로 neo.orbital_data로 확인 가능.
+        # 아래에서 orbital_data에 접근할 때 DB를 두 번째로 왕복하지 않기 위해서다.
+        # ─ "왕복 횟수"만 줄이는 최적화이지, "값이 없을 때 None을 준다"는 보장은 아니다. 아래 ② 블록 참고
         neo = (
             Neo.objects
             .select_related("orbital_data")
@@ -170,7 +170,7 @@ class NeoDetailView(APIView):
             raise ResourceNotFound("해당 소행성을 찾을 수 없습니다.")
 
         # ② 궤도 정보가 비어 있으면(=이 소행성을 한 번도 Lookup 한 적 없음)
-        #   그 시점에 처음으로 NASA를 호출한다. ─ cache miss가 확정된 순간 selh throttling
+        #   그 시점에 처음으로 NASA를 호출한다. ─ cache miss가 확정된 순간 self throttling
         #
         # →
         #
@@ -193,7 +193,7 @@ class NeoDetailView(APIView):
                 # ①에서 가져온 예전 neo를 계속 사용하면 갱신된 값을 놓친다.
                 # 
                 # 이 neo는 select_related가 걸리지 않은 '새 조회 결과'이다.
-                # 아래에서 orbital_data에 접근하면 Django가 그 시점에 query를 한 번더 날린다.
+                # 아래에서 orbital_data에 접근하면 Django가 그 시점에 query를 한 번 더 날린다.
                 # ─ 목록이 아니라 객체 하나뿐인 상세 페이지라 N+1 걱정은 없다.
             except Exception as exc:
                 raise UpstreamError() from exc
@@ -257,12 +257,12 @@ class ExoplanetListView(generics.ListAPIView):
     pagination_class = CommonPagination
     
     def get_queryset(self):
-        # build_exoplanet_quertset이 검증 실패 시 ValidationError를 그대로 throw
+        # build_exoplanet_queryset이 검증 실패 시 ValidationError를 그대로 throw
         # try/except를 사용하지 않는 이유 ─ filters.py 문서화 그대로,
         # exception_handler.py가 이미 dict detail을 fields로 포장해준다.
         queryset, applied = build_exoplanet_queryset(self.request.query_params)
         
-        # list()가 응답을 조립할 때 쓸 수 있도록 self에 잡깐 달아둔다.
+        # list()가 응답을 조립할 때 쓸 수 있도록 self에 잠깐 달아둔다.
         # as_view()는 요청마다 새 인스턴스를 생성해주므로 다른 사용자 요청과 섞일 걱정은 없다.
         # ─ NEO 뷰들도 전부 이 위에서 동작해왔다.
         self.applied_filters = applied
@@ -274,7 +274,7 @@ class ExoplanetListView(generics.ListAPIView):
         applied_filters 하나만 얹는다.
         
         CommonPagination 클래스 자체를 건드리지 않는 이유
-        ─ 페이지네이션은 "몇 번째 페이지인지"민 알면 되는 부품이지, "무슨 조건으로 검색했는지" 까지는 알 필요가 없다.
+        ─ 페이지네이션은 "몇 번째 페이지인지"만 알면 되는 부품이지, "무슨 조건으로 검색했는지" 까지는 알 필요가 없다.
         NeoApproachListView도 같은 CommonPagination을 사용하는데, 
         NeoApproachListView에는 applied_filters가 섞여 나가면 안된다.
         """  

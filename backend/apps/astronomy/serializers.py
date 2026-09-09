@@ -1,5 +1,5 @@
 """
-NEO API 응답을 만드는 serializers.
+NEO / 외계행성 API 응답을 만드는 serializers.
 
 핵심 원칙: 이 파일의 시작점은 Neo가 아니라 CloseApproach다.
 "오늘 접근하는 소행성 목록"이라는 질문은 실제로는
@@ -37,7 +37,7 @@ class ApproachDetailSerializer(serializers.Serializer):
 
 class ApproachRowSerializer(ApproachDetailSerializer):
     """
-    문서 02 ― 5.3절(접근 기록 전체) 목록 한 줄. 5.2절의 recent_approaches도 이 클래스를 사용한다.
+    문서 04 ― 5.3절(접근 기록 전체) 목록 한 줄. 5.2절의 recent_approaches도 이 클래스를 사용한다.
 
     ApproachDetailSerializer를 상속받고 approach_date 하나만 더 얹는다.
     비유: 도시락 안에 반찬 한 가지를 추가한 것 ― 원래 있었던 밥과 반찬들을 그대로 물려받는다.
@@ -80,13 +80,13 @@ class OrbitalDataSerializer(serializers.Serializer):
 
 class NeoDetailSerializer(serializers.Serializer):
     """
-    문서 02 ― 5.2절 상세 응답. 이 serializer만 시작점이 Neo다.
+    문서 04 ― 5.2절 상세 응답. 이 serializer만 시작점이 Neo다.
     5.1절은 CloseApproach가 시작점. ― "오늘의 접근 사건들"이 질문이었으니까.
     5.2절은 "이 소행성이 어떤 행성인가"가 질문이라 주어가 바뀐다.
     """      
     RECENT_APPROACH_LIMIT = 5
-    # '5'라는 숫자는 02번 문서 5.2절 설계 결정 ②에서 온 숫자이다. 코드안에 흩뜨려 놓지 않고,
-    # 이 곳에만 둔다. 384400(1 LD/달 거리 상수)units.py에만 둔 것과 같은 이유
+    # '5'라는 숫자는 문서 04 ― 5.2절 설계 결정 ②에서 온 숫자이다. 코드안에 흩뜨려 놓지 않고,
+    # 이 곳에만 둔다. 384400(1 LD/달 거리 상수)를 units.py에만 둔 것과 같은 이유
      
     nasa_id = serializers.CharField()
     name = serializers.CharField()
@@ -146,8 +146,7 @@ class NeoDetailSerializer(serializers.Serializer):
         오늘 이후 가장 가까운 예정 접근 5건.
         Cosmic "watch" ― 이미 지나간 접근보다 "다음 접근은 언제인가"가
         모니터링 목적에 더 맞는다고 판단하여 미래 접근 기준으로 결정.
-        04_api_specification.md 5.2절엔 "최근 5건"으로만 적혀 있어 모호했던 부분이다.
-        → 문서 업데이트 필요. 이 정의를 명시할 것
+        문서 04 ― 5.2절 설계 결정 ③에 이 정의를 명시해두었다.
 
         미래 접근이 5건 미만이면 값이 있는 만큼만 내려준다 ― 억지로 과거로 채우지 않는다.
         (02_database_design.md 1.1절 ― NULL 보존 원칙)
@@ -161,7 +160,7 @@ class NeoDetailSerializer(serializers.Serializer):
 
     def get_approach_count(self, obj):
         # 위 5건이 아니라 '전체' 개수. FE에서 approach_count > 5로
-        # "더보기" 버튼을 띄울지 판단한다. (문서 02 ― 설계 결정 ②)
+        # "더보기" 버튼을 띄울지 판단한다. (문서 04 ― 5.2절 설계 결정 ②)
         # .count()는 행을 가져오지 않고 DB에 SELECT COUNT(*)만 물어본다.
         return obj.approaches.count()
 
@@ -195,7 +194,7 @@ class HostStarBriefSerializer(serializers.Serializer):
     문서 04 ─ 6.1절 목록 안에 들어가는 항성 정보. 딱 3개 field만.
     
     목록화면에는 "이 행성이 어느 별을 도는지, 얼마나 먼지"만 보이면 충분하다.
-    분광형·표면중력 같은 8개 fields를 20건 마다 전부 실어보내면
+    분광형·표면중력 같은 7개 fields를 20건마다 전부 실어보내면
     목록 화면이 사용하지도 않을 데이터로 응답 크기만 커진다.
     """   
     name = serializers.CharField()
@@ -210,10 +209,10 @@ class HostStarBriefSerializer(serializers.Serializer):
 
 class HostStarDetailSerializer(HostStarBriefSerializer):
     """
-    문서 04 ─ 6.2절 상세용 항성 정보. Breif를 상속해 5개 fields만 더 얹는다.
+    문서 04 ─ 6.2절 상세용 항성 정보. Brief를 상속해 7개 fields만 더 얹는다.
     
     ApproachRowSerializer가 ApproachDetailSerializer를 상속했던 것과 
-    똑같은 패턴 ─ 도시락에 반찬 5개를 추가하는 것.
+    똑같은 패턴 ─ 도시락에 반찬 7개를 추가하는 것.
     id를 여기서 새로 추가하는 이유: 목록(Brief)에서는 항성을 클릭할 일이 없지만,
     상세 화면에서는 host_star 자체의 식별자가 필요할 수 있다. (문서 04 예시 "id": 88로 명시되어 있음)
     """    
@@ -266,7 +265,7 @@ class ExoplanetDetailSerializer(ExoplanetRowSerializer):
     is_watchlisted / sibling_planets 2개만 새로 얹는다.
     
     ⚠️ host_star를 다시 선언해서 덮어쓴다 ─ 부모(Row)는 Brief를 사용하지만
-    상세는 Detail(8 fields)을 사용해야 하기 때문. 같은 이름 fields응 자식 class에서
+    상세는 Detail(10 fields)을 사용해야 하기 때문. 같은 이름의 fields를 자식 class에서
     다시 선언하면 부모 것을 덮어쓴다. ─ Python Class 상속의 기본 규칙이다.
     """    
     host_star = HostStarDetailSerializer()
