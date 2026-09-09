@@ -6,8 +6,8 @@
 | 문서명 | 마일스톤 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.2 |
-| 최종 수정일 | 2026-08-31 |
+| 버전 | v1.8 |
+| 최종 수정일 | 2026-09-09 |
 | Tier | 1 (매 세션 / 매 마일스톤 갱신) |
 
 **변경 이력**
@@ -17,6 +17,12 @@
 | v1.0 | 2026-08-24 | 최초 작성. M0~M6 구간 및 완료 기준 확정. 소요 기간은 잠정 추정치 |
 | v1.1 | 2026-08-30 | M1 범위 표 "모델 9개" → "모델 8개" 정정 (설계 문서 작성 시 auth_user를 잘못 포함해 계산한 오류) |
 | v1.2 | 2026-08-31 | M1 완료 처리 — 완료 기준 7개 전부 충족, 상태 🔄→✅. 147줄 "테이블 9개" 오기 정정 (v1.1에서 누락됐던 부분) |
+| v1.3 | 2026-09-01 | M2 NEO API 착수분 반영 — `GET /api/neo/`, 달 거리(LD) 환산 로직 완료 체크 |
+| v1.4 | 2026-09-02 | M2 NEO 상세 수집 서비스(`fetch_neo_detail`, NASA Lookup API) 반영 — 계획에 없던 작업 체크박스 신설 |
+| v1.5 | 2026-09-04 | M2 `GET /api/neo/{nasa_id}/`, `GET /api/neo/{nasa_id}/approaches/` 완료 체크. 404 응답 형식 완료 기준 충족 |
+| v1.6 | 2026-09-05 | M2 Exoplanet API(`filters.py`, 목록/상세/메타) 완료 체크. 파섹 → 광년 변환 체크박스 신설(계획에 없던 작업). N+1 완료 기준 문구 정정. NEO 캐시 완료 기준 2건 체크 |
+| v1.7 | 2026-09-08 | M2 인증 API 5종 + Watchlist API 4종(NEO·Exoplanet) 완료 체크. 완료 기준 4개(교차 로그인 격리·409·401·로그인 실패 미노출) 전부 충족 확인. `is_watchlisted` 필드만 미완료 |
+| v1.8 | 2026-09-09 | M2 `is_watchlisted` 필드 연결 완료 체크. 완료 기준 5번째 항목 실측 완료. M2 전체 완료 처리 — 상태 🔄→✅ |
 
 ---
 
@@ -66,7 +72,7 @@ M0 완료 시점에 M1~M6 추정치 재조정
 |---|---|---|---|---|
 | M0 | 개발 환경 구성 | Django + MariaDB + Git | 3~5일 (실측 1일) | ✅ |
 | M1 | 데이터 계층 | 모델 8개 + NASA 수집 서비스 | 1.5~2주 (실측: 8/25~8/31, 약 6일) | ✅ |
-| M2 | 백엔드 완성 | API 17개 + 인증 + Watchlist | 2~3주 | ⬜ |
+| M2 | 백엔드 완성 | API 17개 + 인증 + Watchlist | 2~3주 (실측: 8/31~9/9, 약 10일) | ✅ |
 | M3 | 프론트 기반 | React 연결 + NEO 화면 | 1.5~2주 | ⬜ |
 | M4 | **v1.0 완성** | 외계행성 + 인증 + Watchlist + 크기비교 | 2~3주 | ⬜ |
 | M5 | 완성도 | 상태 화면 + 반응형 + 접근성 | 1~1.5주 | ⬜ |
@@ -165,41 +171,51 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 #### 공통
 
-- [ ] `config/exception_handler.py` — 공통 오류 응답 형식
-- [ ] 커스텀 페이지네이션 (`page`, `total_pages` 포함)
-- [ ] DRF 스로틀 설정 (NASA 호출 구간)
+- [x] `config/exception_handler.py` — 공통 오류 응답 형식
+- [x] 커스텀 페이지네이션 (`page`, `total_pages` 포함)
+- [x] DRF 스로틀 설정 (NASA 호출 구간)
 
 #### NEO API
 
-- [ ] `GET /api/neo/` — 캐시 판정 → NASA 호출 → 요약 계산 → 응답
-- [ ] 달 거리(LD) 환산 로직 (서버에서 계산)
-- [ ] `GET /api/neo/{nasa_id}/`
-- [ ] `GET /api/neo/{nasa_id}/approaches/`
+- [x] `GET /api/neo/` — 캐시 판정 → NASA 호출 → 요약 계산 → 응답
+- [x] 달 거리(LD) 환산 로직 (서버에서 계산)
+- [x] `services/nasa_neo.py` — `fetch_neo_detail(nasa_id)` 구현 (NASA Lookup API 수집)
+      - ⭐ 계획에 없던 작업 — Feed API로는 5.2/5.3에 필요한 궤도 정보·전체 접근 기록을 얻을 수 없음을 M2 진행 중 발견해 추가
+- [x] `GET /api/neo/{nasa_id}/`
+- [x] `GET /api/neo/{nasa_id}/approaches/`
 
 #### Exoplanet API
 
-- [ ] `filters.py` — 다중 조건 검색
-- [ ] 광년 → 파섹 변환
-- [ ] `GET /api/exoplanets/`
-- [ ] `GET /api/exoplanets/{id}/`
-- [ ] `GET /api/exoplanets/meta/` (+ 1시간 캐싱)
+- [x] `filters.py` — 다중 조건 검색
+- [x] 광년 → 파섹 변환 (검색 조건 변환용, 반올림 없음)
+- [x] 파섹 → 광년 변환
+      - ⭐ 계획에 없던 작업 — 6.1/6.2 응답의 `distance_ly`, 6.3 `ranges.distance_ly`에 필요하다는 걸 구현 중 발견해 추가. 검색 조건용(ly→pc)과 반올림 정책이 다름 (표시용은 소수 2자리 반올림)
+- [x] `GET /api/exoplanets/`
+- [x] `GET /api/exoplanets/{id}/`
+- [x] `GET /api/exoplanets/meta/` (+ 1시간 캐싱)
+      - ※ 캐싱 구현 방식이 명세와 다름 — `cache_page` 대신 직접 캐싱으로 변경 (`04_api_specification.md` v1.3 반영, 사유는 해당 문서 6.3절 참조)
 
 #### 인증 · Watchlist
 
-- [ ] `GET /api/auth/csrf/`, `/me/`, `POST /login/`, `/signup/`, `/logout/`
-- [ ] Watchlist GET / POST / DELETE (NEO · Exoplanet)
-- [ ] `is_watchlisted` 필드 (상세 응답에만)
+- [x] `GET /api/auth/csrf/`, `/me/`, `POST /login/`, `/signup/`, `/logout/`
+- [x] Watchlist GET / POST / DELETE (NEO · Exoplanet)
+- [x] `is_watchlisted` 필드 (상세 응답에만)
 
 ### 완료 기준
 
-- [ ] 브라우저에서 `/api/neo/?date=2026-08-21` 접속 시 `summary`와 `results`가 함께 담긴 JSON이 보인다
-- [ ] 같은 날짜를 두 번째 조회할 때 `cache.is_cached`가 `true`이고, Django 콘솔에 NASA 요청 로그가 찍히지 않는다
-- [ ] 존재하지 않는 `nasa_id` 조회 시 `04_api_specification.md` 1.4절 형식의 `404` 응답이 온다
-- [ ] 검색 조건 3개(`radius_min`, `radius_max`, `distance_max_ly`)를 동시에 걸었을 때 **SQL 로그에 조회 쿼리가 1회만** 찍힌다 (`select_related` 검증)
-- [ ] 계정 2개를 만들어 각각 다른 소행성을 Watchlist에 저장한 뒤, 교차 로그인하면 **서로의 항목이 보이지 않는다**
-- [ ] 같은 소행성을 두 번 `POST` 하면 `409`가 반환된다
-- [ ] 로그아웃 후 `GET /api/watchlist/neo/` 호출 시 `401`이 반환된다
-- [ ] 로그인 실패 응답에 아이디 존재 여부가 드러나지 않는다
+- [x] 브라우저에서 `/api/neo/?date=2026-08-21` 접속 시 `summary`와 `results`가 함께 담긴 JSON이 보인다
+- [x] 같은 날짜를 두 번째 조회할 때 `cache.is_cached`가 `true`이고, `NeoFetchLog` 행 수가 조회 전후로 그대로다
+      - 원래 문구 "NASA 요청 로그가 찍히지 않는다"는 실측 불가능해 DB 행 수 비교로 교체 — `fetch_date`에 UNIQUE 제약이 있어 중복 호출 시 반드시 에러가 나므로 이 방식이 "속을 수 없다"
+- [x] 존재하지 않는 `nasa_id` 조회 시 `04_api_specification.md` 1.4절 형식의 `404` 응답이 온다
+- [x] 검색 조건 3개(`radius_min`, `radius_max`, `distance_max_ly`)를 동시에 걸었을 때 **host_star 추가 조회가 0회**다 (`select_related` 검증)
+      - 원래 문구 "쿼리가 1회만"은 실측 불가능 — 페이지네이션의 COUNT 쿼리가 별도로 1회 더 나가 정상 구현도 2회가 나온다. "20건마다 host_star를 따로 조회하지 않는다"가 select_related 검증의 실제 목적이므로 문구를 이걸로 교체
+- [x] 계정 2개를 만들어 각각 다른 소행성을 Watchlist에 저장한 뒤, 교차 로그인하면 **서로의 항목이 보이지 않는다**
+      - GET 격리뿐 아니라 DELETE도 함께 검증 — B가 A의 항목 삭제를 시도하면 응답은 `200`으로 동일하게 나오므로, DB를 직접 조회해 실제로는 삭제되지 않았음까지 확인 (`django.test.Client` 두 세션 사용)
+- [x] 같은 소행성을 두 번 `POST` 하면 `409`가 반환된다
+      - NEO·Exoplanet 양쪽 모두 확인
+- [x] 로그아웃 후 `GET /api/watchlist/neo/` 호출 시 `401`이 반환된다
+- [x] 로그인 실패 응답에 아이디 존재 여부가 드러나지 않는다
+      - 존재하지 않는 아이디 / 아이디·비밀번호 둘 다 틀린 조합 모두 동일한 `INVALID_CREDENTIALS` 응답으로 확인
 
 > **여기서 멈추고 확인할 것**: M2가 끝나면 이 프로젝트의 백엔드는 사실상 완성이다. 이후 문제는 대부분 프론트 문제라고 판단해도 된다.
 

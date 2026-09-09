@@ -42,9 +42,46 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    'apps.astronomy',
-    'apps.watchlist',
+    "rest_framework",  # ⭐ M2 추가
+    "apps.astronomy",
+    "apps.watchlist",
+    "apps.accounts",   # ⭐ M2 추가 ─ 인증 API
 ]
+
+# DRF 전역 설정
+# 값이 "함수 자체"가 아니라 "함수까지 가는 경로 문자열"인 것이 핵심이다.
+# settings,py는 Django가 가장 먼저 읽는 파일이라, 여기서 실제 함수를 import 해버리면
+# 아직 준비되지 않은 App을 끌어오다 순환 참조가 나기 쉽다.
+# 따라서, "주소만 적어두고, 필요해질 때 그 주소로 찾아가는" 방식을 사용한다.
+REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "config.exception_handler.custom_exception_handler",
+    # ⭐ M2 추가 ─ 인증 방식을 세션 쿠키 하나로 못 박는다. (문서 04 ─ 1.1절)
+    #
+    # 이 설정을 하지 않으면 DRF 기본값 [SessionAuthentication, BasicAuthentication]이 조용히 적용된다.
+    # BasicAuthentication은 요청 헤더에 ID:PW를 직접 실어보내는 방식인데 이 프로젝트에서는 사용하지 않는다.
+    # "사용하지 않는 문을 열어두지 않는다"라고 명시하는 것 자체가 보안 결정이다.
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "config.pagination.CommonPagination",  # ⭐ M2 추가
+    "PAGE_SIZE": 20,  # ⭐ M2 추가 — (DEFAULT_PAGINATION_CLASS와 짝을 이뤄야 동작함)
+
+    # ⭐ M2 추가
+    # ScopedRateThrottle을 사용하는 views만 골라서 제한을 건다.
+    # 지금은 등록만 해두고, 실제 적용은 GET /api/neo views 에서
+    # throttle_classes = [ScopedRateThrottle], 
+    # throttle_scope = 'neo_fetch'를 붙일 때 이뤄진다.
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "neo_fetch": "30/hour",
+        "neo_detail_fetch": "30/hour",   # ⭐ 추가 ─ NeoDetailView 전용 계량기
+    },
+    
+    # ⭐ M2 추가 — Decimal을 문자열이 아닌 숫자로 응답 (문서 04 — 5.1절)
+    "COERCE_DECIMAL_TO_STRING": False,
+}
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
