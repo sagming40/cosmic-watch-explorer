@@ -4,7 +4,7 @@ NASA 공개 데이터를 활용한 지구 근접 소행성(NEO) 모니터링 및
 
 접근하는 소행성이 얼마나 가까운지, 외계행성이 지구와 얼마나 비슷한지를 **숫자가 아니라 감각으로** 확인할 수 있게 만드는 것이 목표다.
 
-> **개발 진행 중** — 현재 설계 문서 작성 완료, 구현 착수 단계.
+> **개발 진행 중** — 백엔드 API 17개 전부 구현 완료 (M2), 프론트엔드(React) 구현 착수 예정.
 
 ---
 
@@ -36,17 +36,20 @@ NASA API는 소행성의 접근 거리를 `4,821,033 km` 같은 숫자로 준다
 
 ## 주요 기능
 
-### 구현 예정
+### 구현 완료 (백엔드 API)
 
-- [ ] 날짜별 지구 근접 소행성 조회
-- [ ] NASA API 데이터 수집 및 DB 캐싱
+- [x] 날짜별 지구 근접 소행성 조회
+- [x] NASA API 데이터 수집 및 DB 캐싱
+- [x] 소행성 상세 정보 (궤도 요소, 접근 이력)
+- [x] 외계행성 다중 조건 검색 (9개 조건, 서버 페이징)
+- [x] 외계행성 상세 정보 및 모항성 정보
+- [x] 회원가입 / 로그인
+- [x] 관심 천체 Watchlist
+
+### 구현 예정 (프론트엔드)
+
 - [ ] 달 거리(LD) 기준 접근 거리 시각화
-- [ ] 소행성 상세 정보 (궤도 요소, 접근 이력)
-- [ ] 외계행성 다중 조건 검색 (9개 조건, 서버 페이징)
-- [ ] 외계행성 상세 정보 및 모항성 정보
 - [ ] 지구·소행성·외계행성 크기 비교
-- [ ] 회원가입 / 로그인
-- [ ] 관심 천체 Watchlist
 
 ### 범위에서 제외
 
@@ -59,10 +62,10 @@ NASA API는 소행성의 접근 거리를 `4,821,033 km` 같은 숫자로 준다
 | 문서 | 내용 |
 |---|---|
 | [`01_requirements_and_features.md`](docs/01_requirements_and_features.md) | 요구사항, 기능 명세, MVP 범위, 우선순위 |
-| [`02_database_design.md`](docs/02_database_design.md) | ERD, 테이블 9개 정의, DDL, 인덱스 전략, NASA 필드 매핑 |
+| [`02_database_design.md`](docs/02_database_design.md) | ERD, 테이블 8개 정의, DDL, 인덱스 전략, NASA 필드 매핑 |
 | [`03_user_scenarios_and_uiux.md`](docs/03_user_scenarios_and_uiux.md) | 사용자 시나리오, 화면 설계, 디자인 토큰, 컴포넌트 목록 |
 | [`04_api_specification.md`](docs/04_api_specification.md) | 엔드포인트 17개, 요청/응답 형식, 오류 규약 |
-| [`DEVLOG.md`](DEVLOG.md) | 개발 기록 |
+| [`DEVLOG.md`](docs/DEVLOG.md) | 개발 기록 |
 
 ---
 
@@ -208,11 +211,11 @@ NASA_API_KEY=your-nasa-api-key
 ```text
 main
   │
-  ├── M0-환경구성 ──── PR #1 ──┐
-  │                            │
-  ├── M1-data-layer ── PR #2 ──┤──▶ main
-  │                            │
-  ├── M2-backend-api ─ PR #3 ──┘
+  ├── M1-data-layer ──── PR #1 ──┐
+  │                              │
+  ├── M2-backend-api ─── PR #2 ──┤──▶ main
+  │                              │
+  ├── M3-frontend-base ─ PR #3 ──┘
   ...
 ```
 
@@ -220,7 +223,7 @@ main
 
 커밋 메시지는 `type(M{n}): 내용` 형식(`feat`, `fix`, `docs`, `refactor`, `test`, `chore`)을 따랐고, 백엔드와 프론트엔드를 같은 세션에서 수정했을 때는 커밋을 분리해 되돌리기 쉽도록 했다.
 
-전체 진행 기록은 [`DEVLOG.md`](DEVLOG.md)에, 마일스톤별 계획과 완료 기준은 [`docs/05_milestones.md`](docs/05_milestones.md)에 있다.
+전체 진행 기록은 [`docs/DEVLOG.md`](docs/DEVLOG.md)에, 마일스톤별 계획과 완료 기준은 [`docs/05_milestones.md`](docs/05_milestones.md)에 있다.
 
 ---
 
