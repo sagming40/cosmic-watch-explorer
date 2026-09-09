@@ -201,7 +201,9 @@ class NeoDetailView(APIView):
             # 여기까지 예외없이 내려온다. ─ orbital_data가 None인 채로 응답된다.
             # ⭐ 값이 없으면 없는대로. 억지로 채우지 않는다.
 
-        return Response(NeoDetailSerializer(neo).data)
+        # context에 request를 실어 보낸다. is_watchlisted가 "누가 보고 있는지"를
+        # 알아야 판정할 수 있기 때문 ─ 이 한 줄이 없으면 항상 False가 나간다.
+        return Response(NeoDetailSerializer(neo, context={"request": request}).data)
 
 
 class NeoApproachListView(generics.ListAPIView):
@@ -302,7 +304,9 @@ class ExoplanetDetailView(APIView):
         if exoplanet is None:
             raise ResourceNotFound("해당 외계행성을 찾을 수 없습니다.")
         
-        return Response(ExoplanetDetailSerializer(exoplanet).data)
+        return Response(
+            ExoplanetDetailSerializer(exoplanet, context={"request": request}).data
+        )
 
 # meta 응답을 저장해두는 cache key. 이 String이 두 번째 등장하면 안된다.
 # 상수로 한 곳에만 둔다. ─ LUNAR_DISTANCE_KM을 units.py 한 곳에만 둔 것과 같은 이유.

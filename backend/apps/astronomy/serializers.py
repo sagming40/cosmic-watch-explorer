@@ -104,11 +104,26 @@ class NeoDetailSerializer(serializers.Serializer):
     approach_count = serializers.SerializerMethodField()
 
     def get_is_watchlisted(self, obj):
-        # M2 인증·watchlist endpoint가 붙기 전까지는 항상 False.
-        # 문서 02 ― 설계 결정 ① "비로그인 사용자에게는 항상 false"가 이미 정상 동작이다.
-        # 지금 False로 고정해두는 것은 임시방편이 아니라 절반은 완성이 된 상태이다.
-        # 추후 request.user를 확인한 후 판정하는 코드로 채운다.
-        return False
+        # 해당 값만 성격이 다르다. 위쪽 필드들(name, diameter_min_m ...)은 전부
+        # "소행성 자체의 속성"이라 누가 보든 값이 같지만, 
+        # is_watchlisted ─ "이 소행성 + 지금 보는 사람"의 관계에서 나온다.
+        # 즉, 포장기(serializer) 옆에 붙여둔 메모지(context)를 먼저 꺼내 본다.
+        request = self.context.get("request")
+
+        # 메모지가 없거나(shell에서 context 없이 직접 호출한 경우)
+        # 있어도 비로그인일 경우 무조건 False ─ 문서 04 5.2절 설계 결정 ①
+        # AnonymousUser.is_authenticated는 항상 False라서 분기를 나눌 필요가 없다.
+        if request is None or not request.user.is_authenticated:
+            return False
+
+        # 로그인 상태 → 내 관심 목록 안에 이 소행성이 있는지만 확인.
+        # exists()는 row를 가져오지 않고, "유/무"만 묻는다.(LIMIT 1).
+        # 필요한 게 Boolean 하나 뿐이라 count()나 first()보다 가볍다.
+        #
+        # NeoWatchlist를 직접 import 하지 않고 user 쪽 related_name을 타고 들어가는 이유:
+        # apps/watchlist가 이미 apps/astronomy를 import하고 있어서(모델 FK),
+        # 여기서 반대 방향 import를 추가하면 두 app이 서로를 참조하는 구조가 된다.
+        return request.user.neo_watchlist.filter(neo=obj).exists()
 
     def get_orbital_data(self, obj):
         """
@@ -260,9 +275,12 @@ class ExoplanetDetailSerializer(ExoplanetRowSerializer):
     sibling_planets = serializers.SerializerMethodField()
     
     def get_is_watchlisted(self, obj):
-        # NeoDetailSerializer.get_is_watchlisted와 완전히 같은 이유로 항상 False.
-        # M2 인증·Watchlist가 붙기 전까지는 이게 정답이다.
-        return False
+        # NeoDetailSerializer.get_is_watchlisted와 완전히 같은 구조
+        # 보는 테이블만 exoplanet_watchlist로 바뀐다
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return False
+        return request.user.exoplanet_watchlist.filter(exoplanet=obj).exists()
     
     def get_sibling_planets(self, obj):
         """
