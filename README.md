@@ -4,7 +4,7 @@ NASA 공개 데이터를 활용한 지구 근접 소행성(NEO) 모니터링 및
 
 접근하는 소행성이 얼마나 가까운지, 외계행성이 지구와 얼마나 비슷한지를 **숫자가 아니라 감각으로** 확인할 수 있게 만드는 것이 목표다.
 
-> **개발 진행 중** — 백엔드 API 17개 전부 구현 완료 (M2), 프론트엔드(React) 구현 착수 예정.
+> **개발 진행 중** — 백엔드 API 17개 전부 구현 완료 (M2), 프론트엔드(React) M3 진행 중 (UI 목업 완료 → 구현 착수).
 
 ---
 
@@ -48,6 +48,7 @@ NASA API는 소행성의 접근 거리를 `4,821,033 km` 같은 숫자로 준다
 
 ### 구현 예정 (프론트엔드)
 
+- [x] UI 목업 제작 (Figma, 화면 7개)
 - [ ] 달 거리(LD) 기준 접근 거리 시각화
 - [ ] 지구·소행성·외계행성 크기 비교
 
@@ -66,6 +67,8 @@ NASA API는 소행성의 접근 거리를 `4,821,033 km` 같은 숫자로 준다
 | [`03_user_scenarios_and_uiux.md`](docs/03_user_scenarios_and_uiux.md) | 사용자 시나리오, 화면 설계, 디자인 토큰, 컴포넌트 목록 |
 | [`04_api_specification.md`](docs/04_api_specification.md) | 엔드포인트 17개, 요청/응답 형식, 오류 규약 |
 | [`DEVLOG.md`](docs/DEVLOG.md) | 개발 기록 |
+
+> **UI 목업**: [Figma — `1. Cosmic Watch UI MockUp`](https://www.figma.com/design/vGgPqDdYg7LPX4vG8eSx95/cosmic-watch-explorer?node-id=3-2) — 화면 7개(NEO 대시보드·상세, 외계행성 카탈로그, 크기 비교, 로그인·회원가입, Watchlist), 디자인 토큰을 Figma 변수로 연결
 
 ---
 
