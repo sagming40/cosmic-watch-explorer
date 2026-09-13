@@ -1,111 +1,107 @@
+/*
+====================================================================
+디자인 토큰 (03_user_scenarios_and_uiux.md 2장)
+:root = "프로젝트 화면 전체에 적용되는 전역 변수 선언 구역"
+등록된 값은 어떤 CSS 파일, 컴포넌트에서든 var(--토큰이름) 으로 불러 사용할 수 있다.
+====================================================================
+*/
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Color Palette ─ 천문대 관제실 적색 조명 Concept */
+  --ink: #0B0E14;     /* Page Background */
+  --panel: #161B26;   /* Card·Panel Background */
+  --line: #252C3B;    /* 구분선, 테두리 */
+  --bone: #E6E4DE;    /* 본문 텍스트 */
+  --dim: #7A8296;     /* 보조 텍스트, Label */
+  --sodium: #E8A33D;  /* 주요 강조색 */
+  --hazard: #D64545;  /* 위험 소행성 전용 ─ 이외의 용도로는 사용하지 않는다 */
+  
+  /* 서체 ─ 역할별로 분리 (2.2절) */
+  --font-display: "IBM Plex Sans Condensed", sans-serif;
+  --font-body: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Type Scale ─ 크기/굵기 쌍 (2.3절) */
+  --text-display-size: 40px;
+  --text-display-weight: 700;
+  --text-h1-size: 28px;
+  --text-h1-weight: 600;
+  --text-h2-size: 20px;
+  --text-h2-weight: 600;
+  --text-body-size: 15px;
+  --text-label-size: 12px;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  /* Layouts (2.4절) */
+  --content-max-width: 1280px;
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-5: 40px;
+  --space-8: 64px;
+  --radius: 4px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-body {
-  margin: 0;
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+/*
+=============================================================================
+전역 리셋
+Browser마다 h1, p, ul 등에 기본 여백을 제각각 넣어두는데, 값을 '0'으로 임의 설정 후
+필요한 만큼 값을 직접 지정한다. ─ 재봉하기 전 원단을 다림질로 평평하게 다려놓는 것과 같다.
+=============================================================================
+*/
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
+body, h1, h2, h3, p, ul, ol {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/*
+================
+기본 스타일 적용
+================
+*/
+html {
+  color-scheme: dark; /* Browser가 form elememt(CheckBox etc.)를 light theme으로 그리지 않게 함 */
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+body {
+  min-height: 100vh;
+  background-color: var(--ink);
+  color: var(--bone);
+  font-family: var(--font-body);
+  font-size: var(--text-body-size);
+  font-weight: 400;
+  line-height: 1.5;
+
+  /* 어두운 배경 위 밝은 글씨는 뭉개져 보이기 쉬워서 안티앨리어싱을 명시적으로 켬 */
+  -webkit-font-smoothing: antialiased; 
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-h1-size);
+  font-weight: var(--text-h1-weight);
+}
+
+h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-h2-size);
+  font-weight: var(--text-h2-weight);
+}
+
+a {
+  color: var(--sodium);
+}
+
+/*
+======================================================
+─── Layouts Container ───
+Max Width = 1280px로 가두고 화면 가운데 정렬
+class 하나로 묶어둔다 ─ 페이지마다 이 값을 반복하여 사용한다.
+======================================================
+*/
+.content-container {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-2);
 }
