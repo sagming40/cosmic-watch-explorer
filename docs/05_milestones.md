@@ -227,7 +227,7 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 ### 작업
 
-- [ ] `src/api/client.js` — axios 인스턴스 (`withCredentials`, CSRF 헤더)
+- [x] `src/api/client.js` — axios 인스턴스 (`withCredentials`, CSRF 헤더)
 - [ ] 라우팅 설정 (React Router)
 - [ ] 디자인 토큰 적용 (`03_user_scenarios_and_uiux.md` 2장 — 색·타이포·간격)
 - [ ] `Header` 컴포넌트
@@ -235,6 +235,8 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 - [ ] **NEO 대시보드** — `DateNavigator`, `NeoSummary`, `NeoListItem`
 - [ ] **`LunarDistanceBar`** — 시그니처 스케일 바 (로그 스케일, 1 LD 기준선)
 - [ ] **NEO 상세** — `ApproachTable`, `OrbitPanel`, "더 보기" 페이징
+- [x] Figma UI 목업 제작 (화면 7개, 디자인 토큰 변수 연결) — *계획에 없던 작업*
+- [x] `GET /api/neo/` summary에 `largest_diameter_m`/`largest_diameter_name` 추가 (백엔드) — *계획에 없던 작업*
 
 ### 완료 기준
 
