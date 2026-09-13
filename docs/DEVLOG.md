@@ -59,9 +59,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 완료 마일스톤 | **M1 — 데이터 계층 ✅** |
-| 다음 작업 | M2 진행중 — 인증 API 5종 + Watchlist API 4종(NEO·Exoplanet) 구현·검증 완료. 남은 건 `is_watchlisted` 필드 연결(상세 응답)뿐. M2 완료 기준 4개(교차 로그인 격리·409·401·로그인 실패 미노출) 전부 실측 완료 |
-| 최근 병합 커밋 | `merge(M1): 데이터 계층 및 NASA 수집 서비스 구현 (#1)` |
+| 마지막 완료 마일스톤 | **M2 — 백엔드 완성 ✅** |
+| 다음 작업 | M3 진행중 — client.js 완료. 라우팅 → 디자인 토큰 → Header → NEO 대시보드 순 |
+| 최근 병합 커밋 | `merge(M2): 인증 API 및 Watchlist API 구현 (#2)` |
 
 ### 환경 요약
 
@@ -69,7 +69,7 @@
 |---|---|
 | Python | venv (backend/venv) |
 | Django | 6.1 |
-| Node | (frontend/에서 `npm create vite@latest` 진행, 버전 미기록) |
+| Node | v24.15.0 (npm 11.12.1) |
 | DB | MariaDB, `cosmic_watch` (utf8mb4), 로컬 |
 | Django ↔ DB | 연결 확인됨 (`migrate` 성공, 기본 테이블 존재) |
 | Frontend 린터 | ESLint |
@@ -82,6 +82,59 @@
 ## 기록
 
 <!-- 최신 항목을 위에 추가한다 -->
+
+---
+
+## 2026-09-10 (목) — M3: 프론트 기반 착수 (client.js, Figma 목업, 유즈케이스 다이어그램, 최대 추정 직경 API)
+
+### [완료] `src/api/client.js` — axios 인스턴스 + CSRF 인터셉터
+
+`baseURL`/`withCredentials`/`xsrfCookieName`/`xsrfHeaderName` 설정, 응답 인터셉터로 `{ error: { code, message, fields } }` 봉투를 벗겨 컴포넌트에 `err.code`만 넘기도록 구현. `App.jsx`에 임시 `useEffect`로 `ensureCsrf()` 호출 후 Network 탭 + Application 탭 + 서버 온/오프 상태로 4개 항목 전부 검증 완료.
+
+### [환경] Vite 프록시 뒤에서는 백엔드가 꺼져도 `NETWORK_ERROR`가 아니라 `UNKNOWN_ERROR(502)`가 뜬다
+
+**증상**
+`client.js` 검증 중 Django를 꺼봤는데, 예상한 `NETWORK_ERROR`가 아니라 콘솔에 `502 (Bad Gateway)`와 `code: UNKNOWN_ERROR`가 찍힘.
+
+**원인**
+브라우저는 Django에 직접 연결하지 않는다. `브라우저 → Vite(:5173) → Django(:8000)` 구조라, Django가 죽으면 Vite가 대신 502 응답을 만들어 브라우저에 돌려준다. 브라우저 입장에선 "응답을 받긴 받은" 상황이라 `error.response`가 존재하고, `client.js`의 분기(`error.response ? UNKNOWN_ERROR : NETWORK_ERROR`)가 정확히 그쪽으로 빠진다.
+
+**해결**
+코드는 고칠 필요 없음 — 분기 로직 자체는 올바르게 동작한다. 개발 환경(Vite 프록시)과 배포 환경(프론트가 Django에 직접 요청) 간 차이를 인지하는 것으로 종결. `NETWORK_ERROR`는 M6 배포 후 실제로 서버가 죽었을 때만 재현 가능하다.
+
+**배운 것**
+로컬 개발 서버는 "중간에 다른 서버(프록시)가 하나 더 있다"는 사실을 잊으면 에러 원인을 엉뚱한 곳(내 코드)에서 찾게 된다. 에러가 예상과 다르면 먼저 "요청이 실제로 어느 경로를 지나가는가"부터 그려볼 것.
+
+### [설계] 거리 단위 표기 — LD 고정 + 보조 단위(km/AU) 토글
+
+세 안(LD/km 병기 고정, LD/km/AU 중 택일, LD 고정+보조단위 토글) 중 세 번째로 결정. "LD를 끌 수 있게" 만드는 안(두 번째)은 이 서비스의 정체성(모든 거리를 달 거리로 환산해 감각적으로 보여줌)과 모순되어 제외. `03_user_scenarios_and_uiux.md` v1.1 6.1절에 반영.
+
+### [설계] NEO 대시보드 요약에 "최대 추정 직경" 카드 추가
+
+closeapproach.space 참고 중 발견 — 기존 요약 3칸(건수/위험/최근접 거리)엔 "얼마나 큰가" 축이 빠져 있었다. PHA 판정 기준 자체가 거리(0.05 AU)와 크기(140 m) 두 축인데 요약엔 거리만 있었던 셈. `03` v1.1 반영.
+
+### [백엔드] `largest_diameter_m`/`largest_diameter_name` 추가 (`NeoDashboardView`)
+
+`closest` 계산과 같은 패턴 — 이미 메모리에 있는 `approaches` list 위에서 별도 쿼리 없이 계산. `diameter_max_m`이 NULL인 소행성이 섞여 있을 수 있어 `max()` 호출 전 `None`을 먼저 걸러냄(안 걸러내면 `NoneType`과 `Decimal` 비교로 `TypeError`). 접근 0건인 날은 두 필드 모두 `None` — 셸에서 실제 조건문을 재현해 검증. `04_api_specification.md` v1.5에 실측값(`32.15 LD`, `357621 (2005 EG94)`)으로 반영.
+
+### [완료] Figma 목업 7화면 제작
+
+`3. Cosmic Watch UI MockUp` 페이지에 NEO 대시보드·상세, 외계행성 카탈로그, 크기 비교, 로그인·회원가입, Watchlist 총 7화면. `Cosmic Watch Tokens` 변수 컬렉션으로 색상 7개를 Figma 변수 바인딩(하드코딩 없음).
+
+### [문서] 유즈케이스 다이어그램 신설 및 유저 플로우 갱신
+
+`01_requirements_and_features.md` v1.1 — 3.3절 유즈케이스 다이어그램(Mermaid) 신설. `03_user_scenarios_and_uiux.md` v1.1 — 4.2절 화면 흐름도를 ASCII에서 Mermaid로 교체, 6.1절 와이어프레임에 목업 반영분 갱신. README에 Figma 목업 링크 추가.
+
+### [Git] PR을 마일스톤 완료 시점이 아니라 브랜치 착수 시점에 Draft로 열도록 워크플로 변경
+
+기존 규칙(`마일스톤 완료 시에만 PR 생성`)을 M3부터 변경. Draft 상태에선 Merge 버튼이 잠겨 실수로 미완성 코드가 `main`에 올라가는 걸 막아준다. 반영처 확인 결과 `05_milestones.md`엔 Git 전략 관련 절이 없어 해당 없음, `README.md` `## 개발 워크플로우` 절에 반영 완료.
+
+**오늘 커밋**
+- `feat(M3): axios 클라이언트 구현 (CSRF 인터셉터, 오류 봉투 처리)`
+- `docs(M3): DEVLOG 세션 기록, API 명세 v1.5, 마일스톤 체크박스, README 워크플로 반영`
+
+**다음에 할 일**
+- 라우팅 설정 (React Router) → 디자인 토큰 적용 → `Header` 컴포넌트 → NEO 대시보드(`DateNavigator`/`NeoSummary`/`NeoListItem`) 순 (`05_milestones.md` 6장 작업 목록 그대로)
 
 ---
 
