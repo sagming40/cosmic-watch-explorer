@@ -164,3 +164,44 @@ class 하나로 묶어둔다 ─ 페이지마다 이 값을 반복하여 사용�
   color: var(--bone);
   text-decoration: none;
 }
+
+/*
+=============================================================================
+                                 DATA FIELD
+=============================================================================
+*/
+.data-field {
+  display: flex;
+}
+
+.data-field--stacked {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.data-field--inline {
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.data-field-label {
+  font-family: var(--font-body);
+  font-size: var(--text-label-size);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.data-field-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-body-size);
+  color: var(--bone);
+}
+
+.data-field-unit {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-size);
+  color: var(--dim);
+}
