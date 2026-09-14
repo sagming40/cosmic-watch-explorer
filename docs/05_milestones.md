@@ -6,8 +6,8 @@
 | 문서명 | 마일스톤 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.8 |
-| 최종 수정일 | 2026-09-09 |
+| 버전 | v1.9 |
+| 최종 수정일 | 2026-09-14 |
 | Tier | 1 (매 세션 / 매 마일스톤 갱신) |
 
 **변경 이력**
@@ -23,6 +23,7 @@
 | v1.6 | 2026-09-05 | M2 Exoplanet API(`filters.py`, 목록/상세/메타) 완료 체크. 파섹 → 광년 변환 체크박스 신설(계획에 없던 작업). N+1 완료 기준 문구 정정. NEO 캐시 완료 기준 2건 체크 |
 | v1.7 | 2026-09-08 | M2 인증 API 5종 + Watchlist API 4종(NEO·Exoplanet) 완료 체크. 완료 기준 4개(교차 로그인 격리·409·401·로그인 실패 미노출) 전부 충족 확인. `is_watchlisted` 필드만 미완료 |
 | v1.8 | 2026-09-09 | M2 `is_watchlisted` 필드 연결 완료 체크. 완료 기준 5번째 항목 실측 완료. M2 전체 완료 처리 — 상태 🔄→✅ |
+| v1.9 | 2026-09-14 | M3 라우팅/디자인 토큰/Header/DataField 완료 체크. 404 캐치올 라우트 체크박스 신설(계획에 없던 작업) |
 
 ---
 
@@ -228,15 +229,16 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 ### 작업
 
 - [x] `src/api/client.js` — axios 인스턴스 (`withCredentials`, CSRF 헤더)
-- [ ] 라우팅 설정 (React Router)
-- [ ] 디자인 토큰 적용 (`03_user_scenarios_and_uiux.md` 2장 — 색·타이포·간격)
-- [ ] `Header` 컴포넌트
-- [ ] `DataField` 공통 컴포넌트 (수치 Mono 서체 자동 적용)
+- [x] 라우팅 설정 (React Router)
+- [x] 디자인 토큰 적용 (`03_user_scenarios_and_uiux.md` 2장 — 색·타이포·간격)
+- [x] `Header` 컴포넌트
+- [x] `DataField` 공통 컴포넌트 (수치 Mono 서체 자동 적용)
 - [ ] **NEO 대시보드** — `DateNavigator`, `NeoSummary`, `NeoListItem`
 - [ ] **`LunarDistanceBar`** — 시그니처 스케일 바 (로그 스케일, 1 LD 기준선)
 - [ ] **NEO 상세** — `ApproachTable`, `OrbitPanel`, "더 보기" 페이징
 - [x] Figma UI 목업 제작 (화면 7개, 디자인 토큰 변수 연결) — *계획에 없던 작업*
 - [x] `GET /api/neo/` summary에 `largest_diameter_m`/`largest_diameter_name` 추가 (백엔드) — *계획에 없던 작업*
+- [x] `NotFoundPage`(404 캐치올 라우트) 추가 — *계획에 없던 작업*
 
 ### 완료 기준
 

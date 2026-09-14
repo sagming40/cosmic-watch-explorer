@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M2 — 백엔드 완성 ✅** |
-| 다음 작업 | M3 진행중 — client.js 완료. 라우팅 → 디자인 토큰 → Header → NEO 대시보드 순 |
+| 다음 작업 | M3 진행중 — 라우팅/디자인 토큰/Header/DataField 완료. NEO 대시보드(DateNavigator/NeoSummary/NeoListItem) → LunarDistanceBar → NEO 상세 순 |
 | 최근 병합 커밋 | `merge(M2): 인증 API 및 Watchlist API 구현 (#2)` |
 
 ### 환경 요약
@@ -82,6 +82,69 @@
 ## 기록
 
 <!-- 최신 항목을 위에 추가한다 -->
+
+---
+
+## 2026-09-12 ~ 14 (토 ~ 월) — M3: 디자인 토큰 · Header · DataField 완료
+
+### [완료] React Router 라우팅 설정 + 페이지 스텁 9개
+
+`react-router`(v7 통합 패키지, `-dom` 아님) 설치. `Layout.jsx`(Outlet 기반 공통 헤더 영역) + 페이지 스텁 9개(`NeoDashboard`/`NeoDetail`/`ExoplanetList`/`ExoplanetDetail`/`Compare`/`Login`/`Signup`/`Watchlist`/`NotFound`) 작성. `App.jsx`의 임시 `<h1>COSMIC WATCH</h1>`를 실제 라우터 구조로 교체. `03` 4장 표에 없던 404 캐치올(`*`) 라우트는 계획 외 작업으로 `05_milestones.md`에 반영.
+
+**검증**: `/`, `/exoplanets`, `/neo/:id`(id 2개 값 교차 확인), `/asdf` 5개 주소 직접 입력으로 라우팅·`useParams`·404 동작 확인.
+
+### [환경] 기기 이동(학교 PC → 집 노트북) 후 `Failed to resolve import "react-router"`
+
+**증상**
+`git pull` 후 `npm run dev` 실행하니 `Layout.jsx`의 `import { Outlet } from "react-router"`를 못 찾는다는 오류가 반복 발생.
+
+**원인**
+`node_modules`는 Git으로 공유되지 않는 폴더 — `package.json`엔 `react-router`가 이미 반영돼 있었지만, 노트북에서 그 시점 이후로 `npm install`을 한 번도 안 돌려서 실제 설치물이 없었음. DB가 기기별로 독립적인 것과 완전히 같은 원리.
+
+**해결**
+`git pull` → `npm install`로 부족한 패키지만 설치.
+
+**배운 것**
+`package.json`(장바구니 영수증)과 `node_modules`(실제 물건)는 별개다 — 기기를 옮기면 항상 `npm install`부터 확인할 것.
+
+### [완료] 디자인 토큰 적용
+
+`03_user_scenarios_and_uiux.md` 2장 값을 `index.css` `:root`에 CSS 변수로 등록(컬러 7종/타이포 3역할/타입 스케일/레이아웃). Google Fonts로 IBM Plex 3종(Sans/Sans Condensed/Mono) 로딩. `.content-container`(최대폭 1280px 중앙정렬) 클래스 추가.
+
+**검증**: 배경/글씨색, `h1` Computed 탭에서 `font-family` 확인(대비 15.19), Network 탭에서 폰트 200 응답, `<main>` 요소 실측 폭 1280×42 확인.
+
+### [완료] `Header` 컴포넌트
+
+`NavLink` 기반 메뉴 3종(소행성/외계행성/크기비교) + 로그인 링크. `end` 옵션으로 홈(`/`) 경로가 하위 상세 페이지에서 오탐 활성화되는 버그 방지. 로그인 상태 분기(로그인↔Watchlist/로그아웃 전환)는 `05_milestones.md` 7장 확인 결과 인증 관련 작업이 전부 M4 소속이라 `AuthProvider` 도입 전까지 보류하기로 결정 — 지금은 항상 "로그인" 고정 표시.
+
+**검증**: 메뉴 클릭 시 Network 탭에 새 요청 없음(SPA 전환 확인), 활성 메뉴 강조색 전환, NEO 상세 페이지에서 "소행성" 메뉴 비활성 확인.
+
+### [Git] `wip:` 커밋을 사후에 정식 커밋으로 재정리 (M2와 동일 패턴 재발)
+
+**증상**
+학교 PC에서 Header 작업 중 세션이 끊겨 `git add -A` + `wip:` 커밋으로 push. 그 안에 `COSMIC WATCH` → `COSMIN WATCH` 오타도 그대로 섞여 들어감.
+
+**해결**
+집 노트북에서 `git reset --soft HEAD~1`로 커밋만 되감고, 오타 수정분까지 합쳐서 `feat(M3)` 정식 메시지로 재커밋 → `git push --force-with-lease`로 원격 덮어씀. Draft PR #3 미병합 상태라 안전하게 재작성 가능했음.
+
+**배운 것**
+M2 때 겪었던 `wip:` 재분리 패턴이 그대로 재발 — 세션 중단은 예외가 아니라 이 프로젝트의 상수 조건이니, "끊기면 이렇게 복구한다"는 절차 자체가 이제 체화된 루틴이 됨.
+
+### [완료] `DataField` 공통 컴포넌트
+
+라벨+값 쌍을 렌더링, 값은 항상 `--font-mono` 고정. `value`가 `null`/`undefined`/빈 문자열이면 화면엔 `—`로 표시(DB의 NULL 자체는 안 건드리고 표시 규칙만). `layout` prop으로 `stacked`(대시보드 요약)/`inline`(목록·상세) 두 배치 지원.
+
+**검증**: `NeoDashboardPage`에 임시 렌더로 폰트·대비·`null`→`—` 변환·인라인 배치 확인 후 원상복구.
+
+**이번 세션 커밋**
+- `feat(M3): React Router 라우팅 설정 및 페이지 스텁 9개 추가`
+- `feat(M3): 디자인 토큰 적용 (컬러·타이포·레이아웃) 및 Google Fonts 연동`
+- `feat(M3): Header 컴포넌트 구현 (NavLink 기반 활성 메뉴 표시)`
+- `feat(M3): DataField 공통 컴포넌트 구현`
+- `docs(M3): DEVLOG 세션 기록 및 마일스톤 체크박스/버전 갱신`
+
+**다음에 할 일**
+- NEO 대시보드(`DateNavigator`/`NeoSummary`/`NeoListItem`) → `LunarDistanceBar` → NEO 상세 순 (`05_milestones.md` 6장 작업 목록 그대로)
 
 ---
 
@@ -129,7 +192,7 @@ closeapproach.space 참고 중 발견 — 기존 요약 3칸(건수/위험/최�
 
 기존 규칙(`마일스톤 완료 시에만 PR 생성`)을 M3부터 변경. Draft 상태에선 Merge 버튼이 잠겨 실수로 미완성 코드가 `main`에 올라가는 걸 막아준다. 반영처 확인 결과 `05_milestones.md`엔 Git 전략 관련 절이 없어 해당 없음, `README.md` `## 개발 워크플로우` 절에 반영 완료.
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M3): axios 클라이언트 구현 (CSRF 인터셉터, 오류 봉투 처리)`
 - `docs(M3): DEVLOG 세션 기록, API 명세 v1.5, 마일스톤 체크박스, README 워크플로 반영`
 
@@ -185,7 +248,7 @@ closeapproach.space 참고 중 발견 — 기존 요약 3칸(건수/위험/최�
 
 PR #2 오픈 (`M2-backend-api` → `main`). M2 마일스톤 완료 처리 진행 중.
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M2): is_watchlisted 필드 연결 (NEO·Exoplanet 상세)`
 - `docs(M2): 코드 주석 오기 및 잔여 TODO 정리`
 - `docs(M2): 마일스톤 완료 처리 및 DEVLOG 갱신` (이 커밋 자체)
@@ -238,7 +301,7 @@ Postman 대신 shell + `django.test.Client`로 교차 로그인 검증을 시도
 - `reset --soft` 직후 `git status`로 "astronomy 관련 파일이 섞여 들어오지 않았는지"(다른 미완성 작업과의 오염 여부)를 먼저 확인하는 절차가 중요 — 이번엔 깨끗했지만, 섞여 있었다면 `git add -p`로 나눠 커밋해야 했을 상황.
 - `--force-with-lease` push 후 다른 기기에서 이어 작업할 때는 반드시 `git fetch origin` + `git reset --hard origin/{branch}`로 로컬을 원격과 맞춰야 한다 — 옛 `wip` 히스토리가 로컬에 남아있으면 새로 정리된 히스토리와 충돌한다.
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M2): Watchlist API 구현 (NEO·Exoplanet)`
 
 **다음에 할 일**
@@ -312,7 +375,7 @@ DRF는 `NotAuthenticated`/`AuthenticationFailed` 예외를 만나면 `get_authen
 
 집(노트북)에서 만든 `accounts.0001` 마이그레이션 파일은 git pull로 왔지만, 실제 DB(`cosmic_watch`)에 적용하는 `migrate`는 기기마다 따로 실행해야 했다. DB는 기기별 독립이라는 원칙(9/1 기록)이 인증 관련 마이그레이션에도 동일하게 적용된 사례.
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M2): auth_user.email 유니크 인덱스 추가`
 - `feat(M2): 인증 API 구현 (csrf/me/signup/login/logout)`
 - `fix(M2): LoginSerializer 필드명 오타 및 SignupSerializer.validate() 들여쓰기 오류 수정`
@@ -397,7 +460,7 @@ Django 기본 캐시(`LocMemCache`)는 프로세스 자신의 메모리에만 �
 
 M2 초반에 만들어둔 함수인데, "캐시 미스가 확정된 순간에만 throttle을 검사해야 한다"는 요구사항 때문에 로직이 `NeoDashboardView.get()` 안으로 통째로 인라인되면서 이 함수는 더 이상 아무 데서도 호출되지 않는 상태로 남아 있었다. 죽은 채로 두면 나중에 실수로 다시 호출해 throttle 순서가 깨진 코드가 생길 위험이 있어 삭제.
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M2): 외계행성 API 구현 (목록/상세/메타)`
 - `refactor(M2): 미사용 함수 _ensure_date_cached() 삭제`
 - `docs(M2): DEVLOG 갱신 및 Exoplanet API 완료 반영`
@@ -464,7 +527,7 @@ git reset --hard origin/M2-backend-api
 
 `neo`(36)/`close_approach`(36)/`neo_fetch_log`(8)는 이전에 이미 채워진 상태였으나 `orbital_data`만 0건. `fetch_neo_detail("2357621")` 1회 실행으로 궤도 정보 1건 + 접근 기록 20건(56건으로 증가) 확보 ─ 다른 두 기기와 동일 ID(`2357621`)로 검증 가능한 상태 확보.
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M2): NeoApproachListView 구현 (GET /api/neo/{nasa_id}/approaches/)`
 - `docs(M2): DEVLOG 갱신 및 NEO 상세·접근기록 API 완료 반영`
 - `docs(M2): DEVLOG에 Git history 재작성·집 PC 동기화 트러블슈팅 기록`
@@ -543,7 +606,7 @@ A안 채택 — "오늘 이후 가장 가까운 예정 접근"으로 재정의. 
 - `NeoDetailSerializer` — `nasa_id=2357621`(정상 케이스, `orbital_data` 14필드·`approach_count=21`) / `nasa_id=3761271`(미래 접근 0건, `recent_approaches: []` 에러 없이 정상)
 - `NeoDetailView` — 캐시 히트(`2357621`, NASA 미호출) / 캐시 미스(`3761271`, `fetch_neo_detail` 호출 후 200) / 재요청 시 캐시 히트 전환 확인(같은 ID 두 번째 요청에서 NASA 미호출) / 존재하지 않는 ID(`9999999`) 404, 메시지 정확히 일치
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M2): ApproachRowSerializer 및 NeoDetailSerializer 구현`
 - `fix(M2): recent_approaches가 가장 먼 미래를 반환하던 문제 수정`
 - `feat(M2): NeoDetailView 구현 (GET /api/neo/{nasa_id}/)`
@@ -611,7 +674,7 @@ A안 채택 — "오늘 이후 가장 가까운 예정 접근"으로 재정의. 
 - 추가 수집(`2437844`, `3645793`, `3694987`) — `CloseApproach` 총 374건, `orbiting_body` 분포: `Earth 161 / Merc 114 / Venus 94 / Moon 3 / Mars 2`
 - 가짜 ID(`0000000`)로 404 분기 강제 재현 — `neo=None, count=0, orbit_saved=False` 정상 확인
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `refactor(M2): 접근 기록 저장 로직을 공통 함수로 분리`
 - `feat(M2): NEO 상세 수집 서비스(NASA Lookup) 구현`
 - `fix(M2): Lookup 카탈로그에 없는 ID(404) 처리 추가`
@@ -691,7 +754,7 @@ MySQLdb.ProgrammingError: (1146, "Table 'cosmic_watch.close_approach' doesn't ex
 - DRF `APIView`는 `throttle_scope` 속성 존재 여부만으로 `dispatch()` 단계 자동 검사를 켠다 — "캐시 미스일 때만 세고 싶다" 같은 조건부 스로틀링은 `throttle_classes`를 클래스에 등록하는 방식으론 불가능하고, `get_throttles()`를 오버라이드해 자동 검사를 끈 뒤 원하는 시점에 수동으로 검사해야 한다.
 - `getattr(obj, "속성명", 기본값)` 패턴은 오타가 나도 예외 없이 기본값으로 조용히 착지한다 — `is_custom_error` 플래그(M2 세션 초반)에서도 똑같은 함정을 이미 겪었는데, 오늘 `throttle_scope`에서 또 걸림. **속성 이름에 의존하는 코드는 반드시 실제 동작(로그/응답)으로 검증**해야지, 에러가 안 났다고 정상이라 믿으면 안 된다.
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M2): 달 거리(LD) 환산 유틸 구현`
 - `feat(M2): NEO API 응답용 serializer 구현`
 - `feat(M2): NEO 대시보드 캐시 판정 로직 구현`
@@ -742,7 +805,7 @@ MySQLdb.ProgrammingError: (1146, "Table 'cosmic_watch.close_approach' doesn't ex
 - `git add`는 "새로 스테이징"이 아니라 "기존에 더하기"다. `reset --soft` 직후엔 `git status`로 staging 상태를 먼저 확인해야 한다.
 - push 후에도 **혼자 쓰는 feature 브랜치**라면 `--force-with-lease`로 안전하게 히스토리를 고쳐 쓸 수 있다. (`main`이나 공유 브랜치였다면 안 됨.)
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M2): 공통 오류 응답 형식(exception_handler) 구현`
 - `refactor(M2): 예외 판정 방식을 isupper()에서 명시적 플래그로 변경`
 - `feat(M2): 커스텀 페이지네이션(CommonPagination) 구현`
@@ -781,7 +844,7 @@ MySQLdb.ProgrammingError: (1146, "Table 'cosmic_watch.close_approach' doesn't ex
 
 **M1 완료 기준 7개 전부 충족.**
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M1): NASA Exoplanet Archive TAP 수집 서비스 및 커맨드 구현`
 - `feat(M1): Django Admin에 Neo/HostStar/Exoplanet 등록`
 - `docs(M1): 마일스톤 완료 처리 및 DEVLOG 갱신` (이 커밋 자체)
@@ -808,7 +871,7 @@ MySQLdb.ProgrammingError: (1146, "Table 'cosmic_watch.close_approach' doesn't ex
 **shell 검증 결과** 
 - `fetch_feed('2026-08-21')` 실행 시 NASA `element_count`(6)와 실제 저장 건수(6) 일치. 동일 날짜 재실행 시 신규 저장 0건 확인 — `UniqueConstraint(uk_ca_unique)` 정상 동작.
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M1): NASA NeoWs Feed API 수집 서비스 구현`
 
 **다음에 할 일** 
@@ -846,7 +909,7 @@ MySQLdb.ProgrammingError: (1146, "Table 'cosmic_watch.close_approach' doesn't ex
 > **문서 오류 발견**
 >`05_milestones.md`, `02_database_design.md`가 공통으로 "테이블 9개"라고 적어뒀으나 실제 모델은 8개. `auth_user`를 잘못 포함해서 센 것으로 추정. 마일스톤 완료 시 두 문서 모두 8로 수정 예정.
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M1) astronomy 앱 모델 6개 정의 완료`
 - `fix(M1): astronomy 앱 오타 수정`
 - `feat(M1): astronomy·watchlist 마이그레이션 생성 및 적용`
@@ -870,7 +933,7 @@ MySQLdb.ProgrammingError: (1146, "Table 'cosmic_watch.close_approach' doesn't ex
 - `INSTALLED_APPS` 등록, `manage.py check` 통과 확인. 
 - `Neo` 모델 작성 완료.
 
-**오늘 커밋**
+**이번 세션 커밋**
 - `feat(M1): Neo 모델 정의`
 
 **다음에 할 일**
@@ -1000,4 +1063,8 @@ NASA NeoWs는 숫자를 `"18.83"` 형태의 문자열로 반환한다.
 
 **배운 것**
 외부 API 응답은 타입을 믿지 말고 실제 JSON을 눈으로 확인할 것.
+
+**이번 세션 커밋**
+
+**다음에 할 일**
 -->
