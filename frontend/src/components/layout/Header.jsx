@@ -27,7 +27,7 @@ function Header() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to}
+              end={item.end}
               // NavLink는 className에 함수를 넘기면 그 함수에 { isActive } 객체를 인자로 던져준다.
               // "지금 이 링크가 현재 주소와 일치하는가?"에 대한 답은 자동으로 제공으로 계산해준다.
               className={({ isActive }) =>
