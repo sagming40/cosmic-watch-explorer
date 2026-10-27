@@ -1,6 +1,6 @@
-django
-djangorestframework
-mysqlclient
-python-dotenv
-requests
-django-filter
+django==6.1.2
+djangorestframework==3.18.3
+mysqlclient==2.3.0
+python-dotenv==1.2.4
+requests==2.34.2
+django-filter==26.2

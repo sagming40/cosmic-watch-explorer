@@ -6,8 +6,8 @@
 | 문서명 | API 명세서 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.4 |
-| 최종 수정일 | 2026-09-08 |
+| 버전 | v1.5 |
+| 최종 수정일 | 2026-09-10 |
 | 프레임워크 | Django REST Framework |
 | 상태 | 확정 |
 
@@ -20,6 +20,7 @@
 | v1.2 | 2026-09-04 | 5.2 recent_approaches 필드/정의 갱신, 5.2 요청 한도 관리 절 수정, 5.3 정렬·오류 응답 절 추가 (M2 NeoDetailView·NeoApproachListView 구현 반영) |
 | v1.3 | 2026-09-05 | 6.1 정렬 NULL 처리 설계 결정 추가, 6.1 오류 예시 메시지 정정, 6.3 캐싱 방식을 cache_page에서 직접 캐싱으로 변경 (M2 ExoplanetListView·ExoplanetMetaView 구현 반영) |
 | v1.4 | 2026-09-08 | 7.3 POST 응답에 `404`(대상 미존재) 추가 — 최초 설계에 없던 구멍, 프로젝트 전반의 "리소스 없음=404" 관례로 확정. 7.3 `409` 예시 메시지를 실제 구현 값으로 정정. 7.5 POST/DELETE 응답 예시 신설, 식별자 키 `exoplanet_id`로 통일 (M2 인증·Watchlist 구현 반영) |
+| v1.5 | 2026-09-10 | 5.1절 summary에 `largest_diameter_m`/`largest_diameter_name` 추가, 응답 예시·설계 결정 ①의 예시 수치를 실측값으로 교체 (M3 NeoDashboardView 구현 반영) |
  
 ---
  
@@ -339,6 +340,17 @@ CSRF 토큰 쿠키를 발급한다. 앱이 처음 로드될 때 한 번 호출�
 | `date` | `YYYY-MM-DD` | 오늘 | 조회 날짜 |
 | `sort` | string | `distance` | `distance` / `velocity` / `size` |
 | `body` | string | `Earth` | 접근 대상 천체 |
+
+**`summary` 필드**
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `total_count` | number | 해당일 접근 건수 |
+| `hazardous_count` | number | 그중 위험 소행성 건수 |
+| `closest_ld` | number \| null | 최근접 거리 (LD). 접근 0건이면 `null` |
+| `closest_km` | number \| null | 최근접 거리 (km). 접근 0건이면 `null` |
+| `largest_diameter_m` | number \| null | 접근 소행성 중 추정 직경 최댓값(m). 접근 0건이거나 전부 직경 미상이면 `null` |
+| `largest_diameter_name` | string \| null | 위 값에 해당하는 소행성 이름 |
  
 **응답 `200`**
  
@@ -348,8 +360,10 @@ CSRF 토큰 쿠키를 발급한다. 앱이 처음 로드될 때 한 번 호출�
   "summary": {
     "total_count": 6,
     "hazardous_count": 1,
-    "closest_ld": 0.80,
-    "closest_km": 307520.4
+    "closest_ld": 32.15,
+    "closest_km": 12358639.659,
+    "largest_diameter_m": 1018.6852,
+    "largest_diameter_name": "357621 (2005 EG94)"
   },
   "cache": {
     "is_cached": true,
@@ -357,18 +371,18 @@ CSRF 토큰 쿠키를 발급한다. 앱이 처음 로드될 때 한 번 호출�
   },
   "results": [
     {
-      "nasa_id": "54016054",
-      "name": "2024 PT5",
-      "is_hazardous": true,
-      "diameter_min_m": 8.2,
-      "diameter_max_m": 18.4,
+      "nasa_id": "2357621",
+      "name": "357621 (2005 EG94)",
+      "is_hazardous": false,
+      "diameter_min_m": 455.5699,
+      "diameter_max_m": 1018.6852,
       "approach": {
-        "datetime_utc": "2026-08-21T11:40:00Z",
-        "miss_distance_km": 307520.4,
-        "miss_distance_ld": 0.80,
-        "miss_distance_au": 0.00205,
-        "velocity_km_s": 9.42,
-        "velocity_km_h": 33912.0,
+        "datetime_utc": "2026-08-21T03:16:00Z",
+        "miss_distance_km": 12358639.659,
+        "miss_distance_ld": 32.15,
+        "miss_distance_au": 0.08261240,
+        "velocity_km_s": 10.893075,
+        "velocity_km_h": 39215.0714,
         "orbiting_body": "Earth"
       }
     }
@@ -378,7 +392,7 @@ CSRF 토큰 쿠키를 발급한다. 앱이 처음 로드될 때 한 번 호출�
  
 #### 설계 결정 ① — 요약과 목록을 한 응답에 담는다
  
-화면 상단의 요약(접근 6건 / 위험 1건 / 최근접 0.8 LD)은 **아래 목록과 완전히 같은 데이터에서 계산된다.** 별도 엔드포인트로 나누면 서버가 같은 쿼리를 두 번 돌리고, 두 요청 사이에 데이터가 갱신되면 요약과 목록이 어긋난다.
+화면 상단의 요약(접근 6건 / 위험 1건 / 최근접 32.15 LD)은 **아래 목록과 완전히 같은 데이터에서 계산된다.** 별도 엔드포인트로 나누면 서버가 같은 쿼리를 두 번 돌리고, 두 요청 사이에 데이터가 갱신되면 요약과 목록이 어긋난다.
  
 #### 설계 결정 ② — 달 거리(LD) 환산은 서버가 한다
  

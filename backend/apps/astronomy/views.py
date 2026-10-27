@@ -121,6 +121,23 @@ class NeoDashboardView(APIView):
             # 그날 접근이 0건 이었던 경우 — NULL 그대로 유지.
             closest_km = None
             closest_ld = None
+
+        # ④ 최대 직경 추정 ─ closest 계산과 같은 list 위에서, 별도 query 없이.
+        #   다른 점 하나: diameter_max_m은 NASA가 측정하지 못한 소행성이면 NULL이다.
+        #   None이 섞인 채로 max()를 적용하면 "NoneType과 Decimal은 비교할 수 없다"는
+        #   TypeError가 난다. ─ 따라서 먼저 걸러낸다.
+        #   비유: 가장 큰 상자를 찾는 중에 크기를 재지 못한 상자는 제외시키는 것.
+        sized = [ca for ca in approaches if ca.neo.diameter_max_m is not None]
+        if sized:
+            largest = max(sized, key=lambda ca: ca.neo.diameter_max_m)
+            largest_diameter_m = largest.neo.diameter_max_m
+            largest_diameter_name = largest.neo.name    
+
+        else:
+            # 접근이 0건이거나 접근이 있어도 diameter_max_m이 전부 NULL인 경우.
+            # 0이나 빈 문자열로 채우지 않는다 ─ NULL 보존 원칙 그대로.
+            largest_diameter_m = None
+            largest_diameter_name = None    
             
         return Response({
             "date": target_date.isoformat(),
@@ -129,6 +146,8 @@ class NeoDashboardView(APIView):
                 "hazardous_count": hazardous_count,
                 "closest_ld": closest_ld,
                 "closest_km": closest_km,
+                "largest_diameter_m": largest_diameter_m,        # 추가
+                "largest_diameter_name": largest_diameter_name,  # 추가
             },
             "cache": {
                 "is_cached": is_cached,

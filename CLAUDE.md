@@ -1,0 +1,181 @@
+# CLAUDE.md — Cosmic Watch & Explorer
+
+NASA 공개 데이터로 만드는 지구 근접 소행성(NEO) 모니터링 + 외계행성 탐색 포털. 1인 학습·포트폴리오 프로젝트.
+Backend: Django 6.1 + DRF + MariaDB / Frontend: React 19 + Vite + React Router + axios (+ Recharts 예정).
+
+> 이 파일은 **모든 기기(회사 PC / 집 PC / 노트북)의 로컬 Claude Code 세션**이 같은 규칙으로 작업하기 위한 지침이다.
+> Claude의 메모리(`~/.claude/projects/.../memory/`)는 **기기마다 따로**라서 다른 기기로 넘어가지 않는다. 기기와 상관없이 지켜야 할 규칙은 전부 이 파일에 적는다.
+
+---
+
+## 1. 작업 규칙 (가장 중요)
+
+### 1.1 브랜치: `main` 하나만 쓴다
+- **모든 작업은 `main`에서 한다. 새 브랜치를 만들지 않는다.** (2026-10-27부터. M0~M3 중반까지는 마일스톤별 브랜치 + PR 방식이었다 — README "개발 워크플로우" 참고)
+- PR도 만들지 않는다. 커밋을 `main`에 바로 push한다.
+- force push, `reset --hard`, `rebase` 같은 히스토리 재작성은 사용자가 명시적으로 요청할 때만 한다. `main`은 공유 기록이다.
+
+### 1.2 기본 모드: Claude가 직접 작업 → 커밋 → push까지 자동
+- 기본값은 **Claude가 직접 코드를 작성·수정**하고, 검증한 뒤 **커밋하고 `git push`까지** 한다.
+- **사용자가 "직접 타이핑할게"라고 요청한 경우에만** 코드를 코드블록으로 제시하고, 사용자가 타이핑한 뒤 "코드 검수!"로 보여주면 오타·버그를 리뷰한다. 이때는 Claude가 파일을 수정하지 않는다.
+  - 수정 지시는 "파일 위치 + 현재 코드 + 바꿀 코드"로, 삽입 위치가 애매하면 전후 몇 줄을 같이 보여준다.
+- 작업이 학습 포인트가 있는 새 기능이면, **시작 전에 "내가 바로 할까, 직접 타이핑할래?"를 물어봐도 된다.**
+- "검수만" 요청이면 검수만 하고 다음 단계로 넘어가지 않는다.
+
+### 1.3 커밋 규칙
+- 형식: `type(M{n}): 한국어 제목` + 빈 줄 + 본문(bullet로 무엇을·왜·어떻게 검증했는지).
+  - type: `feat` / `fix` / `refactor` / `docs` / `test` / `chore`. `{n}`은 현재 마일스톤 번호.
+- **분리 기준: "따로 되돌리고 싶을 수 있는가"** — 성격이 다르면(feat/fix/docs) 커밋을 나눈다. 백엔드·프론트를 같이 고쳤으면 나눈다. 문서 커밋은 코드 커밋과 따로.
+- 커밋 전에 실제로 동작을 확인한다(서버 실행, 화면/응답 확인, `npm run lint`/`python manage.py check` 등). 확인 못 한 것은 커밋 본문과 답변에 그렇게 적는다.
+- 세션이 중간에 끊길 것 같으면 `wip:` 커밋으로 push해 둔다(다른 기기에서 이어가기 위해). 다음 세션에서 정식 커밋으로 정리할지는 사용자에게 묻는다(`main`이라 재작성은 force push가 필요하기 때문).
+
+### 1.4 문서 갱신 규칙
+- 세션(작업 단위) 종료 시: `docs/DEVLOG.md` → `docs/05_milestones.md` → 필요 시 01~04 문서 → `docs(M{n})` 커밋 → push.
+- DEVLOG: 날짜 블록, **최신이 위**. 항목 형식은 `증상 / 원인 / 해결 / 배운 것`(막혔던 일), 블록 끝에 **`이번 세션 커밋`과 `다음에 할 일` 필수**. 맨 위 "현재 상태" 표도 갱신.
+- 05_milestones: 체크박스 갱신, 계획에 없던 작업은 `— *계획에 없던 작업*` 표시. 문서 상단 **버전 = 변경 이력 마지막 줄 버전**.
+- 완료 기준은 "속을 수 없는 형태"로만 체크한다(실측 증거가 있어야 ✅).
+- 오기를 고칠 때는 다른 문서에도 같은 오기가 있는지 전부 검색한다.
+- 설계를 구현 중에 바꿨으면(예: 명세와 다른 방식) 해당 문서 변경 이력 + DEVLOG `[설계]` 항목에 이유를 남긴다.
+
+### 1.5 소통 방식
+- 한국어, **반말**, 일상 비유를 섞어 설명. 비교는 표로. 근거는 문서 절 번호(예: "04 문서 5.1절")로 든다.
+- 추천안을 명시하되 결정은 사용자가 한다. 사용자가 추천과 다르게 정하면 그대로 따르고 문서에 흔적을 남긴다.
+- **추측으로 말하지 않는다.** 필드명·코드·상태는 실제 파일과 명령 결과를 확인한 뒤 말한다.
+- 코드 주석은 사용자 스타일 유지: 한국어 + 비유, 섹션 배너(`─`, `═══`).
+
+### 1.6 업로드 금지
+- 이 프로젝트 내용은 **Artifact 게시, Claude Docs, 클라우드 세션, 원격 실행(예약 작업 등)에 올리지 않는다.** 결과물은 로컬 파일 또는 답변으로만 준다.
+- 외부로 나가는 건 사용자 개인 GitHub 저장소(`sagming40/cosmic-watch-explorer`) push뿐이다.
+
+---
+
+## 2. 기기 간 이어서 작업하기
+
+작업 기기: **회사 PC**(회사 Claude 계정) / **집 PC·노트북**(개인 Claude 계정). 전부 로컬 세션.
+코드·문서·마이그레이션 파일은 Git으로 공유되지만, **아래는 기기마다 따로**다.
+
+| 기기별로 따로인 것 | 이유 / 대처 |
+|---|---|
+| `backend/.env` | `.gitignore` 대상. 새 기기에서 직접 만들어야 한다 (2.2 참고) |
+| `backend/venv/` | 기기마다 새로 만든다 |
+| `frontend/node_modules/` | `npm ci`로 설치 |
+| **MariaDB 데이터** | DB는 기기별 독립. `migrate` + 데이터 수집을 기기마다 해야 한다 |
+| Claude 메모리 | 기기·계정마다 따로. 규칙은 이 파일에 |
+
+### 2.1 세션 시작 체크리스트 (모든 기기, 매번)
+
+Claude가 세션 시작 시 아래를 순서대로 확인한다.
+
+```powershell
+git status                 # 미커밋 변경이 있으면 먼저 사용자에게 알린다
+git switch main            # main이 아니면 전환
+git pull --ff-only         # 다른 기기에서 push한 커밋 받기 (실패하면 멈추고 원인 보고)
+```
+
+`git pull`로 받은 커밋에 따라:
+- `frontend/package.json`·`package-lock.json`이 바뀌었으면 → `cd frontend; npm ci`
+- `backend/requirements.txt`가 바뀌었으면 → venv 켜고 `pip install -r requirements.txt`
+- `backend/apps/*/migrations/`가 바뀌었으면 → `python manage.py migrate`
+- 확실하지 않으면 `python manage.py showmigrations`로 `[ ]`(미적용)가 있는지 본다.
+
+그다음 `docs/DEVLOG.md` 맨 위 **"현재 상태"** 와 가장 최근 날짜 블록의 **"다음에 할 일"** 을 읽고 이어서 진행한다.
+
+### 2.2 새 기기 최초 세팅 (집 PC·노트북에서 폴더를 지웠다면 이것부터)
+
+**사전 설치**: Git, Python 3.14(3.11 이상), Node.js 24(npm 11), MariaDB 10.6 이상(+ HeidiSQL 선택)
+
+```powershell
+# 1) 저장소 받기
+git clone https://github.com/sagming40/cosmic-watch-explorer.git
+cd cosmic-watch-explorer
+
+# 2) 백엔드
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env      # 값 채우기 — 아래 참고
+
+# 3) DB 생성 (HeidiSQL 또는 mysql 클라이언트에서)
+#    CREATE DATABASE cosmic_watch DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
+
+python manage.py migrate
+python manage.py fetch_exoplanets   # 외계행성 약 6,000건 수집 (1~2분)
+python manage.py createsuperuser    # ⚠️ 이메일 반드시 입력 (auth_user.email UNIQUE — 빈 이메일 계정은 1개만 가능)
+
+# 4) 프론트
+cd ..\frontend
+npm ci
+```
+
+**`.env` 값** (`.env.example` 참고, Git에 절대 올리지 않는다):
+- `SECRET_KEY`: 기기마다 새로 만들어도 된다 → `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` (`-c` 빠뜨리지 말 것)
+- `DB_USER`/`DB_PASSWORD`/`DB_HOST`/`DB_PORT`: 그 기기의 MariaDB 설정
+- `NASA_API_KEY`: 사용자 본인 키 (api.nasa.gov). Claude는 키 값을 대화·커밋·로그에 남기지 않는다.
+
+**NEO(소행성) 데이터**는 미리 수집하지 않아도 된다. 대시보드에서 날짜를 조회하면 그때 NASA를 호출해 저장한다(첫 조회 1~2초, 이후 캐시).
+
+### 2.3 실행
+
+```powershell
+# 터미널 1 — backend (venv 켠 상태)
+python manage.py runserver          # http://localhost:8000
+
+# 터미널 2 — frontend
+npm run dev                         # http://localhost:5173
+```
+Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필요 없다. 백엔드가 꺼져 있으면 프론트에는 `NETWORK_ERROR`가 아니라 `UNKNOWN_ERROR`(Vite가 만든 502)가 뜬다 — 정상.
+
+### 2.4 세션 종료 시
+- 작업 단위가 끝나면 커밋 + **push까지** 한다. push 안 하면 다른 기기에서 이어갈 수 없다(9/16 Recharts 작업이 이렇게 유실됐다).
+
+---
+
+## 3. 프로젝트 지도
+
+### 3.1 문서 (`docs/`)
+| 문서 | 내용 | 갱신 빈도 |
+|---|---|---|
+| `DEVLOG.md` | 현재 상태, 날짜별 작업·트러블슈팅 기록 | Tier 1 (매 세션) |
+| `05_milestones.md` | M0~M6 작업 목록·완료 기준 | Tier 1 (매 세션) |
+| `02_database_design.md` | ERD, 테이블 8개, DDL | Tier 2 (구현과 어긋날 때) |
+| `04_api_specification.md` | 엔드포인트 17개, 오류 봉투, 페이징 | Tier 2 |
+| `01_requirements_and_features.md` | 요구사항, MVP 범위, 우선순위 | Tier 3 (드물게) |
+| `03_user_scenarios_and_uiux.md` | 화면 설계, 디자인 토큰, 컴포넌트 목록 | Tier 3 |
+
+### 3.2 코드 구조
+```text
+backend/
+  config/            settings.py, urls.py, exception_handler.py(오류 봉투·커스텀 예외),
+                     pagination.py(CommonPagination), permissions.py(IsAuthenticatedOr401)
+  apps/astronomy/    models(Neo, CloseApproach, OrbitalData, HostStar, Exoplanet, NeoFetchLog),
+                     views, serializers, filters.py(외계행성 다중 조건 검색), units.py(LD·광년 환산 — 384400은 여기만),
+                     services/(nasa_neo.py, exoplanet_archive.py — 외부 API 격리), management/commands/fetch_exoplanets.py
+  apps/accounts/     인증 API 5종 (세션 쿠키 + CSRF)
+  apps/watchlist/    NeoWatchlist, ExoplanetWatchlist + API 4종
+frontend/src/
+  api/client.js      axios 인스턴스 (withCredentials, CSRF, 오류 봉투 → {code, message, fields, status})
+  components/common/ DataField (null → "—", 수치는 Mono 서체)
+  components/layout/ Header, Layout(Outlet)
+  components/neo/    NeoSummary, NeoListItem, DateNavigator
+  pages/             라우트별 화면 9개 (NeoDashboardPage 외 대부분 스텁)
+  utils/date.js      날짜 ↔ 문자열 (로컬 시간 기준)
+  index.css          디자인 토큰(:root) + 섹션별 스타일 (전역 CSS 한 파일)
+```
+
+### 3.3 지켜온 설계 원칙 (어기지 말 것)
+- **NASA 원본 NULL을 0이나 빈 값으로 바꾸지 않는다.** 화면에서만 `—`로 표시.
+- **도메인 계산은 서버에서.** LD 환산(`384400`)·광년↔파섹은 `backend/apps/astronomy/units.py`에만. 프론트에 `384400` 하드코딩 금지(M3 완료 기준).
+- API 필드는 전 구간 `snake_case`. 오류는 `{"error": {code, message, fields?}}` 봉투.
+- 리소스 없음 = 404(`ResourceNotFound`), 중복 = 409(`IntegrityError` → `AlreadyExists`), 비로그인 = 401(`IsAuthenticatedOr401`).
+- 스로틀은 NASA를 실제로 부르는 지점(캐시 미스)에서만 직접 검사한다(`get_throttles()`가 `[]` 반환).
+- `--hazard` 색(#D64545)은 위험 표시 전용. 버튼·링크에 쓰지 않는다.
+- 범위 관리: 새 기능이 떠오르면 구현하지 않고 `01` 문서 3.2절(MVP 제외 범위)에 적는다. 확정된 "나중에" 항목: Tailwind 리팩토링(v1.0 이후), error boundary·커스텀 달력(M5).
+
+### 3.4 자주 빠지는 함정 (DEVLOG에서 반복된 것)
+- `getattr(obj, "속성", 기본값)` 계열은 오타가 나도 에러 없이 기본값으로 넘어간다(`throttle_scope`, `is_custom_error` 사례). 반드시 실제 응답으로 검증.
+- 역방향 OneToOne(`neo.orbital_data`)은 행이 없으면 예외 → `getattr(neo, "orbital_data", None)`.
+- `manage.py shell`에서 코드 수정은 shell 재시작 전까지 반영 안 됨. `LocMemCache`는 프로세스별이라 shell에서 runserver 캐시가 안 보인다.
+- `django.test.Client`는 Host가 `testserver` → `ALLOWED_HOSTS`에 없으면 `DisallowedHost`.
+- 프론트 날짜: `toISOString()`·`new Date("YYYY-MM-DD")`는 UTC 기준이라 하루 어긋난다 → `utils/date.js`만 사용.
+- 반복 오타 주의 필드: `observations_used`, `data_arc_days`.
