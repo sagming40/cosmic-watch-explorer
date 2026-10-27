@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M3 — 프론트 기반 ✅** (2026-10-27) |
-| 다음 작업 | M4 진행중 — 화면 9개 전부 구현 완료 → **산점도 색 기준 결정 + `NeoScatterChart`** → 01 문서 9장 MVP 22개 대조 |
+| 다음 작업 | M4 진행중 — 화면 9개 전부 구현 + 화면·API 로그인 잠금 완료 → **산점도 색 기준 결정 + `NeoScatterChart`** → 01 문서 9장 MVP 22개 대조 |
 | 최근 병합 커밋 | `merge(M3): M3 중간 작업분 병합 및 main 단일 브랜치 전환 (#3)` |
 | 작업 방식 | 2026-10-27부터 `main` 단일 브랜치, Claude Code 로컬 세션 — 규칙은 [`CLAUDE.md`](../CLAUDE.md) |
 
@@ -374,6 +374,29 @@ M2 API 검증은 curl·Client(Origin 없음)로만 해서 안 보였다. "로그
 
 4개가 찬 뒤에도 결과 줄 버튼이 켜져 있고 눌러도 아무 일 없음(addPlanet의 방어 코드가 조용히 막음) → `full`을 넘겨 버튼을 끄고 "한 그룹에 4개까지" 안내.
 
+### [설계] 화면·조회 API 전체를 로그인 뒤로 잠금 — "비회원 탐색" 설계 번복
+
+**결정 (사용자)**: 로그인이 생겼으니 주소만 치면 보이는 화면을 잠근다. 범위는 3안 중 "화면 + API"(추천안). 01 v1.3 · 03 v1.9 · 04 v1.6 · 05 v1.21에 변경 표시.
+
+| 안 | 내용 | 판단 |
+|---|---|---|
+| 화면 + API (채택) | 프론트 전체 ProtectedRoute + 백엔드 조회 API도 401 | 화면만 잠그면 `/api/neo/`를 직접 치면 데이터가 다 보인다 ─ 현관만 잠그고 창문 열어 둔 꼴 |
+| 화면만 | 프론트만 감싸기 | 빠르지만 잠금이 아님 |
+| 그대로 | 비회원 탐색 유지 | 포트폴리오 면접관이 가입 없이 써 볼 수 있는 장점은 포기 |
+
+**어떻게**
+- 백엔드: 뷰마다 붙이지 않고 `DEFAULT_PERMISSION_CLASSES = [IsAuthenticatedOr401]`("기본 잠금"). 공개는 인증 API 4개만 `AllowAny` 명시 ─ 새 API를 만들고 빠뜨려서 열리는 사고가 없다. 덤: 비로그인 요청은 뷰 전에 401이라 NASA 호출·스로틀을 소모하지 않는다
+- 프론트: `/login`·`/signup` 밖의 라우트를 path 없는 `<Route element={<ProtectedRoute><Outlet/></ProtectedRoute>}>` 하나로 감쌈 ─ 화면도 "기본 잠금". 비로그인 헤더는 메뉴 숨김 + 로그인/회원가입 전환 버튼
+- 401 처리를 한 곳으로: `AuthProvider`에 응답 감시(interceptor) ─ `AUTH_REQUIRED`면 로그인 상태를 지운다 → ProtectedRoute가 `/login?next=지금 주소`. Watchlist 화면·저장 버튼에 있던 화면별 `logout()` 처리는 지움
+- 로그아웃 뒤엔 `/login?next=보던 주소` (Header에서 `navigate("/login")`을 했지만 문지기의 이동이 나중에 덮어써서, 문지기 동작으로 통일)
+
+### [백엔드] 권한 클래스를 전역 기본값으로 올리자 순환 import
+
+**증상** `manage.py check`: `ImportError: Could not import 'config.permissions.IsAuthenticatedOr401' for API setting 'DEFAULT_PERMISSION_CLASSES' … cannot import name 'exception_handler' from partially initialized module 'rest_framework.views'`. 켜 둔 runserver도 이 오류로 내려가 있었다.
+**원인** `rest_framework.views`가 로드되며 설정을 읽음 → `config.permissions` → (맨 위 import) `config.exception_handler` → `rest_framework.views`(아직 로드 중) ─ 한 바퀴.
+**해결** `AuthRequired` import를 `has_permission()` 안으로 옮김. 요청을 처리할 땐 모든 모듈이 이미 올라와 있다.
+**배운 것** 설정에 "문자열 경로"로 등록하는 클래스(DEFAULT_*_CLASSES)는 DRF 내부보다 먼저 import될 수 있다. 그 모듈은 DRF의 views·exception 쪽을 맨 위에서 import하지 않는다.
+
 **열린 질문 (M4 시각화 때)**
 - 03 문서 6.1절 산점도의 "점 색상 = 위험 여부"가 NASA PHA(`is_hazardous`)인지 "1 LD 안쪽"인지. 지금 대시보드 산점도는 스케일 바와 같은 1 LD 기준 → M4 완료 기준 "산점도에서 위험 소행성이 색으로 구분된다"를 확인할 때 정해야 함.
 
@@ -428,8 +451,13 @@ M2 API 검증은 curl·Client(Origin 없음)로만 해서 안 보였다. "로그
 - `feat(M4): 내 관심 천체(Watchlist) 화면 ─ 탭·다음 접근·삭제 + 실행 취소`
 - `docs(M4): Watchlist 화면 기록`
 - `feat(M4): 크기 비교 화면 ─ 지구 고정, 소행성 이중 원, 로그 눈금 띠`
+- `docs(M4): 크기 비교 기록, M4 완료 기준 2개 체크`
 - `chore(M4): /mockup 라우트 삭제 (목업 폴더 삭제의 나머지 절반)` ─ 폴더 삭제는 실수로 feat 커밋에 섞임, 그 두 커밋만 꺼내면 빌드 깨짐
-- `docs(M4): 크기 비교 기록, M4 완료 기준 2개 체크` (이 커밋 자체)
+- `docs(M4): DEVLOG 커밋 목록을 실제 커밋에 맞춤`
+- `fix(M4): 권한 클래스를 전역 기본값으로 올릴 때의 순환 import 방지`
+- `feat(M4): 조회 API 전체를 로그인 필요로 (기본 잠금)`
+- `feat(M4): 로그인·회원가입 외 전체 화면 잠금 + 401 공통 처리`
+- `docs(M4): 화면·API 잠금 결정 기록, 01·03·04 문서 비회원 설계 변경 표시` (이 커밋 자체)
 
 **다음에 할 일** (다음 세션은 여기서 시작)
 - **M4 이어서** ─ ~~외계행성 카탈로그·상세~~ ~~로그인·회원가입~~ ~~Watchlist 화면~~ ~~크기 비교~~(10-27 완료) → **산점도** (`NeoScatterChart`는 대시보드에 이미 있음 ─ 아래 열린 질문의 색 기준을 정하고 M4 완료 기준 "위험 소행성이 색으로 구분" 확인) → 01 문서 9장 MVP 22개 대조 → (P2) 산점도 색 기준 결정

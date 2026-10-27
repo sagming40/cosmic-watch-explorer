@@ -6,7 +6,7 @@
 | 문서명 | API 명세서 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.5 |
+| 버전 | v1.6 |
 | 최종 수정일 | 2026-09-10 |
 | 프레임워크 | Django REST Framework |
 | 상태 | 확정 |
@@ -21,6 +21,7 @@
 | v1.3 | 2026-09-05 | 6.1 정렬 NULL 처리 설계 결정 추가, 6.1 오류 예시 메시지 정정, 6.3 캐싱 방식을 cache_page에서 직접 캐싱으로 변경 (M2 ExoplanetListView·ExoplanetMetaView 구현 반영) |
 | v1.4 | 2026-09-08 | 7.3 POST 응답에 `404`(대상 미존재) 추가 — 최초 설계에 없던 구멍, 프로젝트 전반의 "리소스 없음=404" 관례로 확정. 7.3 `409` 예시 메시지를 실제 구현 값으로 정정. 7.5 POST/DELETE 응답 예시 신설, 식별자 키 `exoplanet_id`로 통일 (M2 인증·Watchlist 구현 반영) |
 | v1.5 | 2026-09-10 | 5.1절 summary에 `largest_diameter_m`/`largest_diameter_name` 추가, 응답 예시·설계 결정 ①의 예시 수치를 실측값으로 교체 (M3 NeoDashboardView 구현 반영) |
+| v1.6 | 2026-10-27 | 3장 6~11번 조회 API 인증 "—" → "필요" (기본 잠금), 2장 Vite 프록시 예시에 `changeOrigin: false` 반영 |
  
 ---
  
@@ -150,10 +151,11 @@ axios는 ②③ 설정만 해두면 `POST`, `PUT`, `DELETE`일 때 자동으로 
 React(`5173`)와 Django(`8000`)는 포트가 달라 브라우저가 다른 출처로 판단하고 쿠키를 차단한다. Vite 프록시로 같은 출처처럼 만든다.
  
 ```javascript
-// vite.config.js
+// vite.config.ts
 export default {
   server: {
-    proxy: { '/api': 'http://localhost:8000' }
+    // changeOrigin: false ─ Host를 그대로 넘겨야 로그인 후 POST가 CSRF Origin 검사를 통과한다 (10-27 수정, DEVLOG)
+    proxy: { '/api': { target: 'http://localhost:8000', changeOrigin: false } }
   }
 }
 ```
@@ -171,18 +173,20 @@ export default {
 | 3 | POST | `/api/auth/signup/` | 회원가입 | — |
 | 4 | POST | `/api/auth/login/` | 로그인 | — |
 | 5 | POST | `/api/auth/logout/` | 헤더 | 필요 |
-| 6 | GET | `/api/neo/` | NEO 대시보드 | — |
-| 7 | GET | `/api/neo/{nasa_id}/` | NEO 상세 | — |
-| 8 | GET | `/api/neo/{nasa_id}/approaches/` | 접근 기록 더 보기 | — |
-| 9 | GET | `/api/exoplanets/` | 카탈로그 | — |
-| 10 | GET | `/api/exoplanets/{id}/` | 외계행성 상세 | — |
-| 11 | GET | `/api/exoplanets/meta/` | 필터 드롭다운 | — |
+| 6 | GET | `/api/neo/` | NEO 대시보드 | 필요 (10-27) |
+| 7 | GET | `/api/neo/{nasa_id}/` | NEO 상세 | 필요 (10-27) |
+| 8 | GET | `/api/neo/{nasa_id}/approaches/` | 접근 기록 더 보기 | 필요 (10-27) |
+| 9 | GET | `/api/exoplanets/` | 카탈로그 | 필요 (10-27) |
+| 10 | GET | `/api/exoplanets/{id}/` | 외계행성 상세 | 필요 (10-27) |
+| 11 | GET | `/api/exoplanets/meta/` | 필터 드롭다운 | 필요 (10-27) |
 | 12 | GET | `/api/watchlist/neo/` | 내 관심 천체 | 필요 |
 | 13 | POST | `/api/watchlist/neo/` | 저장 버튼 | 필요 |
 | 14 | DELETE | `/api/watchlist/neo/{nasa_id}/` | 저장 해제 | 필요 |
 | 15 | GET | `/api/watchlist/exoplanets/` | 내 관심 천체 | 필요 |
 | 16 | POST | `/api/watchlist/exoplanets/` | 저장 버튼 | 필요 |
 | 17 | DELETE | `/api/watchlist/exoplanets/{id}/` | 저장 해제 | 필요 |
+
+> **2026-10-27 변경 ─ 기본 잠금.** `settings.py`의 `DEFAULT_PERMISSION_CLASSES = [IsAuthenticatedOr401]`로 모든 API가 로그인 필요가 기본이고, 인증 API 1~4번만 `AllowAny`로 연다. 6~11번은 처음엔 "—"(누구나)였다. 비로그인 요청은 뷰에 들어가기 전에 401로 막혀서 NASA를 부르지도 않는다(스로틀 낭비도 없다). 새로 만드는 API는 따로 붙이지 않아도 잠긴다.
  
 ### 3.1 크기 비교 전용 API를 만들지 않는 이유
  

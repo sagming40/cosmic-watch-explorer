@@ -157,6 +157,7 @@ Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필
 | `/watchlist` (로그인 필요) | 탭 개수, 삭제 → 실행 취소 5초, 전부 지우면 빈 화면, `?tab=exo` 새로고침 유지. 테스트 계정은 확인 후 지울 것 |
 | `/compare?exo=72,6400,4546&neo=2099942,9999999` | 지구 고정(자물쇠), 크기 미측정(프록시마 b), 축척 축소(87배), 이중 원(아포피스), 없는 id 칩, 로그 눈금 띠. 대상 없는 `/compare`도 확인 |
 
+- **2.5절 주소는 전부 로그인해야 열린다(10-27~).** 테스트 계정은 화면에서 가입해 쓰고(비밀번호는 대화에 남기지 않는다), 확인 뒤 `manage.py shell`에서 지운다.
 - NEO 상세는 처음 열 때 NASA Lookup을 부른다 → 스로틀 `neo_detail_fetch` 30회/시간. 반복 확인은 같은 ID로.
 - Claude가 브라우저 패널로 확인할 때, 창이 가려져 있으면 **스크린샷이 예전 화면으로 찍힐 수 있다** → 색·개수 같은 판정은 `javascript_tool`로 계산값(`getComputedStyle`, DOM 개수)을 읽어서 한다.
 
@@ -196,7 +197,7 @@ frontend/src/
   components/compare/ SizeGroups(행성·소행성 그림, 그룹마다 실제 비율), LogScaleStrip(한 자 로그 눈금), AddTargetPanel(외계행성 검색·오늘의 소행성),
                      TargetChip(지구 = 자물쇠), CompareTable, types.ts
   components/watchlist/ NeoWatchItem·ExoWatchItem(관심 천체 한 줄), RemoveButton, UndoToast(실행 취소 5초), WatchlistEmpty
-  components/auth/   AuthLayout(로그인·가입 틀 + next 안내), AuthFields(입력칸·비밀번호 보기·FormAlert), ProtectedRoute(/watchlist 문지기)
+  components/auth/   AuthLayout(로그인·가입 틀 + next 안내), AuthFields(입력칸·비밀번호 보기·FormAlert), ProtectedRoute(로그인·가입 외 전체 화면의 문지기)
   components/layout/ Header(알약 메뉴 + 로그인 상태), Layout(배경 + Outlet)
   components/neo/    대시보드: DateNavigator, NeoSummary, LunarDistanceBar, NeoScatterChart, NeoListItem, NeoFaq
                      상세: OrbitPanel(궤도 모식도), NeoSizePanel, ObservationPanel, ApproachTable
@@ -215,6 +216,8 @@ frontend/src/
 - **도메인 계산은 서버에서.** LD 환산(`384400`)·광년↔파섹은 `backend/apps/astronomy/units.py`에만. 프론트에 `384400` 하드코딩 금지(M3 완료 기준).
 - API 필드는 전 구간 `snake_case`. 오류는 `{"error": {code, message, fields?}}` 봉투.
 - 리소스 없음 = 404(`ResourceNotFound`), 중복 = 409(`IntegrityError` → `AlreadyExists`), 비로그인 = 401(`IsAuthenticatedOr401`).
+- **기본 잠금 (10-27~)**: 백엔드는 `DEFAULT_PERMISSION_CLASSES = [IsAuthenticatedOr401]`, 공개는 인증 API 4개(csrf·me·signup·login)만 `AllowAny`로 명시. 프론트는 `/login`·`/signup` 말고 전부 `ProtectedRoute` 아래. 새 API·화면은 따로 안 붙여도 잠긴다 ─ 공개가 필요하면 그때 명시적으로 연다.
+- 401(세션 만료)은 화면마다 처리하지 않는다 ─ `AuthProvider`의 응답 감시가 로그인 상태를 지우면 `ProtectedRoute`가 `/login?next=지금 주소`로 보낸다.
 - 스로틀은 NASA를 실제로 부르는 지점(캐시 미스)에서만 직접 검사한다(`get_throttles()`가 `[]` 반환).
 - `--hazard` 색(#D64545)은 위험 표시 전용. 버튼·링크에 쓰지 않는다.
 - 범위 관리: 새 기능이 떠오르면 구현하지 않고 `01` 문서 3.2절(MVP 제외 범위)에 적는다. 확정된 "나중에" 항목: error boundary·커스텀 달력(M5).
