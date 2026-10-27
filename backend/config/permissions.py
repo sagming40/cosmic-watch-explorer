@@ -7,8 +7,6 @@ config/에 두는 이유 ─ 특정 앱의 사정이 아닌, 프로젝트 전역
 
 from rest_framework.permissions import IsAuthenticated
 
-from config.exception_handler import AuthRequired
-
 
 class IsAuthenticatedOr401(IsAuthenticated):
     """
@@ -25,6 +23,11 @@ class IsAuthenticatedOr401(IsAuthenticated):
     def has_permission(self, request, view):
         if super().has_permission(request, view):
             return True
+
+        # ⚠️ import를 함수 안에서 한다 (10-27) ─ 이 클래스가 settings의 DEFAULT_PERMISSION_CLASSES가 되면서
+        # rest_framework.views → (설정 읽기) → config.permissions → config.exception_handler → rest_framework.views
+        # 로 한 바퀴 도는 순환 import가 생겼다. 실제로 쓰는 순간(요청 처리 중)엔 모든 모듈이 이미 다 올라와 있다.
+        from config.exception_handler import AuthRequired
 
         # False를 반환하지 않고 직접 예외를 던지는 것이 이 클래스의 존재 이유이다.
         # False를 반환하면 DRF가 대신 NotAuthenticated를 던지고 → 403으로 강등된다.
