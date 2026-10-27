@@ -4,8 +4,11 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { api } from "../api/client";
+import { formatDate } from "../utils/date";
 
 import NeoSummary from "../components/neo/NeoSummary";
+import NeoListItem from "../components/neo/NeoListItem";
+import DateNavigator from "../components/neo/DateNavigator";
 
 // ──────────────────────────────────────────────────────────────
 // Date 객체 → 'YYYY-MM-DD' 문자열
@@ -16,15 +19,6 @@ import NeoSummary from "../components/neo/NeoSummary";
 // 즉, 아침 9시에 접속을 하면 화면에 어제 날짜가 뜨는 버그가 된다.
 // 벽시계를 볼 때 런던 시계를 보는게 아니라 내 방 시계를 보는 것
 // ──────────────────────────────────────────────────────────────
-function formatDate(dateObj) {
-  const yyyy = dateObj.getFullYear();
-  //getMonth()는 0부터 시작한다. (0 = 1월) 사람이 읽는 달로 변환하려면 +1
-  // padStart(2, "0") = 한 자리면 앞에 0을 채운다. ("9" → "09")
-  const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
-  const dd = String(dateObj.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 function NeoDashboardPage() {
   // ── 조회 날짜는 URL 주소창에 둔다 ──
   // useSearchParams는 useState와 사용하는 모양이 거의 같은데,
@@ -90,6 +84,13 @@ function NeoDashboardPage() {
     }; 
   }, [date]);
 
+  // DateNavigator가 새 날짜를 알려오면, URL querystring을 갱신한다.
+  // 실행되면 date 값이 바뀌고, 그걸 지켜보던 useEffect가 자동으로
+  // 새 API 요청을 날린다 ─ fetch 코드를 직접 다시 부르지 않아도 됨
+  function handleDateChange(newDate) {
+    setSearchParams({ date: newDate });
+  } 
+
   // ─── 세 화면을 순차적으로 처리 ───
   // Loading/Error를 먼저 걸러내고 나면, 아래쪽 코드는
   // "data가 반드시 존재한다"라고 믿고 사용할 수 있다. 조건문이 깔끔해지는 요령.
@@ -109,7 +110,13 @@ function NeoDashboardPage() {
     <div>
       <h1>지구 근접 소행성</h1>
       <p>조회 날짜: {date}</p>
+      <DateNavigator date={date} onChange={handleDateChange} />
       <NeoSummary summary={data.summary} />
+      <div className="neo-list">
+        {data.results.map((neo) => (
+          <NeoListItem key={neo.nasa_id} neo={neo} />
+        ))}
+      </div>
 
       {/* 원본 JSON ─ 개발 중 확인용. */}
       <details>
