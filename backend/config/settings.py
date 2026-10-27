@@ -153,7 +153,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+# 한국어 ─ Django·DRF가 기본으로 만드는 오류 문구(비밀번호 검증기, "이 필드는 필수" 등)가 한글로 나온다.
+# en-us였을 때 회원가입 오류가 "This password is too common."처럼 영어로 섞여 나왔다 (10-27).
+LANGUAGE_CODE = "ko-kr"
 
 TIME_ZONE = "UTC"
 
