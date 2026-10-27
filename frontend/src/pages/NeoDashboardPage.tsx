@@ -5,10 +5,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { CircleAlert, Database, RotateCw } from "lucide-react";
+import { Database } from "lucide-react";
 
 import { api, type AppError } from "@/api/client";
 import { Panel } from "@/components/common/Panel";
+import { ErrorState, LoadingState } from "@/components/common/StateViews";
 import DateNavigator from "@/components/neo/DateNavigator";
 import LunarDistanceBar from "@/components/neo/LunarDistanceBar";
 import NeoFaq from "@/components/neo/NeoFaq";
@@ -109,8 +110,15 @@ function NeoDashboardPage() {
         </div>
       </section>
 
-      {isLoading && <LoadingState slow={slowKey === key} />}
-      {error && <ErrorState error={error} onRetry={() => setRetry((n) => n + 1)} onToday={() => goTo(today)} />}
+      {isLoading && <LoadingState slow={slowKey === key} blocks={["h-32", "h-44", "h-96"]} />}
+      {error && (
+        <ErrorState
+          error={error}
+          onRetry={() => setRetry((n) => n + 1)}
+          // 잘못된 날짜는 다시 시도해도 똑같다 → 오늘로 보내는 버튼
+          action={error.code === "INVALID_DATE" ? <Button onClick={() => goTo(today)}>오늘로 가기</Button> : undefined}
+        />
+      )}
       {data && (
         <Dashboard
           data={data}
@@ -238,54 +246,6 @@ function Dashboard({ data, isToday, date, view, onViewChange, onMove }: Dashboar
         <span>학습·포트폴리오 목적이며 실제 충돌 예측에 사용하지 마세요.</span>
       </footer>
     </>
-  );
-}
-
-// ─── 로딩 ─ 스피너 대신 자리표시자(스켈레톤). 화면이 비어 보이지 않게 (03 문서 7.2절) ─────
-function LoadingState({ slow }: { slow: boolean }) {
-  const block = "rounded-xl border border-line bg-panel/60 motion-safe:animate-pulse";
-  return (
-    <div aria-busy="true" aria-live="polite">
-      {slow && <p className="mb-3 text-sm text-dim">NASA에서 데이터를 가져오는 중입니다. 처음 조회하는 날짜는 몇 초 걸릴 수 있어요.</p>}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className={cn(block, "h-32")} />
-        ))}
-      </div>
-      <div className={cn(block, "mt-3 h-44")} />
-      <div className={cn(block, "mt-3 h-96")} />
-    </div>
-  );
-}
-
-// ─── 오류 ─ 사과하지 않는다. 무슨 일이 있었고 지금 무엇을 할 수 있는지 (03 문서 7.3절) ─────
-function ErrorState({ error, onRetry, onToday }: { error: AppError; onRetry: () => void; onToday: () => void }) {
-  const message: Partial<Record<AppError["code"], string>> = {
-    INVALID_DATE: "주소의 날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)",
-    RATE_LIMITED: "요청이 많아 잠시 멈췄어요. 잠시 후 다시 시도해 주세요.",
-    UPSTREAM_ERROR: "NASA 데이터 서버에 연결할 수 없습니다. 저장된 데이터가 없는 날짜예요.",
-    NETWORK_ERROR: "서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.",
-    UNKNOWN_ERROR: "서버에 연결할 수 없습니다.",
-  };
-  return (
-    <Panel className="flex flex-col items-center py-14 text-center">
-      <span className="grid size-11 place-items-center rounded-full bg-line text-bone">
-        <CircleAlert className="size-5" />
-      </span>
-      <p role="alert" className="mt-4 font-medium">
-        {message[error.code] ?? error.message}
-      </p>
-      <p className="mt-1 font-mono text-xs text-dim">{error.code}</p>
-      <div className="mt-6 flex gap-2">
-        {error.code === "INVALID_DATE" ? (
-          <Button onClick={onToday}>오늘로 가기</Button>
-        ) : (
-          <Button onClick={onRetry}>
-            <RotateCw /> 다시 시도
-          </Button>
-        )}
-      </div>
-    </Panel>
   );
 }
 
