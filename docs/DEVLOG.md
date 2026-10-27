@@ -60,16 +60,18 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M2 — 백엔드 완성 ✅** |
-| 다음 작업 | M3 진행중 — 라우팅/디자인 토큰/Header/DataField 완료. NEO 대시보드(DateNavigator/NeoSummary/NeoListItem) → LunarDistanceBar → NEO 상세 순 |
-| 최근 병합 커밋 | `merge(M2): 인증 API 및 Watchlist API 구현 (#2)` |
+| 다음 작업 | M3 진행중 — NEO 대시보드(DateNavigator/NeoSummary/NeoListItem) 완료. LunarDistanceBar(Recharts 버전 재작성) → NEO 상세 순 |
+| 최근 병합 커밋 | `merge(M3): M3 중간 작업분 병합 및 main 단일 브랜치 전환 (#3)` |
+| 작업 방식 | 2026-10-27부터 `main` 단일 브랜치, Claude Code 로컬 세션 — 규칙은 [`CLAUDE.md`](../CLAUDE.md) |
 
 ### 환경 요약
 
 | 항목 | 값 |
 |---|---|
-| Python | venv (backend/venv) |
+| Python | venv (backend/venv), 3.14 (회사 PC 3.14.8) |
 | Django | 6.1 |
-| Node | v24.15.0 (npm 11.12.1) |
+| Node | v24 (회사 PC v24.22.0 / npm 11.19.1) |
+| 작업 기기 | 회사 PC(회사 Claude 계정) / 집 PC·노트북(개인 Claude 계정) — 전부 로컬 세션. 학교 PC는 2026-10부터 사용 안 함 |
 | DB | MariaDB, `cosmic_watch` (utf8mb4), 로컬 |
 | Django ↔ DB | 연결 확인됨 (`migrate` 성공, 기본 테이블 존재) |
 | Frontend 린터 | ESLint |
@@ -82,6 +84,66 @@
 ## 기록
 
 <!-- 최신 항목을 위에 추가한다 -->
+
+---
+
+## 2026-10-27 (화) — Claude Code 이전, `main` 단일 브랜치 전환, 회사 PC 세팅
+
+### [환경] 작업 환경 변경 — claude.ai 채팅 → Claude Code, 학교 PC → 회사 PC
+
+취업으로 학교 PC를 더 이상 쓰지 않고, 회사 PC(회사 Claude 계정)와 집 PC·노트북(개인 Claude 계정)에서 작업한다. 그동안 claude.ai 채팅 + Project Knowledge 수동 업로드로 진행하던 방식을 Claude Code 로컬 세션으로 바꿨다. 기기·계정마다 Claude 메모리가 따로라서, 기기와 무관하게 지켜야 할 규칙(작업 방식·커밋·문서·새 기기 세팅 절차)을 저장소 루트 `CLAUDE.md`에 모았다.
+
+**회사 PC 세팅 검증**: `npm ci` → `showmigrations` 전부 `[X]` → Exoplanet 6,451건 확인(9/1 기록 6,354건보다 많음 — 수집 시점 차이) → `runserver` + `npm run dev`로 대시보드·라우팅 정상, 같은 날짜 재조회 시 `fetch_feed` 미호출(캐시) 확인.
+
+### [Git] `wip:` 커밋 정리 후 `main` 병합, 이후 `main` 단일 브랜치
+
+9/16 세션이 끊기며 남긴 `wip: 작업중`(bb6830a)을 `reset --soft`로 되감아 `feat(M3)` 정식 커밋으로 재구성 → 브랜치에 `--force-with-lease` → `main`에 병합(PR #3) → `M3-frontend-base` 브랜치 삭제. 이후로는 브랜치·PR 없이 `main`에서 바로 작업·push한다(README "개발 워크플로우" 반영).
+
+### [Git] 미push 작업 유실 — 9/16 Recharts 작업
+
+**증상**
+9/16 세션에서 만든 Recharts 버전 LunarDistanceBar, `recharts` 의존성, 툴팁 CSS, 문서 수정이 원격 어디에도 없었다.
+
+**원인**
+마지막 `wip:` 커밋 이후의 작업을 커밋·push하지 않은 채, 그 기기(집 PC/노트북)의 프로젝트 폴더를 정리하며 지웠다.
+
+**해결**
+되살릴 방법이 없어 회사 PC에서 다시 작성하기로 함. 미완성이던 CSS 버전 LunarDistanceBar와 `utils/scale.js`는 Recharts 전환 결정에 따라 `wip:` 정리 커밋에서 제외했다.
+
+**배운 것**
+"push하지 않은 커밋/변경은 그 기기에만 있다" — 기기를 오가는 작업에선 세션 끝 push가 저장 버튼이다. `CLAUDE.md` 2.4절에 규칙으로 고정.
+
+### [설계] 9/16 세션 결정 사항 (당시 문서화 전에 유실되어 지금 기록)
+
+- **조회 날짜는 URL `?date=`(`useSearchParams`)에 둔다** — 새로고침·뒤로가기·공유가 공짜로 된다.
+- **달력은 브라우저 기본 `<input type="date">`** — 커스텀 달력은 범위 확대. 알려진 동작: 달력 팝업에서 월 이동 화살표만 눌러도 `onChange`가 발생해 조회가 바뀐다. 완료 기준엔 영향 없어 그대로 두고 M5에서 커스텀 달력 여부 판단.
+- **LunarDistanceBar: CSS 직접 구현 → Recharts** — 실측 189 LD 등이 0.1~100 LD 범위 끝에 뭉쳐 범위를 0.1~500 LD로 확대했고, 이어서 로그 축 계산을 Recharts에 맡기기로 결정(산점도에서 어차피 도입). `03` v1.2 반영.
+- **스케일 바의 빨간 점 기준 = "오늘 1 LD 이내 접근"** — 목록의 `is_hazardous`(NASA PHA 분류)와 다른 기준.
+- **CSS 전략: Tailwind는 v1.0 이후로 미룬다** — 지금은 전역 `index.css` + 디자인 토큰(CSS 변수). v1.0 릴리즈 후 확장 단계에서 리팩토링.
+- **⚠ 아이콘은 `⚠︎`(텍스트 표현 선택자)** — 컬러 이모지로 렌더링되면 CSS `color`(`--hazard`)가 먹지 않는다.
+
+### [환경] `requirements.txt` 버전 고정
+
+기존엔 패키지 이름만 있어서 기기마다 설치 시점의 최신 버전이 깔릴 수 있었다(기기 3대 + 계정 2개 환경에서 위험). 회사 PC의 실제 설치 버전으로 고정(`django==6.1.2` 등).
+
+**알려진 이슈 (이번 세션에서 확인, 미처리)**
+- `npm run lint` 에러 5건 (`react-hooks/set-state-in-effect` 등, NeoDashboardPage의 useEffect 안 `setIsLoading(true)`).
+- `npm audit` high 5건 — 런타임은 `follow-redirects`(axios 의존) 1건, 나머지는 개발 도구. 별도 `chore` 커밋으로 처리 예정.
+- `settings.py`의 `ALLOWED_HOSTS = []` — 9/8 기록엔 변경했다고 되어 있으나 실제 코드는 빈 목록(테스트 Client 검증 시 shell 안에서만 임시 추가했던 것으로 보임).
+- `NeoListItem`의 `formatDiameterRange`가 직경 null이면 `"0 ~ 0"` 표시 (`Math.round(null)` = 0) — NULL은 `—` 원칙 위반.
+- NASA API 키가 과거 채팅 로그(traceback URL)에 노출된 적 있음 → 재발급 권장.
+
+**이번 세션 커밋**
+- `feat(M3): NeoListItem·DateNavigator 구현 및 날짜 유틸(utils/date.js) 분리` (wip 재정리)
+- `docs: CLAUDE.md 추가 — main 단일 브랜치·자동 커밋 규칙, 기기 간 작업 절차`
+- `chore(M3): requirements.txt 버전 고정`
+- `docs(M3): DEVLOG·05·03·README 갱신 — 작업 방식 전환 및 9/16 결정 사항 기록` (이 커밋 자체)
+- `merge(M3): M3 중간 작업분 병합 및 main 단일 브랜치 전환 (#3)`
+
+**다음에 할 일**
+- LunarDistanceBar Recharts 버전 재작성 (`npm install recharts`) → 1 LD 이내 빨간 점·범위 밖 빈 원 실물 확인
+- NEO 상세 (`ApproachTable`, `OrbitPanel`, "더 보기") → M3 완료 기준 실측
+- 위 알려진 이슈 정리 (lint, `formatDiameterRange` null, npm audit)
 
 ---
 
