@@ -1,4 +1,3 @@
-import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router";
 
 import Layout from "./components/layout/Layout";
@@ -15,9 +14,6 @@ import NotFoundPage from "./pages/NotFoundPage";
 import AuthProvider from "./auth/AuthProvider";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
-// 디자인 목업 (/mockup) ─ 개발 서버(npm run dev)에서만 존재한다.
-// 배포 빌드에서는 import.meta.env.DEV가 false로 바뀌어 이 코드와 목업 파일이 통째로 빠진다.
-const MockupPage = import.meta.env.DEV ? lazy(() => import("./mockup/MockupPage")) : null;
 
 function App() {
   return (
@@ -28,18 +24,6 @@ function App() {
           (예전엔 App의 useEffect에서 ensureCsrf()만 불렀다) */}
       <AuthProvider>
       <Routes>
-        {/* 목업은 자체 헤더가 있어서 Layout 밖에 둔다 */}
-        {MockupPage && (
-          <Route
-            path="/mockup"
-            element={
-              <Suspense fallback={null}>
-                <MockupPage />
-              </Suspense>
-            }
-          />
-        )}
-
         {/* path가 없는 Route = 껍데기 담당.
             아래 자식들은 전부 Layout의 <Outlet /> 자리에 들어간다. */}
         <Route element={<Layout />}>

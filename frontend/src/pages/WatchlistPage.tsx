@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
 // WatchlistPage.tsx ─ Path = '/watchlist' (로그인 필요 ─ App.tsx의 ProtectedRoute)
-// 03 문서 시나리오 4, 04 문서 7장. 디자인은 /mockup?screen=watchlist
+// 03 문서 시나리오 4, 04 문서 7장. 디자인은 /mockup?screen=watchlist 였다 (목업 폴더는 10-27 삭제 ─ git 기록에 있음)
 //
 // - 소행성 / 외계행성 탭 ─ 지금 탭은 주소(?tab=exo)에 둔다 (새로고침·뒤로 가기에도 그 탭)
 // - 삭제: 확인창 없이 즉시 DELETE + "실행 취소" 5초
