@@ -21,7 +21,7 @@ function WatchlistButton({ target, initialSaved }: { target: Target; initialSave
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { status, user } = useAuth();
+  const { status, user, logout } = useAuth();
   const shownSaved = saved && user !== null;
   const goLogin = () => navigate(loginPath(location.pathname + location.search));
 
@@ -43,7 +43,10 @@ function WatchlistButton({ target, initialSaved }: { target: Target; initialSave
     } catch (e) {
       const err = e as AppError;
       if (err.code === "AUTH_REQUIRED") {
-        goLogin(); // 세션이 만료된 경우 등 ─ 화면은 로그인으로 알고 있었지만 서버는 아니었다
+        // 세션이 만료된 경우 등 ─ 화면은 로그인으로 알고 있었지만 서버는 아니었다.
+        // 화면의 로그인 상태부터 지운다 (안 지우면 로그인 화면이 "이미 로그인됨"으로 보고 바로 되돌려 보낸다)
+        await logout().catch(() => {});
+        goLogin();
       } else if (err.code === "ALREADY_EXISTS") {
         setSaved(true); // 다른 탭에서 이미 저장한 경우 ─ 결과적으로 "저장됨"이 맞다
       }
