@@ -10,6 +10,11 @@ import DataField from "../common/DataField";
 // "한 번 사용할때 이리 공용화 하지 않는다" 
 // ─ 두 번째로 필요해지는 순간이 실제 공용 util이 맞는지 판단할 수 있는 시점이기 때문
 function formatDiameterRange(minM, maxM) {
+  // NASA가 직경을 추정하지 못한 소행성은 null이다.
+  // Math.round(null)은 0이 되어 "0 ~ 0"이라는 거짓 값이 찍힌다 → null을 그대로 넘겨
+  // DataField가 "—"로 표시하게 한다. (NULL 보존 원칙, 02 문서 1.1절)
+  if (minM === null || maxM === null) return null;
+
   // Math.round: 소수점 아래를 반올림 해서 Integer로.
   // "267.0269 m"보다 "267 m"이 훨씬 읽기 편하다.
   return `${Math.round(minM)} ~ ${Math.round(maxM)}`;  
