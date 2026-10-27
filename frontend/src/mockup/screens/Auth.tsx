@@ -3,7 +3,7 @@
 // 03 문서 4.3절(?next= 복귀), 시나리오 3 / 04 문서 4.3·4.4절
 //
 // ⚠️ 폼 오류 색: 빨강(--hazard)은 "위험 소행성 표시 전용"(03 문서 2.1절)이라 쓰지 않는다.
-//    오류는 아이콘 + 밝은 글자 + 입력칸 테두리 강조로 표시한다. (10-27 목업 결정, 사용자 확인 대기)
+//    오류는 아이콘 + 밝은 글자 + 입력칸 테두리 강조로 표시한다. (10-27 확정 ─ index.css에서 destructive 역할을 bone에 연결)
 // ═══════════════════════════════════════════════════════════════════
 
 import { useState, type ReactNode } from "react";
@@ -193,7 +193,7 @@ function PasswordField({
       <div className="relative">
         <Input
           type={visible ? "text" : "password"}
-          className={cn("h-11 pr-10 font-mono", "aria-invalid:border-bone aria-invalid:ring-bone/30 dark:aria-invalid:ring-bone/30")}
+          className="h-11 pr-10 font-mono"
           value={value}
           onChange={onChange ? (e) => onChange(e.target.value) : undefined}
           aria-invalid={error ? true : undefined}
