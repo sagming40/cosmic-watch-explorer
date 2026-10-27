@@ -154,7 +154,8 @@ Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필
 | `/exoplanets?radius_min=abc&year_min=1.5` · `?radius_min=50&distance_max_ly=10` | 입력값 오류(칸 표시) · 0건 안내 |
 | `/exoplanets/6400` · `/exoplanets/72` · `/exoplanets/4546` | 값 없음 `—`(프록시마 b) · 형제 행성 6개·거리 미측정(TRAPPIST-1 e) · 반지름 87배(축척 축소) ─ id는 기기 DB마다 다를 수 있으니 이름으로 검색해서 찾기 |
 | `/login?next=%2F%2Fevil.com` | next 무시 → 안내 문구 없음, 로그인 후 `/` (오픈 리다이렉트 방지) |
-| `/mockup?screen=…` | 남은 화면 디자인 (`compare`, `watchlist`) |
+| `/watchlist` (로그인 필요) | 탭 개수, 삭제 → 실행 취소 5초, 전부 지우면 빈 화면, `?tab=exo` 새로고침 유지. 테스트 계정은 확인 후 지울 것 |
+| `/mockup?screen=compare` | 남은 화면 디자인 (크기 비교) |
 
 - NEO 상세는 처음 열 때 NASA Lookup을 부른다 → 스로틀 `neo_detail_fetch` 30회/시간. 반복 확인은 같은 ID로.
 - Claude가 브라우저 패널로 확인할 때, 창이 가려져 있으면 **스크린샷이 예전 화면으로 찍힐 수 있다** → 색·개수 같은 판정은 `javascript_tool`로 계산값(`getComputedStyle`, DOM 개수)을 읽어서 한다.
@@ -192,6 +193,7 @@ frontend/src/
   lib/utils.ts       cn() — className 합치기 (shadcn 공용)
   components/common/ Panel·PanelTitle(카드 틀), StatCard(요약 칸), Field(라벨+수치), HazardBadge(위험 3중 표시),
                      StateViews(로딩 스켈레톤·오류 화면), WatchlistButton(저장/해제, 401이면 /login?next=), Pagination
+  components/watchlist/ NeoWatchItem·ExoWatchItem(관심 천체 한 줄), RemoveButton, UndoToast(실행 취소 5초), WatchlistEmpty
   components/auth/   AuthLayout(로그인·가입 틀 + next 안내), AuthFields(입력칸·비밀번호 보기·FormAlert), ProtectedRoute(/watchlist 문지기)
   components/layout/ Header(알약 메뉴 + 로그인 상태), Layout(배경 + Outlet)
   components/neo/    대시보드: DateNavigator, NeoSummary, LunarDistanceBar, NeoScatterChart, NeoListItem, NeoFaq
@@ -200,10 +202,10 @@ frontend/src/
   components/exoplanet/ FilterPanel(9개 조건), FilterChips, ExoplanetListItem, HostStarPanel, PlanetSizePanel, SiblingPlanets
   utils/exoplanetQuery.ts 검색 조건 ↔ 주소 변환, 칩 문구, 정렬 목록 (파라미터 이름 = API 이름)
   utils/format.ts    표시 포맷 (null → "—", KST 날짜, "약 N년 뒤") — 단위 환산은 하지 않는다
-  pages/             라우트별 화면 9개. 실제 구현: NeoDashboard·NeoDetail(M3), ExoplanetList·ExoplanetDetail·Login·Signup(M4). 나머지(Compare·Watchlist)는 스텁
+  pages/             라우트별 화면 9개. 실제 구현: NeoDashboard·NeoDetail(M3), ExoplanetList·ExoplanetDetail·Login·Signup·Watchlist(M4). 나머지(Compare)는 스텁
   utils/date.ts      날짜 ↔ 문자열 (로컬 시간 기준)
   mockup/            /mockup 디자인 목업 8화면 (개발 서버 전용, ?screen=로 전환). 대시보드·NEO 상세는 옮김 완료,
-                     외계행성 2화면·로그인·회원가입도 옮김. 남은 2화면(크기 비교·Watchlist)이 설계 기준. 전부 옮기면 폴더째 삭제
+                     외계행성 2화면·로그인·회원가입·Watchlist도 옮김. 남은 1화면(크기 비교)이 설계 기준. 전부 옮기면 폴더째 삭제
   index.css          Tailwind import + 디자인 토큰(:root) + 테마 연결(@theme) + 기존 섹션별 스타일(@layer)
 ```
 
