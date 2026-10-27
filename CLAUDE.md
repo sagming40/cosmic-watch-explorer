@@ -174,6 +174,7 @@ frontend/src/
   components/neo/    NeoSummary, NeoListItem, DateNavigator
   pages/             라우트별 화면 9개 (NeoDashboardPage 외 대부분 스텁)
   utils/date.ts      날짜 ↔ 문자열 (로컬 시간 기준)
+  mockup/            /mockup 디자인 목업 (개발 서버 전용, 디자인 확정 후 폴더째 삭제)
   index.css          Tailwind import + 디자인 토큰(:root) + 테마 연결(@theme) + 기존 섹션별 스타일(@layer)
 ```
 
@@ -190,7 +191,7 @@ frontend/src/
 - **새 코드는 Tailwind 유틸리티로 쓴다.** 색·서체·크기는 토큰 이름 유틸리티만: `bg-ink`/`bg-panel`/`border-line`/`text-bone`/`text-dim`/`text-sodium`/`text-hazard`, `font-sans`/`font-display`/`font-mono`, `text-display`/`text-h1`/`text-h2`/`text-body`/`text-label`. `bg-[#...]` 같은 임의 색 금지 — 색 값은 `index.css` `:root` 토큰 7개뿐(03 문서 2.5절).
 - shadcn 역할 이름(`bg-primary`, `text-muted-foreground`, `border-border` …)도 토큰에 연결돼 있으니 써도 된다.
 - **`--hazard`/`text-hazard`/`destructive`는 위험 소행성 표시 전용.** shadcn `variant="destructive"` 버튼 금지.
-- 그림자 없음(`--shadow-*` 제거됨), 모서리 4px.
+- 그림자 없음(`--shadow-*` 제거됨). 모서리: 버튼·입력 `rounded-md`(8px) / 내부 박스 `rounded-lg`(12px) / 카드 `rounded-xl`(16px) / 메뉴·칩 `rounded-full`. 한글은 Pretendard(index.html에서 로드).
 - `index.css`에 직접 CSS를 쓸 때는 반드시 `@layer base`(요소 선택자) 또는 `@layer components`(클래스) 안에. 레이어 밖 CSS는 유틸리티를 이겨서 클래스가 무시된다.
 - 기존 컴포넌트의 클래스(`.neo-list-item` 등)는 화면을 손볼 때 Tailwind로 옮긴다(일괄 전환 안 함).
 - **shadcn 컴포넌트 추가 절차** (`frontend` 폴더에서):

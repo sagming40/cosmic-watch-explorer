@@ -6,7 +6,7 @@
 | 문서명 | 사용자 시나리오 및 UI/UX 설계서 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.3 |
+| 버전 | v1.4 |
 | 최종 수정일 | 2026-10-27 |
 | 상태 | 확정 |
 
@@ -18,6 +18,7 @@
 | v1.1 | 2026-09-10 | 4.2절 화면 흐름도를 Mermaid로 교체 / 6.1절 NEO 대시보드 와이어프레임에 카운트다운·최대 추정 직경 카드·보조 단위·용어 설명 FAQ 반영 |
 | v1.2 | 2026-10-27 | 3장 구현 메모 — LunarDistanceBar를 CSS 직접 구현에서 Recharts로 전환, 눈금 범위 0.1~500 LD 고정 (2026-09-16 결정분 반영) |
 | v1.3 | 2026-10-27 | 2.5절 신설 — Tailwind CSS v4 + shadcn/ui로 디자인 토큰 연결 방식, 그림자 제거, `--hazard` 전용 규칙 유지 |
+| v1.4 | 2026-10-27 | 2.4절 모서리 4px → 8/12/16px(둥근 스타일), 한글 서체 Pretendard 추가 — /mockup 목업 재작성 중 결정 |
 
 ---
  
@@ -105,7 +106,8 @@
  
 - 최대 폭 **1280px**, 중앙 정렬
 - 기본 간격 단위 **8px** (8 / 16 / 24 / 40 / 64)
-- 카드 모서리 반경 **4px** — 계기판의 성격에 맞게 최소한만
+- 모서리 반경 — 버튼·입력 **8px** / 내부 박스 **12px** / 카드 **16px**, 메뉴·칩은 알약형 (v1.4 변경: 원래 4px였으나 목업 재작성 때 둥근 스타일로 결정)
+- 한글 서체는 **Pretendard** (IBM Plex Sans에는 한글 글리프가 없어 시스템 글꼴로 대체되고 있었다). 수치는 계속 IBM Plex Mono
 - 그림자 사용하지 않음. 깊이는 배경 명도 차이(`--ink` → `--panel`)로만 표현
 
 ### 2.5 구현 방식 — Tailwind CSS v4 + shadcn/ui (v1.3 추가)
@@ -117,7 +119,7 @@
 | 프로젝트 토큰 | `:root`의 `--ink` / `--panel` / `--line` / `--bone` / `--dim` / `--sodium` / `--hazard` — 유일한 실제 색 값 |
 | Tailwind 유틸리티 | `bg-panel`, `text-sodium`, `border-line`, `text-dim`, `text-hazard`, `font-mono`, `font-display`, `text-h1`, `text-label` … |
 | shadcn/ui 역할 | background=ink, foreground=bone, card·popover·muted=panel, primary=sodium, secondary·accent·border·input=line, muted-foreground=dim, ring=sodium |
-| 모서리·그림자 | `rounded-md`·`rounded-lg` = 4px, 그림자 유틸리티 전부 제거 |
+| 모서리·그림자 | `rounded-md` 8px · `rounded-lg` 12px · `rounded-xl` 16px, 그림자 유틸리티 전부 제거 |
 
 - **`--hazard` 전용 규칙(2.1절)은 그대로다.** shadcn의 `destructive` 역할이 hazard에 연결돼 있지만, `variant="destructive"` 버튼처럼 위험 소행성이 아닌 곳에는 쓰지 않는다.
 - 이 서비스는 항상 어두운 화면이라 `<html class="dark">`로 고정한다(라이트 모드 없음).

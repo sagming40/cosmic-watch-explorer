@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M2 — 백엔드 완성 ✅** |
-| 다음 작업 | M3 진행중 — NEO 대시보드 완료, Tailwind·shadcn/ui 도입·TypeScript 전환 완료. 화면 목업 재작성(`/mockup`) → LunarDistanceBar(Recharts) → NEO 상세 순 |
+| 다음 작업 | M3 진행중 — 화면 목업 재작성 중(`/mockup`, NEO 대시보드 색 시안 3종 완료 → 시안 선택 대기) → 나머지 6화면 목업 → 실제 화면 구현 |
 | 최근 병합 커밋 | `merge(M3): M3 중간 작업분 병합 및 main 단일 브랜치 전환 (#3)` |
 | 작업 방식 | 2026-10-27부터 `main` 단일 브랜치, Claude Code 로컬 세션 — 규칙은 [`CLAUDE.md`](../CLAUDE.md) |
 
@@ -172,6 +172,26 @@ CLI가 "알아서" 설치해주는 의존성도 이름을 확인해야 한다 �
 
 **검증**: `tsc -b` 에러 0, `npm run build` 통과, lint는 기존 1건만. 브라우저에서 대시보드 표시, ◀ 클릭 시 `?date=2026-10-26`으로 바뀌며 재조회, `?date=2026-13-99` → `INVALID_DATE` 문구, `/asdf` → 404 화면 확인.
 
+### [설계] 화면 목업 재작성 착수 — `/mockup`, NEO 대시보드 색 시안 3종
+
+**방식**
+아티팩트는 회사 계정이라 쓰지 않고(업로드 금지 규칙), 로컬 Vite 앱 안에 `/mockup` 라우트를 만들어 브라우저 패널로 본다. `import.meta.env.DEV`일 때만 라우트가 생겨 배포 빌드에는 목업 코드가 들어가지 않는다. 가짜 데이터도 `NeoDashboardResponse` 타입 그대로라, 확정되면 화면 코드를 실제 페이지로 옮기고 `src/mockup/`은 지운다.
+
+**참고한 것**
+개인 프로젝트 목업 2개(PlayLedger, 자재·용어 사전 — 둥근 카드, 알약형 메뉴, Ctrl K 검색, 큰 굵은 제목, 색이 옅게 깔린 강조 카드, 그라데이션 차트)와 채팅 10에서 추천했던 closeapproach.space(카운트다운, 요약 4칸). 사용자 요청: "기본값 말고 요즘 트렌디한 디자인".
+
+**결정 (사용자)**
+- 모서리 4px → 8/12/16px 둥근 스타일 (03 v1.4). 그림자 없음은 유지.
+- 색은 시안 3종을 그려서 비교 후 결정: A 소듐(지금 토큰 다듬기) / B 딥 스페이스(남색+하늘색) / C 그래파이트(무채색+라임). 하단 막대에서 전환.
+
+**사전 검증에서 잡은 것**
+- **시안 전환이 안 되는 함정**: `:root`의 `--primary: var(--sodium)`은 `:root`에서 값이 계산된 채 물려진다 → 시안 영역에서 `--sodium`만 바꾸면 `bg-primary`는 옛 색 그대로. 시안 영역에서 역할 변수를 다시 선언해 해결(`mockup.css`).
+- **IBM Plex Sans엔 한글이 없다** — 지금까지 한글은 시스템 글꼴로 대체돼 보이고 있었음. Pretendard를 로드하고 본문 서체 맨 앞에 둠.
+- 산점도의 `0.1 LD` 눈금이 겹침 판정으로 숨겨짐 → `interval={0}`.
+- 카운트다운("다음 접근까지")은 03 문서 6.1절 와이어프레임에 있지만 **백엔드에 "오늘 이후 가장 가까운 지구 접근"을 주는 API가 없다**. 목업은 가짜 값 — 실제 구현 전에 API 추가 여부 결정 필요.
+
+**검증**: `tsc -b`·lint(기존 1건) 통과. 브라우저 1440px에서 시안 3종 모두 색 적용 확인(계산값 기준), 1 LD 안쪽 점만 hazard 색, 목록↔차트 마우스 연동, 375px에서 가로 스크롤 없음.
+
 **알려진 이슈 (이번 세션에서 확인, 미처리)**
 - `npm run lint` 에러 1건 (`react-hooks/set-state-in-effect`, NeoDashboardPage의 useEffect 안 `setIsLoading(true)`). 처음 5건 중 2건은 wip 정리에서 뺀 CSS LunarDistanceBar·scale.js 쪽이었고, shadcn 생성 파일 2건은 eslint 설정으로 완화.
 - `npm audit` high 5건 — 런타임은 `follow-redirects`(axios 의존) 1건, 나머지는 개발 도구. 별도 `chore` 커밋으로 처리 예정.
@@ -191,10 +211,14 @@ CLI가 "알아서" 설치해주는 의존성도 이름을 확인해야 한다 �
 - `docs(M3): Tailwind·shadcn 도입 결정 및 사용 규칙 문서화`
 - `fix(M3): 추정 직경이 null인 소행성이 "0 ~ 0 m"로 표시되던 문제 수정`
 - `refactor(M3): 프론트엔드 TypeScript 전환 및 API 응답 타입 정의`
-- `docs(M3): TypeScript 전환 기록 및 규칙 문서화` (이 커밋 자체)
+- `docs(M3): TypeScript 전환 기록 및 규칙 문서화`
+- `chore(M3): recharts·shadcn 부품 추가, 모서리 둥글게·Pretendard 적용`
+- `feat(M3): /mockup NEO 대시보드 목업 (색 시안 3종)`
+- `docs(M3): 목업 착수·모서리/서체 변경 기록` (이 커밋 자체)
 
 **다음에 할 일**
-- 화면 목업 재작성 — 로컬 Vite 앱 `/mockup` 라우트에 Tailwind + shadcn/ui로 7화면 (아티팩트는 회사 계정이라 사용 안 함)
+- 색 시안(A 소듐 / B 딥 스페이스 / C 그래파이트) 사용자 선택 → 토큰 확정 → 나머지 6화면 목업 (NEO 상세, 외계행성 카탈로그·상세, 크기 비교, 로그인·회원가입, Watchlist)
+- "다음 접근까지" 카운트다운용 API를 만들지 결정
 - LunarDistanceBar Recharts 버전 재작성 (`npm install recharts`) → 1 LD 이내 빨간 점·범위 밖 빈 원 실물 확인
 - NEO 상세 (`ApproachTable`, `OrbitPanel`, "더 보기") → M3 완료 기준 실측
 - 위 알려진 이슈 정리 (lint, `formatDiameterRange` null, npm audit)
