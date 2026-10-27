@@ -1,7 +1,7 @@
 # CLAUDE.md — Cosmic Watch & Explorer
 
 NASA 공개 데이터로 만드는 지구 근접 소행성(NEO) 모니터링 + 외계행성 탐색 포털. 1인 학습·포트폴리오 프로젝트.
-Backend: Django 6.1 + DRF + MariaDB / Frontend: React 19 + Vite + React Router + axios (+ Recharts 예정).
+Backend: Django 6.1 + DRF + MariaDB / Frontend: React 19 + Vite + React Router + axios + Tailwind CSS v4 + shadcn/ui (+ Recharts 예정).
 
 > 이 파일은 **모든 기기(회사 PC / 집 PC / 노트북)의 로컬 Claude Code 세션**이 같은 규칙으로 작업하기 위한 지침이다.
 > Claude의 메모리(`~/.claude/projects/.../memory/`)는 **기기마다 따로**라서 다른 기기로 넘어가지 않는다. 기기와 상관없이 지켜야 할 규칙은 전부 이 파일에 적는다.
@@ -134,6 +134,7 @@ python manage.py runserver          # http://localhost:8000
 # 터미널 2 — frontend
 npm run dev                         # http://localhost:5173
 ```
+Claude가 화면을 확인할 때는 `.claude/launch.json`의 `frontend`/`backend` 설정으로 띄워서 브라우저 패널로 본다(5173이 사용 중이면 5174 등으로 자동 이동).
 Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필요 없다. 백엔드가 꺼져 있으면 프론트에는 `NETWORK_ERROR`가 아니라 `UNKNOWN_ERROR`(Vite가 만든 502)가 뜬다 — 정상.
 
 ### 2.4 세션 종료 시
@@ -165,12 +166,14 @@ backend/
   apps/watchlist/    NeoWatchlist, ExoplanetWatchlist + API 4종
 frontend/src/
   api/client.js      axios 인스턴스 (withCredentials, CSRF, 오류 봉투 → {code, message, fields, status})
+  components/ui/     shadcn/ui가 생성한 원본 부품 (Button …) — 직접 고치지 말고 감싸서 쓴다
+  lib/utils.js       cn() — className 합치기 (shadcn 공용)
   components/common/ DataField (null → "—", 수치는 Mono 서체)
   components/layout/ Header, Layout(Outlet)
   components/neo/    NeoSummary, NeoListItem, DateNavigator
   pages/             라우트별 화면 9개 (NeoDashboardPage 외 대부분 스텁)
   utils/date.js      날짜 ↔ 문자열 (로컬 시간 기준)
-  index.css          디자인 토큰(:root) + 섹션별 스타일 (전역 CSS 한 파일)
+  index.css          Tailwind import + 디자인 토큰(:root) + 테마 연결(@theme) + 기존 섹션별 스타일(@layer)
 ```
 
 ### 3.3 지켜온 설계 원칙 (어기지 말 것)
@@ -180,9 +183,21 @@ frontend/src/
 - 리소스 없음 = 404(`ResourceNotFound`), 중복 = 409(`IntegrityError` → `AlreadyExists`), 비로그인 = 401(`IsAuthenticatedOr401`).
 - 스로틀은 NASA를 실제로 부르는 지점(캐시 미스)에서만 직접 검사한다(`get_throttles()`가 `[]` 반환).
 - `--hazard` 색(#D64545)은 위험 표시 전용. 버튼·링크에 쓰지 않는다.
-- 범위 관리: 새 기능이 떠오르면 구현하지 않고 `01` 문서 3.2절(MVP 제외 범위)에 적는다. 확정된 "나중에" 항목: Tailwind 리팩토링(v1.0 이후), error boundary·커스텀 달력(M5).
+- 범위 관리: 새 기능이 떠오르면 구현하지 않고 `01` 문서 3.2절(MVP 제외 범위)에 적는다. 확정된 "나중에" 항목: error boundary·커스텀 달력(M5).
 
-### 3.4 자주 빠지는 함정 (DEVLOG에서 반복된 것)
+### 3.4 스타일 규칙 (Tailwind CSS v4 + shadcn/ui, 2026-10-27 도입)
+- **새 코드는 Tailwind 유틸리티로 쓴다.** 색·서체·크기는 토큰 이름 유틸리티만: `bg-ink`/`bg-panel`/`border-line`/`text-bone`/`text-dim`/`text-sodium`/`text-hazard`, `font-sans`/`font-display`/`font-mono`, `text-display`/`text-h1`/`text-h2`/`text-body`/`text-label`. `bg-[#...]` 같은 임의 색 금지 — 색 값은 `index.css` `:root` 토큰 7개뿐(03 문서 2.5절).
+- shadcn 역할 이름(`bg-primary`, `text-muted-foreground`, `border-border` …)도 토큰에 연결돼 있으니 써도 된다.
+- **`--hazard`/`text-hazard`/`destructive`는 위험 소행성 표시 전용.** shadcn `variant="destructive"` 버튼 금지.
+- 그림자 없음(`--shadow-*` 제거됨), 모서리 4px.
+- `index.css`에 직접 CSS를 쓸 때는 반드시 `@layer base`(요소 선택자) 또는 `@layer components`(클래스) 안에. 레이어 밖 CSS는 유틸리티를 이겨서 클래스가 무시된다.
+- 기존 컴포넌트의 클래스(`.neo-list-item` 등)는 화면을 손볼 때 Tailwind로 옮긴다(일괄 전환 안 함).
+- **shadcn 컴포넌트 추가 절차** (`frontend` 폴더에서):
+  1. `npx shadcn@latest add <이름> --dry-run` → Dependencies에 `cn`이 보이면 정상 아님(Windows에서 재현되는 CLI 버그)
+  2. `npx shadcn@latest add <이름>` 실행 후, `npm uninstall cn` + 생성 파일의 `import { cn } from "cn"`을 `import { cn } from "@/lib/utils"`로 수정
+  3. `package.json`에 낯선 패키지가 추가되지 않았는지 확인, `npm run build`·`npm run lint`
+
+### 3.5 자주 빠지는 함정 (DEVLOG에서 반복된 것)
 - `getattr(obj, "속성", 기본값)` 계열은 오타가 나도 에러 없이 기본값으로 넘어간다(`throttle_scope`, `is_custom_error` 사례). 반드시 실제 응답으로 검증.
 - 역방향 OneToOne(`neo.orbital_data`)은 행이 없으면 예외 → `getattr(neo, "orbital_data", None)`.
 - `manage.py shell`에서 코드 수정은 shell 재시작 전까지 반영 안 됨. `LocMemCache`는 프로세스별이라 shell에서 runserver 캐시가 안 보인다.

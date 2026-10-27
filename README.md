@@ -21,7 +21,7 @@ NASA API는 소행성의 접근 거리를 `4,821,033 km` 같은 숫자로 준다
 | 구분 | 기술 |
 |---|---|
 | Backend | Python, Django, Django REST Framework |
-| Frontend | React, Vite, Recharts |
+| Frontend | React, Vite, Tailwind CSS v4, shadcn/ui, Recharts |
 | Database | MariaDB |
 | 인증 | Django 세션 인증 (httpOnly 쿠키) |
 | 외부 데이터 | NASA NeoWs API, NASA Exoplanet Archive |
@@ -31,6 +31,7 @@ NASA API는 소행성의 접근 거리를 `4,821,033 km` 같은 숫자로 준다
 - **Django** — 외계행성 다중 조건 검색(9개 조건 조합)이 핵심 기능이라 ORM 표현력을 우선했다. Django Admin으로 관리자 페이지 개발 비용을 없앴다.
 - **세션 인증** — 서버 1대 규모라 무상태(stateless)의 이점이 없고, 즉시 로그아웃과 `httpOnly` 쿠키의 XSS 방어가 더 중요하다고 판단했다.
 - **Recharts** — React 컴포넌트 형태라 JSX 안에서 바로 쓸 수 있다. D3는 SVG를 직접 다뤄야 해 학습 비용이 크다.
+- **Tailwind CSS + shadcn/ui** — 순수 CSS로 화면을 짜면 코드가 길어져, 디자인 토큰을 유틸리티 클래스로 등록해 쓰고 버튼·카드 같은 기본 부품은 shadcn/ui로 가져온다. 색은 여전히 프로젝트 토큰 7개만 쓴다.
 
 ---
 

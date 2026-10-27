@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M2 — 백엔드 완성 ✅** |
-| 다음 작업 | M3 진행중 — NEO 대시보드(DateNavigator/NeoSummary/NeoListItem) 완료. LunarDistanceBar(Recharts 버전 재작성) → NEO 상세 순 |
+| 다음 작업 | M3 진행중 — NEO 대시보드 완료, Tailwind·shadcn/ui 도입 완료. 화면 목업 재작성(`/mockup`) → LunarDistanceBar(Recharts) → NEO 상세 순 |
 | 최근 병합 커밋 | `merge(M3): M3 중간 작업분 병합 및 main 단일 브랜치 전환 (#3)` |
 | 작업 방식 | 2026-10-27부터 `main` 단일 브랜치, Claude Code 로컬 세션 — 규칙은 [`CLAUDE.md`](../CLAUDE.md) |
 
@@ -119,15 +119,43 @@
 - **달력은 브라우저 기본 `<input type="date">`** — 커스텀 달력은 범위 확대. 알려진 동작: 달력 팝업에서 월 이동 화살표만 눌러도 `onChange`가 발생해 조회가 바뀐다. 완료 기준엔 영향 없어 그대로 두고 M5에서 커스텀 달력 여부 판단.
 - **LunarDistanceBar: CSS 직접 구현 → Recharts** — 실측 189 LD 등이 0.1~100 LD 범위 끝에 뭉쳐 범위를 0.1~500 LD로 확대했고, 이어서 로그 축 계산을 Recharts에 맡기기로 결정(산점도에서 어차피 도입). `03` v1.2 반영.
 - **스케일 바의 빨간 점 기준 = "오늘 1 LD 이내 접근"** — 목록의 `is_hazardous`(NASA PHA 분류)와 다른 기준.
-- **CSS 전략: Tailwind는 v1.0 이후로 미룬다** — 지금은 전역 `index.css` + 디자인 토큰(CSS 변수). v1.0 릴리즈 후 확장 단계에서 리팩토링.
+- **CSS 전략: Tailwind는 v1.0 이후로 미룬다** — 지금은 전역 `index.css` + 디자인 토큰(CSS 변수). v1.0 릴리즈 후 확장 단계에서 리팩토링. → **같은 날(10-27) 번복, 지금 도입** (아래 [설계] 참고)
 - **⚠ 아이콘은 `⚠︎`(텍스트 표현 선택자)** — 컬러 이모지로 렌더링되면 CSS `color`(`--hazard`)가 먹지 않는다.
 
 ### [환경] `requirements.txt` 버전 고정
 
 기존엔 패키지 이름만 있어서 기기마다 설치 시점의 최신 버전이 깔릴 수 있었다(기기 3대 + 계정 2개 환경에서 위험). 회사 PC의 실제 설치 버전으로 고정(`django==6.1.2` 등).
 
+### [설계] Tailwind CSS v4 + shadcn/ui 지금 도입 — "v1.0 이후" 결정 번복
+
+**이유**
+순수 CSS로 화면을 짜다 보니 코드가 길고 투박하다. 화면 목업을 다시 만들기로 하면서, 어차피 갈아엎을 거라면 목업 단계에서 Tailwind + shadcn/ui로 만들고 그 코드를 그대로 실제 화면에 옮기는 게 이중 작업이 없다. 남은 화면(NEO 상세·외계행성·인증·Watchlist·크기 비교)이 대부분이라 지금이 전환 비용이 가장 싼 시점.
+
+**설계**
+- 색은 여전히 03 문서 2.1절의 토큰 7개만 진짜 값. shadcn의 역할 이름(`--primary`, `--border` …)은 전부 그 토큰을 가리키게 연결(primary=sodium, background=ink, card=panel, border=line, muted-foreground=dim).
+- 유틸리티 이름도 토큰 그대로 등록: `bg-panel`, `text-sodium`, `border-line`, `text-hazard`, `font-mono`, `text-h1` 등.
+- `--hazard`는 PHA 전용 규칙 유지 → shadcn `destructive`는 hazard에 연결만 하고 버튼 등에는 쓰지 않는다.
+- 항상 어두운 화면 → `<html class="dark">` 고정. 그림자는 03 문서 2.4절대로 `--shadow-*` 를 지워 shadcn 기본 `shadow-xs`까지 무력화.
+
+**사전 검증에서 잡은 충돌**
+- 기존 `index.css`의 `h1`/`a`/`body` 규칙이 레이어 밖(unlayered)에 있으면 Tailwind 유틸리티보다 무조건 이긴다 → `<h1 className="text-4xl">`이 무시됨. 기존 규칙을 `@layer base`(요소 선택자) / `@layer components`(클래스)로 옮겨 해결. 화면은 변화 없음(h1 28px·IBM Plex Sans Condensed, 배경 #0B0E14 실측 동일).
+
+### [환경] shadcn CLI가 `cn` 경로를 잘못 써서 엉뚱한 npm 패키지 `cn`을 설치
+
+**증상**
+`npx shadcn add button` 결과 `import { cn } from "cn"`이 생성되고, `package.json`에 이름만 같은 서드파티 패키지 `cn`이 추가됨.
+
+**원인**
+`components.json`의 `utils` 별칭(`@/lib/utils`)은 정상으로 인식(`shadcn info` 확인)되는데도 import 변환이 실패. 해석된 경로가 `src\lib/utils`처럼 역슬래시·슬래시가 섞여 나오는 걸로 보아 Windows 경로 처리 문제로 추정(확정 아님). `add card --dry-run`에서도 똑같이 재현.
+
+**해결**
+`npm uninstall cn` + import를 `@/lib/utils`로 수정. 앞으로 `shadcn add` 할 때마다 같은 처리 필요 → `CLAUDE.md`에 절차로 고정.
+
+**배운 것**
+CLI가 "알아서" 설치해주는 의존성도 이름을 확인해야 한다 — 이름이 그럴듯한 엉뚱한 패키지가 들어오는 건 공급망 사고와 같은 모양이다.
+
 **알려진 이슈 (이번 세션에서 확인, 미처리)**
-- `npm run lint` 에러 5건 (`react-hooks/set-state-in-effect` 등, NeoDashboardPage의 useEffect 안 `setIsLoading(true)`).
+- `npm run lint` 에러 1건 (`react-hooks/set-state-in-effect`, NeoDashboardPage의 useEffect 안 `setIsLoading(true)`). 처음 5건 중 2건은 wip 정리에서 뺀 CSS LunarDistanceBar·scale.js 쪽이었고, shadcn 생성 파일 2건은 eslint 설정으로 완화.
 - `npm audit` high 5건 — 런타임은 `follow-redirects`(axios 의존) 1건, 나머지는 개발 도구. 별도 `chore` 커밋으로 처리 예정.
 - `settings.py`의 `ALLOWED_HOSTS = []` — 9/8 기록엔 변경했다고 되어 있으나 실제 코드는 빈 목록(테스트 Client 검증 시 shell 안에서만 임시 추가했던 것으로 보임).
 - `NeoListItem`의 `formatDiameterRange`가 직경 null이면 `"0 ~ 0"` 표시 (`Math.round(null)` = 0) — NULL은 `—` 원칙 위반.
@@ -137,10 +165,15 @@
 - `feat(M3): NeoListItem·DateNavigator 구현 및 날짜 유틸(utils/date.js) 분리` (wip 재정리)
 - `docs: CLAUDE.md 추가 — main 단일 브랜치·자동 커밋 규칙, 기기 간 작업 절차`
 - `chore(M3): requirements.txt 버전 고정`
-- `docs(M3): DEVLOG·05·03·README 갱신 — 작업 방식 전환 및 9/16 결정 사항 기록` (이 커밋 자체)
+- `docs(M3): DEVLOG·05·03·README 갱신 — 작업 방식 전환 및 9/16 결정 사항 기록`
 - `merge(M3): M3 중간 작업분 병합 및 main 단일 브랜치 전환 (#3)`
+- `docs: CLAUDE.md에 구현 전 사전 검증 규칙 추가`
+- `chore(M3): Tailwind CSS v4 + shadcn/ui 도입 및 디자인 토큰 연결`
+- `chore: 로컬 미리보기용 .claude/launch.json 추가`
+- `docs(M3): Tailwind·shadcn 도입 결정 및 사용 규칙 문서화` (이 커밋 자체)
 
 **다음에 할 일**
+- 화면 목업 재작성 — 로컬 Vite 앱 `/mockup` 라우트에 Tailwind + shadcn/ui로 7화면 (아티팩트는 회사 계정이라 사용 안 함)
 - LunarDistanceBar Recharts 버전 재작성 (`npm install recharts`) → 1 LD 이내 빨간 점·범위 밖 빈 원 실물 확인
 - NEO 상세 (`ApproachTable`, `OrbitPanel`, "더 보기") → M3 완료 기준 실측
 - 위 알려진 이슈 정리 (lint, `formatDiameterRange` null, npm audit)

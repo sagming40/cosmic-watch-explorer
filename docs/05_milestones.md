@@ -6,7 +6,7 @@
 | 문서명 | 마일스톤 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.10 |
+| 버전 | v1.11 |
 | 최종 수정일 | 2026-10-27 |
 | Tier | 1 (매 세션 / 매 마일스톤 갱신) |
 
@@ -25,6 +25,7 @@
 | v1.8 | 2026-09-09 | M2 `is_watchlisted` 필드 연결 완료 체크. 완료 기준 5번째 항목 실측 완료. M2 전체 완료 처리 — 상태 🔄→✅ |
 | v1.9 | 2026-09-14 | M3 라우팅/디자인 토큰/Header/DataField 완료 체크. 404 캐치올 라우트 체크박스 신설(계획에 없던 작업) |
 | v1.10 | 2026-10-27 | M3 NEO 대시보드(`DateNavigator`/`NeoSummary`/`NeoListItem`) 완료 체크. LunarDistanceBar는 Recharts 버전으로 재작성 예정(미완료 유지) |
+| v1.11 | 2026-10-27 | M3 Tailwind CSS v4 + shadcn/ui 도입 체크박스 신설(계획에 없던 작업) |
 
 ---
 
@@ -240,6 +241,7 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 - [x] Figma UI 목업 제작 (화면 7개, 디자인 토큰 변수 연결) — *계획에 없던 작업*
 - [x] `GET /api/neo/` summary에 `largest_diameter_m`/`largest_diameter_name` 추가 (백엔드) — *계획에 없던 작업*
 - [x] `NotFoundPage`(404 캐치올 라우트) 추가 — *계획에 없던 작업*
+- [x] Tailwind CSS v4 + shadcn/ui 도입 (디자인 토큰 연결, `@layer` 정리) — *계획에 없던 작업*
 
 ### 완료 기준
 
