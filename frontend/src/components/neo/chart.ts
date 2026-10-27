@@ -21,6 +21,7 @@ export interface ChartPoint {
   size: number; // 점 크기 = 추정 직경 최댓값
   clamped: boolean; // 범위 밖이라 끝에 붙여 그린 점 → 속이 빈 원
   nearMoon: boolean;
+  pha: boolean; // NASA PHA 분류(is_hazardous) ─ 산점도의 점 색, 말풍선 문구
 }
 
 export function clampLd(ld: number): number {
@@ -42,6 +43,7 @@ export function toPoints(results: NeoDashboardItem[], y: (n: NeoDashboardItem) =
         size: n.diameter_max_m ?? 10,
         clamped: ld < LD_MIN || ld > LD_MAX,
         nearMoon: ld < NEAR_MOON_LD,
+        pha: n.is_hazardous,
       },
     ];
   });
