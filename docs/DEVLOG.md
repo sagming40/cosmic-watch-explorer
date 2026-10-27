@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M3 — 프론트 기반 ✅** (2026-10-27) |
-| 다음 작업 | M4 진행중 — 외계행성 카탈로그·상세 완료 → **로그인·회원가입 + AuthProvider** → Watchlist → 크기 비교·산점도 |
+| 다음 작업 | M4 진행중 — 외계행성·로그인/회원가입 완료 → **Watchlist 화면** → 크기 비교·산점도 |
 | 최근 병합 커밋 | `merge(M3): M3 중간 작업분 병합 및 main 단일 브랜치 전환 (#3)` |
 | 작업 방식 | 2026-10-27부터 `main` 단일 브랜치, Claude Code 로컬 세션 — 규칙은 [`CLAUDE.md`](../CLAUDE.md) |
 
@@ -75,7 +75,7 @@
 | DB | MariaDB, `cosmic_watch` (utf8mb4), 로컬 |
 | Django ↔ DB | 연결 확인됨 (`migrate` 성공, 기본 테이블 존재) |
 | Frontend 린터 | ESLint |
-| Vite 프록시 | `/api` → `localhost:8000` 설정 완료 |
+| Vite 프록시 | `/api` → `localhost:8000`, `changeOrigin: false` (Host 유지 ─ 바꾸면 로그인 후 POST가 CSRF 403) |
 
 > ⚠️ **DB는 기기별로 완전히 독립돼 있다.** Git으로 공유되는 건 마이그레이션 파일뿐이고, 실제 테이블 데이터는 기기마다 따로다. 기기를 옮기면 `migrate` + `fetch_feed`/`fetch_exoplanets` 재실행이 필요하다. (2026-09-01 학교 PC에서 실측 — 아래 기록 참고)
 
@@ -299,6 +299,34 @@ NASA Feed로 9/28~10/25(4주)를 훑었지만 1 LD 안쪽 0건, 이름에 2026�
 **배운 것**
 NULL 보존 원칙은 부품(DataField·StatCard)에만 넣어 두면 문장 속 표시에서 새어 나간다 ─ 새 화면은 실제 DB의 NULL 많은 행(이름으로 찾은 실제 행성)으로 꼭 열어 볼 것.
 
+### [완료] 로그인·회원가입 + `AuthProvider` + 헤더 로그인 상태
+
+- `auth/AuthProvider`: 앱이 뜰 때 CSRF 쿠키 받기 + `/api/auth/me/` 확인 → `status`(loading/ready)·`user`·`login`/`signup`/`logout`을 방송. 예전 `App`의 `ensureCsrf()` useEffect는 여기로 옮김
+- `auth/next.ts` `safeNext()`: `?next=`는 `/`로 시작하는 앱 내부 주소만 허용(`//evil.com`·`/\`·`/login` → `/`) ─ 남의 사이트로 튕겨 보내는 오픈 리다이렉트 방지
+- 로그인·가입 성공 시 `navigate(next, { replace: true })` ─ 뒤로 가기로 로그인 화면이 다시 나오지 않는다. 이미 로그인한 채로 `/login`에 오면 바로 next로
+- 헤더: 확인 중엔 빈 자리(로그인 버튼이 깜빡였다 사라지지 않게), 비로그인 `로그인`(지금 주소를 next로), 로그인 `내 관심 천체`·머리글자·로그아웃
+- `WatchlistButton`: 로그인 안 된 게 확실하면 API 없이 바로 로그인 화면으로, 로그아웃하면 `저장됨` 표시도 바로 풀림
+- `/watchlist`는 `ProtectedRoute`로 감쌈(비로그인 → `/login?next=%2Fwatchlist`) ─ *계획에 없던 작업*
+- 실측: 저장 → 로그인(틀린 비밀번호 문구 확인) → 원래 상세 복귀·`저장됨` / 가입 → 복귀 → 새로고침 없이 저장 / 서버 칸 오류(중복 아이디·흔한 비밀번호) / 375px. 테스트 계정 3개는 확인 후 삭제
+
+### [프론트엔드] 로그인한 뒤 저장·로그아웃이 전부 403 `CSRF_FAILED`
+
+**증상**
+가입 직후 저장 버튼을 눌러도 아무 일이 없다. 직접 `fetch`로 `X-CSRFToken`(쿠키 값 그대로)을 붙여도 403 `CSRF_FAILED`. 로그인·가입은 잘 된다. 로그아웃도 화면에선 풀렸지만 서버 세션은 살아 있었다(`finally`에서 `setUser(null)`이라 티가 안 났다).
+
+**원인**
+Vite 프록시를 `/api: http://localhost:8000`(문자열)로 쓰면 `Host`가 `localhost:8000`으로 바뀐다. 브라우저의 `Origin`은 `http://localhost:5173`(이날은 5174) 그대로라 Django CSRF의 Origin 검사가 "Origin ≠ Host"로 거부. 로그인·가입은 **비로그인 요청이라 DRF가 CSRF 검사를 건너뛰어서** 통과했던 것. curl로 Host·Origin 조합 4개를 바꿔 보니 `Host=8000 + Origin=5174/5173`만 403, `Host=5174 + Origin=5174`·Origin 없음은 201.
+
+**해결**
+`vite.config.ts`: `/api: { target: http://localhost:8000, changeOrigin: false }` ─ Host를 브라우저가 보낸 그대로 넘긴다. `CSRF_TRUSTED_ORIGINS`에 포트를 적는 방법도 있지만, 5173이 사용 중이면 5174로 바뀌는 포트를 다 적어야 해서 프록시 쪽을 고침.
+
+**배운 것**
+M2 API 검증은 curl·Client(Origin 없음)로만 해서 안 보였다. "로그인 상태 + 브라우저"로 POST를 한 번도 안 해 본 구간이 있었던 것 ─ 로그인 후 쓰기 동작은 반드시 실제 브라우저로 확인. 화면이 "성공한 것처럼" 보이는 `finally` 처리(로그아웃)는 서버 상태(`/me/`)로 따로 확인해야 한다.
+
+### [백엔드] Django·DRF 기본 오류 문구가 영어로 나옴
+
+`LANGUAGE_CODE`가 `en-us`라 가입 칸 오류("This password is too common.")가 영어로 나왔다 → `ko-kr`로 변경. 단 빈 칸 오류는 "이 필드는 blank일 수 없습니다."처럼 어색해서, 화면 입력칸에 `required`를 붙여 서버까지 가지 않게 함.
+
 **열린 질문 (M4 시각화 때)**
 - 03 문서 6.1절 산점도의 "점 색상 = 위험 여부"가 NASA PHA(`is_hazardous`)인지 "1 LD 안쪽"인지. 지금 대시보드 산점도는 스케일 바와 같은 1 LD 기준 → M4 완료 기준 "산점도에서 위험 소행성이 색으로 구분된다"를 확인할 때 정해야 함.
 
@@ -344,14 +372,17 @@ NULL 보존 원칙은 부품(DataField·StatCard)에만 넣어 두면 문장 속
 - `docs(M3): 세션 마무리 — 다른 기기에서 이어가기 위한 정리`
 - `feat(M4): 외계행성 카탈로그·상세를 새 디자인 + 실제 API로 구현`
 - `fix(M4): 긴 수치가 휴대폰 폭에서 요약 카드 밖으로 밀려나던 문제`
-- `docs(M4): 외계행성 화면 기록, M4 완료 기준 3개 체크` (이 커밋 자체)
+- `docs(M4): 외계행성 화면 기록, M4 완료 기준 3개 체크`
+- `fix(M4): Django·DRF 기본 오류 문구가 영어로 나오던 문제 (LANGUAGE_CODE ko-kr)`
+- `fix(M4): Vite 프록시가 Host를 바꿔 로그인 후 POST가 CSRF 403이던 문제`
+- `feat(M4): 로그인·회원가입 화면 + AuthProvider + 헤더 로그인 상태`
+- `docs(M4): 로그인·회원가입 기록, M4 완료 기준 2개 체크` (이 커밋 자체)
 
 **다음에 할 일** (다음 세션은 여기서 시작)
-- **M4 이어서** ─ ~~외계행성 카탈로그·상세~~(10-27 완료) → **로그인·회원가입 + `AuthProvider` + 헤더 로그인 상태** (`/mockup?screen=login`·`signup`) → Watchlist 화면 → 크기 비교 → (P2) 산점도 색 기준 결정
+- **M4 이어서** ─ ~~외계행성 카탈로그·상세~~ ~~로그인·회원가입~~(10-27 완료) → **Watchlist 화면** (`/mockup?screen=watchlist`, 탭 구분·삭제 + 실행 취소, `/watchlist`는 이미 `ProtectedRoute`) → 크기 비교 → (P2) 산점도 색 기준 결정
   - 화면을 옮기는 방법은 대시보드·상세와 같다: 목업 화면 코드 → `components/`·`pages/`로, 가짜 데이터 → `api.get<타입>()`, 로딩·오류는 `StateViews`
   - 다 옮기면 `src/mockup/` 폴더와 `App.tsx`의 `/mockup` 라우트 삭제
 - **결정 필요**: "다음 접근까지" 카운트다운용 API를 만들지 (01 문서 3.2절 후보)
-- **로그인 구현 뒤 확인**: 상세의 저장(☆) → 로그인 → 원래 페이지 복귀 → 저장됨 (WatchlistButton은 이미 연결됨)
 - **아직 실물로 못 본 상태 화면**: 접근 0건인 날짜, NASA 장애(`UPSTREAM_ERROR`), 3초 넘는 응답 안내
 - **알려진 이슈**: 번들 741 kB 경고(code splitting, M5~M6) · `npm audit` high 5건(별도 chore) · `settings.py` `ALLOWED_HOSTS = []` · 과거 채팅에 노출된 NASA API 키 재발급
 - 검증용 날짜·ID는 `CLAUDE.md` 2.5절
