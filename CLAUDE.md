@@ -1,7 +1,7 @@
 # CLAUDE.md — Cosmic Watch & Explorer
 
 NASA 공개 데이터로 만드는 지구 근접 소행성(NEO) 모니터링 + 외계행성 탐색 포털. 1인 학습·포트폴리오 프로젝트.
-Backend: Django 6.1 + DRF + MariaDB / Frontend: React 19 + TypeScript 6.0 + Vite + React Router + axios + Tailwind CSS v4 + shadcn/ui (+ Recharts 예정).
+Backend: Django 6.1 + DRF + MariaDB / Frontend: React 19 + TypeScript 6.0 + Vite + React Router + axios + Tailwind CSS v4 + shadcn/ui + Recharts.
 
 > 이 파일은 **모든 기기(회사 PC / 집 PC / 노트북)의 로컬 Claude Code 세션**이 같은 규칙으로 작업하기 위한 지침이다.
 > Claude의 메모리(`~/.claude/projects/.../memory/`)는 **기기마다 따로**라서 다른 기기로 넘어가지 않는다. 기기와 상관없이 지켜야 할 규칙은 전부 이 파일에 적는다.
@@ -139,6 +139,21 @@ Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필
 
 ### 2.4 세션 종료 시
 - 작업 단위가 끝나면 커밋 + **push까지** 한다. push 안 하면 다른 기기에서 이어갈 수 없다(9/16 Recharts 작업이 이렇게 유실됐다).
+- DEVLOG 맨 위 "현재 상태"와 최신 블록의 "다음에 할 일"을 다음 세션이 바로 시작할 수 있게 갱신한다.
+
+### 2.5 검증용 데이터 (DB는 기기마다 따로 ─ 처음 열면 서버가 NASA에서 받아온다)
+| 주소 | 확인할 수 있는 것 |
+|---|---|
+| `/?date=2029-04-13` | 1 LD 안쪽 접근(아포피스 0.10 LD) → 스케일 바 빨간 점·고리, 위험 분류 카드. **최근 날짜엔 1 LD 안쪽 접근이 거의 없다** (NASA 미래 예측은 궤도가 확정된 천체만) |
+| `/neo/3841173` | 전체 접근 기록 정확히 5건 → "더 보기" 없음 (경계값) |
+| `/neo/3463448` | 10건 → "더 보기" 있음 |
+| `/neo/3831888` | 31건 → 20건 + 더 불러오기 → 31/31 |
+| `/neo/2099942` | 아포피스 상세 (다음 접근 표에 1 LD 안쪽 빨간 값) |
+| `/neo/9999999`, `/?date=2026-13-99` | 오류 화면 (NOT_FOUND / INVALID_DATE) |
+| `/mockup?screen=…` | 남은 화면 디자인 (`exoplanets`, `exoplanet-detail`, `compare`, `login`, `signup`, `watchlist`) |
+
+- NEO 상세는 처음 열 때 NASA Lookup을 부른다 → 스로틀 `neo_detail_fetch` 30회/시간. 반복 확인은 같은 ID로.
+- Claude가 브라우저 패널로 확인할 때, 창이 가려져 있으면 **스크린샷이 예전 화면으로 찍힐 수 있다** → 색·개수 같은 판정은 `javascript_tool`로 계산값(`getComputedStyle`, DOM 개수)을 읽어서 한다.
 
 ---
 
@@ -169,14 +184,17 @@ frontend/src/
   types/api.ts       백엔드 응답 타입 전부 (04 문서 + serializers.py 기준) — API 호출은 api.get<타입>()으로
   components/ui/     shadcn/ui가 생성한 원본 부품 (Button …) — 직접 고치지 말고 감싸서 쓴다
   lib/utils.ts       cn() — className 합치기 (shadcn 공용)
-  components/common/ Panel·PanelTitle(카드 틀), StatCard(요약 칸, 수치 Mono), HazardBadge(위험 3중 표시)
+  components/common/ Panel·PanelTitle(카드 틀), StatCard(요약 칸), Field(라벨+수치), HazardBadge(위험 3중 표시),
+                     StateViews(로딩 스켈레톤·오류 화면), WatchlistButton(저장/해제, 401이면 /login?next=)
   components/layout/ Header(알약 메뉴), Layout(배경 + Outlet)
-  components/neo/    DateNavigator, NeoSummary, LunarDistanceBar, NeoScatterChart, NeoListItem, NeoFaq,
-                     chart.ts(차트 공용 값), ChartTooltip
+  components/neo/    대시보드: DateNavigator, NeoSummary, LunarDistanceBar, NeoScatterChart, NeoListItem, NeoFaq
+                     상세: OrbitPanel(궤도 모식도), NeoSizePanel, ObservationPanel, ApproachTable
+                     공용: chart.ts(눈금 범위·점 변환), ChartTooltip
   utils/format.ts    표시 포맷 (null → "—", KST 날짜, "약 N년 뒤") — 단위 환산은 하지 않는다
-  pages/             라우트별 화면 9개 (NeoDashboardPage만 실제 구현, 나머지는 스텁 → /mockup 디자인으로 하나씩 옮기는 중)
+  pages/             라우트별 화면 9개 (NeoDashboardPage·NeoDetailPage 실제 구현 = M3 완료. 나머지는 스텁 → M4에서 /mockup 디자인으로)
   utils/date.ts      날짜 ↔ 문자열 (로컬 시간 기준)
-  mockup/            /mockup 디자인 목업 8화면 (개발 서버 전용, ?screen=로 전환, 실제 화면으로 옮긴 뒤 폴더째 삭제)
+  mockup/            /mockup 디자인 목업 8화면 (개발 서버 전용, ?screen=로 전환). 대시보드·NEO 상세는 옮김 완료,
+                     나머지 6화면은 M4의 설계 기준. 전부 옮기면 폴더째 삭제
   index.css          Tailwind import + 디자인 토큰(:root) + 테마 연결(@theme) + 기존 섹션별 스타일(@layer)
 ```
 

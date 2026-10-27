@@ -311,14 +311,15 @@ NASA Feed로 9/28~10/25(4주)를 훑었지만 1 LD 안쪽 0건, 이름에 2026�
 - `feat(M3): NEO 상세를 새 디자인 + 실제 API로 구현 (전체 접근 기록 더 보기 포함)`
 - `docs(M3): M3 완료 처리 — 완료 기준 7개 실측` (이 커밋 자체)
 
-**다음에 할 일**
-- M4 착수: 외계행성 카탈로그·상세(목업 → 실제 API, 검색 조건 URL 반영) → 로그인·회원가입 + `AuthProvider` → Watchlist → 크기 비교·산점도
-- "다음 접근까지" 카운트다운 API를 만들지 결정
-- "다음 접근까지" 카운트다운용 API를 만들지 결정
-- LunarDistanceBar Recharts 버전 재작성 (`npm install recharts`) → 1 LD 이내 빨간 점·범위 밖 빈 원 실물 확인
-- NEO 상세 (`ApproachTable`, `OrbitPanel`, "더 보기") → M3 완료 기준 실측
-- 위 알려진 이슈 정리 (lint, `formatDiameterRange` null, npm audit)
-
+**다음에 할 일** (다음 세션은 여기서 시작)
+- **M4 착수** ─ 순서: 외계행성 카탈로그·상세(`/mockup?screen=exoplanets`·`exoplanet-detail` 디자인 → 실제 API, 검색 조건 URL 쿼리스트링 반영) → 로그인·회원가입 + `AuthProvider` + 헤더 로그인 상태 → Watchlist 화면 → 크기 비교 → (P2) 산점도 다듬기
+  - 화면을 옮기는 방법은 대시보드·상세와 같다: 목업 화면 코드 → `components/`·`pages/`로, 가짜 데이터 → `api.get<타입>()`, 로딩·오류는 `StateViews`
+  - 다 옮기면 `src/mockup/` 폴더와 `App.tsx`의 `/mockup` 라우트 삭제
+- **결정 필요**: "다음 접근까지" 카운트다운용 API를 만들지 (01 문서 3.2절 후보)
+- **로그인 구현 뒤 확인**: 상세의 저장(☆) → 로그인 → 원래 페이지 복귀 → 저장됨 (WatchlistButton은 이미 연결됨)
+- **아직 실물로 못 본 상태 화면**: 접근 0건인 날짜, NASA 장애(`UPSTREAM_ERROR`), 3초 넘는 응답 안내
+- **알려진 이슈**: 번들 741 kB 경고(code splitting, M5~M6) · `npm audit` high 5건(별도 chore) · `settings.py` `ALLOWED_HOSTS = []` · 과거 채팅에 노출된 NASA API 키 재발급
+- 검증용 날짜·ID는 `CLAUDE.md` 2.5절
 ---
 
 ## 2026-09-12 ~ 14 (토 ~ 월) — M3: 디자인 토큰 · Header · DataField 완료
