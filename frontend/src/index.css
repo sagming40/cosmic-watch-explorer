@@ -1,5 +1,22 @@
 /*
 =============================================================================
+Tailwind CSS v4 + shadcn/ui
+- tailwindcss: 유틸리티 클래스(bg-panel, text-sodium …)와 Preflight(브라우저 기본 스타일 초기화)
+- tw-animate-css: shadcn/ui 컴포넌트가 쓰는 열림/닫힘 애니메이션
+- dark variant: 이 서비스는 항상 어두운 화면이라 <html class="dark">로 고정한다 (index.html)
+
+⚠️ 레이어 규칙 ─ 아래 직접 쓴 스타일은 반드시 @layer base / @layer components 안에 둔다.
+   레이어 밖(unlayered) CSS는 Tailwind 유틸리티보다 항상 우선한다.
+   예: 레이어 밖에 h1 { font-size } 가 있으면 <h1 className="text-4xl">이 무시된다.
+=============================================================================
+*/
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+=============================================================================
 디자인 토큰 (03_user_scenarios_and_uiux.md 2장)
 :root = "프로젝트 화면 전체에 적용되는 전역 변수 선언 구역"
 등록된 값은 어떤 CSS 파일, 컴포넌트에서든 var(--토큰이름) 으로 불러 사용할 수 있다.
@@ -37,7 +54,92 @@
   --space-3: 24px;
   --space-5: 40px;
   --space-8: 64px;
-  --radius: 4px;
+  --radius: 4px;   /* shadcn/ui도 이 이름(--radius)을 기준 모서리로 쓴다 ─ 이름이 같아서 그대로 연결됨 */
+
+  /* ─── shadcn/ui 의미 토큰 → 프로젝트 토큰 연결 ───
+     shadcn 컴포넌트는 "background / primary / border" 같은 '역할 이름'으로 색을 찾는다.
+     비유: 콘센트 규격 변환기 ─ shadcn 규격(역할 이름)에 우리 색(관제실 팔레트)을 꽂아준다.
+     색 값 자체는 위 7개 토큰만 진짜이고, 여기는 전부 그 토큰을 가리키기만 한다. */
+  --background: var(--ink);
+  --foreground: var(--bone);
+  --card: var(--panel);
+  --card-foreground: var(--bone);
+  --popover: var(--panel);
+  --popover-foreground: var(--bone);
+  --primary: var(--sodium);
+  --primary-foreground: var(--ink);
+  --secondary: var(--line);
+  --secondary-foreground: var(--bone);
+  --muted: var(--panel);
+  --muted-foreground: var(--dim);
+  --accent: var(--line);
+  --accent-foreground: var(--bone);
+  /* ⚠️ destructive = --hazard. 03 문서 2.1절 "--hazard는 위험 소행성 표시 전용" 규칙 때문에
+     shadcn의 variant="destructive"(버튼 등)는 쓰지 않는다. 연결만 해둔 상태. */
+  --destructive: var(--hazard);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--sodium);
+}
+
+/*
+=============================================================================
+Tailwind 테마 등록 ─ 토큰을 유틸리티 클래스 이름으로 만든다.
+inline = 클래스가 var(--토큰)을 그대로 참조 → :root 값만 바꾸면 클래스 결과도 같이 바뀐다.
+예: bg-panel, text-sodium, border-line, text-hazard, font-mono, text-h1, rounded-md
+=============================================================================
+*/
+@theme inline {
+  /* 프로젝트 팔레트 그대로 */
+  --color-ink: var(--ink);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-bone: var(--bone);
+  --color-dim: var(--dim);
+  --color-sodium: var(--sodium);
+  --color-hazard: var(--hazard);
+
+  /* shadcn/ui 역할 이름 */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* 서체 (2.2절) ─ font-sans가 본문, font-display가 제목, font-mono가 수치 */
+  --font-sans: "IBM Plex Sans", sans-serif;
+  --font-display: "IBM Plex Sans Condensed", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  /* 타입 스케일 (2.3절) ─ text-display / text-h1 / text-h2 / text-body / text-label */
+  --text-display: 40px;
+  --text-h1: 28px;
+  --text-h2: 20px;
+  --text-body: 15px;
+  --text-label: 12px;
+
+  /* 모서리 (2.4절 "4px, 최소한만") ─ shadcn 컴포넌트가 쓰는 rounded-md/lg가 4px이 되도록 */
+  --radius-sm: 2px;
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: 6px;
+
+  /* 그림자 전부 제거 (2.4절 "그림자 사용하지 않음. 깊이는 배경 명도 차이로만")
+     shadcn 컴포넌트에 기본으로 붙어 있는 shadow-xs 같은 클래스도 이 한 줄로 무력화된다. */
+  --shadow-*: initial;
 }
 
 /*
@@ -47,6 +149,7 @@ Browser마다 h1, p, ul 등에 기본 여백을 제각각 넣어두는데, 값�
 필요한 만큼 값을 직접 지정한다. ─ 재봉하기 전 원단을 다림질로 평평하게 다려놓는 것과 같다.
 =============================================================================
 */
+@layer base {
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -92,6 +195,10 @@ h2 {
 a {
   color: var(--sodium);
 }
+} /* @layer base 끝 */
+
+/* ── 아래 컴포넌트 클래스들은 @layer components ─ Tailwind 유틸리티를 같이 붙이면 유틸리티가 이긴다 ── */
+@layer components {
 
 /*
 =============================================================================
@@ -310,3 +417,4 @@ class 하나로 묶어둔다 ─ 페이지마다 이 값을 반복하여 사용�
   font-size: var(--text-body-size);
   padding: 4px 8px;
 }
+} /* @layer components 끝 */
