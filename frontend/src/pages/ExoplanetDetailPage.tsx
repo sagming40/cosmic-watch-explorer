@@ -18,6 +18,7 @@ import SiblingPlanets from "@/components/exoplanet/SiblingPlanets";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ExoplanetDetailResponse } from "@/types/api";
+import { comparePath } from "@/utils/compareQuery";
 import { DASH, dec2, int, raw } from "@/utils/format";
 
 type Loaded = { key: string; data: ExoplanetDetailResponse; error: null } | { key: string; data: null; error: AppError };
@@ -111,9 +112,9 @@ function ExoplanetDetail({ planet: p }: { planet: ExoplanetDetailResponse }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <WatchlistButton target={{ kind: "exoplanet", id: p.id }} initialSaved={p.is_watchlisted} />
-          {/* 크기 비교 화면은 M4 후반 ─ 지금은 화면으로만 이동 (선택 상태 전달은 구현 때) */}
+          {/* 이 행성을 고른 채로 크기 비교에 들어간다 (03 문서 시나리오 2 ⑥) */}
           <Button variant="outline" asChild>
-            <Link to="/compare" className="text-bone">
+            <Link to={comparePath("exo", p.id)} className="text-bone">
               지구와 크기 비교
             </Link>
           </Button>

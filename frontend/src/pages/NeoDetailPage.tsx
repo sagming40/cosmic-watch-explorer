@@ -146,7 +146,7 @@ function NeoDetail({ neo }: { neo: NeoDetailResponse }) {
       <section className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <OrbitPanel orbit={neo.orbital_data} />
         <div className="flex flex-col gap-3">
-          <NeoSizePanel min={neo.diameter_min_m} max={neo.diameter_max_m} />
+          <NeoSizePanel nasaId={neo.nasa_id} min={neo.diameter_min_m} max={neo.diameter_max_m} />
           {neo.orbital_data && <ObservationPanel orbit={neo.orbital_data} />}
         </div>
       </section>

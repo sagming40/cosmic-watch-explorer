@@ -6,11 +6,12 @@ import { Link } from "react-router";
 import { ArrowUpRight } from "lucide-react";
 
 import { Panel, PanelTitle } from "@/components/common/Panel";
+import { comparePath } from "@/utils/compareQuery";
 import { diameterRange } from "@/utils/format";
 
 const TOWER_M = 555; // 롯데월드타워 높이 (비교용 고정 참고값)
 
-function NeoSizePanel({ min, max }: { min: number | null; max: number | null }) {
+function NeoSizePanel({ nasaId, min, max }: { nasaId: string; min: number | null; max: number | null }) {
   return (
     <Panel>
       <PanelTitle title="크기" sub="안쪽 원 = 최솟값, 바깥 원 = 최댓값" />
@@ -19,7 +20,7 @@ function NeoSizePanel({ min, max }: { min: number | null; max: number | null }) 
       ) : (
         <Figure min={min} max={max} />
       )}
-      <Link to="/compare" className="mt-4 inline-flex items-center gap-1 text-sm text-signal hover:underline">
+      <Link to={comparePath("neo", nasaId)} className="mt-4 inline-flex items-center gap-1 text-sm text-signal hover:underline">
         크기 비교에서 자세히 보기 <ArrowUpRight className="size-4" />
       </Link>
     </Panel>
