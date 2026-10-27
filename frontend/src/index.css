@@ -34,7 +34,7 @@ Tailwind CSS v4 + shadcn/ui
   
   /* 서체 ─ 역할별로 분리 (2.2절) */
   --font-display: "IBM Plex Sans Condensed", sans-serif;
-  --font-body: "IBM Plex Sans", sans-serif;
+  --font-body: "Pretendard Variable", Pretendard, "IBM Plex Sans", sans-serif;  /* 한글 글리프가 있는 Pretendard를 앞에 */
   --font-mono: "IBM Plex Mono", monospace;
 
   /* Type Scale ─ 크기/굵기 쌍 (2.3절) */
@@ -54,7 +54,7 @@ Tailwind CSS v4 + shadcn/ui
   --space-3: 24px;
   --space-5: 40px;
   --space-8: 64px;
-  --radius: 4px;   /* shadcn/ui도 이 이름(--radius)을 기준 모서리로 쓴다 ─ 이름이 같아서 그대로 연결됨 */
+  --radius: 8px;   /* (10-27 4px → 8px, 둥근 스타일로 변경) shadcn/ui도 이 이름(--radius)을 기준 모서리로 쓴다 ─ 이름이 같아서 그대로 연결됨 */
 
   /* ─── shadcn/ui 의미 토큰 → 프로젝트 토큰 연결 ───
      shadcn 컴포넌트는 "background / primary / border" 같은 '역할 이름'으로 색을 찾는다.
@@ -120,7 +120,7 @@ inline = 클래스가 var(--토큰)을 그대로 참조 → :root 값만 바꾸�
   --color-ring: var(--ring);
 
   /* 서체 (2.2절) ─ font-sans가 본문, font-display가 제목, font-mono가 수치 */
-  --font-sans: "IBM Plex Sans", sans-serif;
+  --font-sans: "Pretendard Variable", Pretendard, "IBM Plex Sans", sans-serif;
   --font-display: "IBM Plex Sans Condensed", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
 
@@ -131,11 +131,11 @@ inline = 클래스가 var(--토큰)을 그대로 참조 → :root 값만 바꾸�
   --text-body: 15px;
   --text-label: 12px;
 
-  /* 모서리 (2.4절 "4px, 최소한만") ─ shadcn 컴포넌트가 쓰는 rounded-md/lg가 4px이 되도록 */
-  --radius-sm: 2px;
+  /* 모서리 (2.4절, 10-27 변경) ─ 버튼·입력 8px(md) / 내부 박스 12px(lg) / 카드 16px(xl) */
+  --radius-sm: 6px;
   --radius-md: var(--radius);
-  --radius-lg: var(--radius);
-  --radius-xl: 6px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 
   /* 그림자 전부 제거 (2.4절 "그림자 사용하지 않음. 깊이는 배경 명도 차이로만")
      shadcn 컴포넌트에 기본으로 붙어 있는 shadow-xs 같은 클래스도 이 한 줄로 무력화된다. */
