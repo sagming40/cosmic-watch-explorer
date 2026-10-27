@@ -69,6 +69,39 @@
   --hazard: #f43f5e;
 }
 
+/* D · 바이올렛 ─ 거의 검정 + 보라. 차갑고 세련된 SaaS 톤 */
+[data-mock-theme="violet"] {
+  --ink: #0a0910;
+  --panel: #13121b;
+  --line: #262435;
+  --bone: #f4f2fb;
+  --dim: #8d89a3;
+  --sodium: #a98bff;
+  --hazard: #f43f5e;
+}
+
+/* E · 포스퍼 ─ 녹색 기운 검정 + 레이더 화면 형광 녹색. 관측 계기판 콘셉트와 맞닿는 안 */
+[data-mock-theme="phosphor"] {
+  --ink: #070b09;
+  --panel: #0e1512;
+  --line: #1d2a24;
+  --bone: #e8f3ed;
+  --dim: #7f948a;
+  --sodium: #4ade80;
+  --hazard: #fb4d5b;
+}
+
+/* F · 모노크롬 ─ 무채색 + 흰색 강조. 화면의 유일한 유채색이 위험 빨강이 되는 안 */
+[data-mock-theme="mono"] {
+  --ink: #0a0a0a;
+  --panel: #141414;
+  --line: #2a2a2a;
+  --bone: #f5f5f5;
+  --dim: #8f8f8f;
+  --sodium: #f5f5f5;
+  --hazard: #ff4d4f;
+}
+
 /* 배경 ─ 위쪽에 강조색이 아주 옅게 번지는 빛 + 점 격자(관측 차트 용지 느낌) */
 .mock-backdrop {
   background-color: var(--ink);

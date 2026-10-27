@@ -47,6 +47,9 @@ const THEMES = [
   { id: "sodium", label: "A · 소듐", hint: "지금 토큰을 다듬은 안" },
   { id: "deep-space", label: "B · 딥 스페이스", hint: "남색 + 하늘색" },
   { id: "graphite", label: "C · 그래파이트", hint: "무채색 + 라임" },
+  { id: "violet", label: "D · 바이올렛", hint: "거의 검정 + 보라" },
+  { id: "phosphor", label: "E · 포스퍼", hint: "레이더 화면 녹색" },
+  { id: "mono", label: "F · 모노크롬", hint: "무채색 + 흰색, 위험 빨강만 유채색" },
 ] as const;
 type ThemeId = (typeof THEMES)[number]["id"];
 
@@ -162,7 +165,7 @@ function MockupPage() {
           <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-lg font-semibold">달 거리 스케일</h2>
             <div className="flex items-center gap-4 text-xs text-dim">
-              <Legend className="bg-hazard" label="달보다 가까이 (1 LD 안쪽)" />
+              <Legend className="bg-hazard ring-2 ring-hazard ring-offset-2 ring-offset-panel" label="달보다 가까이 (1 LD 안쪽)" />
               <Legend className="bg-sodium" label="그 밖" />
               <Legend className="border border-sodium" label="범위 밖 (끝에 표시)" />
             </div>
@@ -555,19 +558,23 @@ function LunarScale({
             const { cx, cy, payload } = props as { cx: number; cy: number; payload: ChartPoint };
             const color = payload.nearMoon ? "var(--hazard)" : "var(--sodium)";
             const active = payload.id === hoveredId;
+            const r = active ? 8 : 5.5;
             return (
-              <circle
-                cx={cx}
-                cy={cy}
-                r={active ? 8 : 5.5}
-                fill={payload.clamped ? "none" : color}
-                fillOpacity={active ? 1 : 0.85}
-                stroke={color}
-                strokeWidth={payload.clamped ? 1.5 : active ? 3 : 0}
-                strokeOpacity={0.35}
-                onMouseEnter={() => onHover(payload.id)}
-                onMouseLeave={() => onHover(null)}
-              />
+              <g onMouseEnter={() => onHover(payload.id)} onMouseLeave={() => onHover(null)}>
+                {/* 1 LD 안쪽 점은 바깥 고리를 하나 더 ─ 색을 구분하기 어려운 사람도 모양으로 알아보게
+                    (03 문서 9장 "위험 여부를 색으로만 표시하지 않는다") */}
+                {payload.nearMoon && <circle cx={cx} cy={cy} r={r + 5} fill="none" stroke={color} strokeWidth={1.5} />}
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={r}
+                  fill={payload.clamped ? "none" : color}
+                  fillOpacity={active ? 1 : 0.85}
+                  stroke={color}
+                  strokeWidth={payload.clamped ? 1.5 : active ? 3 : 0}
+                  strokeOpacity={payload.clamped ? 1 : 0.35}
+                />
+              </g>
             );
           }}
         />
@@ -617,17 +624,19 @@ function DistanceVelocityChart({
             const color = payload.nearMoon ? "var(--hazard)" : "var(--sodium)";
             const active = payload.id === hoveredId;
             return (
-              <circle
-                cx={cx}
-                cy={cy}
-                r={active ? r + 2 : r}
-                fill={color}
-                fillOpacity={active ? 0.9 : 0.45}
-                stroke={color}
-                strokeWidth={1}
-                onMouseEnter={() => onHover(payload.id)}
-                onMouseLeave={() => onHover(null)}
-              />
+              <g onMouseEnter={() => onHover(payload.id)} onMouseLeave={() => onHover(null)}>
+                {/* 스케일 바와 같은 규칙 ─ 1 LD 안쪽은 바깥 고리로도 구분 */}
+                {payload.nearMoon && <circle cx={cx} cy={cy} r={r + 5} fill="none" stroke={color} strokeWidth={1.5} />}
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={active ? r + 2 : r}
+                  fill={color}
+                  fillOpacity={active ? 0.9 : 0.45}
+                  stroke={color}
+                  strokeWidth={1}
+                />
+              </g>
             );
           }}
         />
@@ -662,15 +671,15 @@ function Faq() {
 function ThemeDock({ theme, onChange }: { theme: ThemeId; onChange: (t: ThemeId) => void }) {
   return (
     <div className="fixed inset-x-0 bottom-5 z-30 flex justify-center px-4">
-      <div className="flex items-center gap-1 rounded-full border border-line bg-panel/90 p-1.5 backdrop-blur-xl">
-        <span className="px-3 text-xs text-dim">색 시안</span>
+      <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-line bg-panel/90 p-1.5 backdrop-blur-xl">
+        <span className="shrink-0 px-3 text-xs text-dim">색 시안</span>
         {THEMES.map((t) => (
           <button
             key={t.id}
             title={t.hint}
             onClick={() => onChange(t.id)}
             className={cn(
-              "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+              "shrink-0 rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
               theme === t.id ? "bg-sodium text-ink" : "text-dim hover:text-bone",
             )}
           >
