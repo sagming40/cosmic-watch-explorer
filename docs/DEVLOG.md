@@ -406,7 +406,7 @@ M2 API 검증은 curl·Client(Origin 없음)로만 해서 안 보였다. "로그
 - `npm audit` high 5건 — 런타임은 `follow-redirects`(axios 의존) 1건, 나머지는 개발 도구. 별도 `chore` 커밋으로 처리 예정.
 - `settings.py`의 `ALLOWED_HOSTS = []` — 9/8 기록엔 변경했다고 되어 있으나 실제 코드는 빈 목록(테스트 Client 검증 시 shell 안에서만 임시 추가했던 것으로 보임).
 - ~~`NeoListItem`의 `formatDiameterRange`가 직경 null이면 `"0 ~ 0"` 표시~~ → 같은 날 수정 (`fix(M3)` 커밋)
-- NASA API 키가 과거 채팅 로그(traceback URL)에 노출된 적 있음 → 재발급 권장.
+- ~~NASA API 키가 과거 채팅 로그(traceback URL)에 노출된 적 있음 → 재발급 권장.~~ → 10-27 재발급 완료 (회사 PC·집 PC `.env` 모두 새 키)
 
 **이번 세션 커밋**
 - `feat(M3): NeoListItem·DateNavigator 구현 및 날짜 유틸(utils/date.js) 분리` (wip 재정리)
@@ -464,7 +464,7 @@ M2 API 검증은 curl·Client(Origin 없음)로만 해서 안 보였다. "로그
 - **새 기기에서 열면**: 10-27부터 모든 화면이 로그인 필요 → DB가 기기마다 따로라 그 기기에서 회원가입부터(CLAUDE.md 2.5절). 포트폴리오 공개 전엔 체험용 계정을 둘지 정하기(배포 M6)
 - **결정 필요**: "다음 접근까지" 카운트다운용 API를 만들지 (01 문서 3.2절 후보)
 - **아직 실물로 못 본 상태 화면**: 접근 0건인 날짜, NASA 장애(`UPSTREAM_ERROR`), 3초 넘는 응답 안내
-- **알려진 이슈**: 번들 812 kB 경고(10-27 크기 비교까지, 처음 741 kB)(code splitting, M5~M6) · `npm audit` high 5건(별도 chore) · `settings.py` `ALLOWED_HOSTS = []` · 과거 채팅에 노출된 NASA API 키 재발급
+- **알려진 이슈**: 번들 812 kB 경고(10-27 크기 비교까지, 처음 741 kB)(code splitting, M5~M6) · `npm audit` high 5건(별도 chore) · `settings.py` `ALLOWED_HOSTS = []` · ~~과거 채팅에 노출된 NASA API 키 재발급~~(10-27 완료)
 - 검증용 날짜·ID는 `CLAUDE.md` 2.5절
 ---
 
