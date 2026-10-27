@@ -1,5 +1,8 @@
-import { NavLink, useLocation } from "react-router";
-import { Orbit } from "lucide-react";
+import { NavLink, useLocation, useNavigate } from "react-router";
+import { LogOut, Orbit, Star } from "lucide-react";
+
+import { loginPath } from "@/auth/next";
+import { useAuth } from "@/auth/useAuth";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -55,12 +58,55 @@ function Header() {
           ))}
         </nav>
 
-        {/* 로그인 상태 분기(이름·내 관심 천체·로그아웃)는 M4의 AuthProvider 이후. 지금은 항상 "로그인" */}
-        <Button variant="outline" size="sm" className="ml-auto" asChild>
-          <NavLink to="/login">로그인</NavLink>
-        </Button>
+        <AuthArea />
       </div>
     </header>
+  );
+}
+
+// ─── 오른쪽 끝: 로그인 상태에 따라 (04 문서 4.2절 /me/) ─────────────────
+// 확인 중: 빈자리(버튼이 "로그인"→"이름"으로 깜빡이지 않게) / 비로그인: 로그인 / 로그인: 내 관심 천체·이름·로그아웃
+function AuthArea() {
+  const { status, user, logout } = useAuth();
+  const { pathname, search } = useLocation();
+  const navigate = useNavigate();
+
+  if (status === "loading") return <div className="ml-auto h-8 w-20" aria-hidden />;
+
+  if (!user) {
+    // 로그인 화면에 있을 때는 next를 덧붙이지 않는다
+    const onAuthPage = pathname === "/login" || pathname === "/signup";
+    return (
+      <Button variant="outline" size="sm" className="ml-auto" asChild>
+        <NavLink to={onAuthPage ? "/login" : loginPath(pathname + search)} className="text-bone">
+          로그인
+        </NavLink>
+      </Button>
+    );
+  }
+
+  async function handleLogout() {
+    await logout();
+    // 로그인해야 보는 화면에 있었다면 홈으로. 공개 화면이면 그 자리에 머문다
+    if (pathname.startsWith("/watchlist")) navigate("/", { replace: true });
+  }
+
+  return (
+    <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+      <Button variant="ghost" size="sm" asChild>
+        <NavLink to="/watchlist" className="text-bone" aria-label="내 관심 천체">
+          <Star />
+          <span className="hidden lg:inline">내 관심 천체</span>
+        </NavLink>
+      </Button>
+      {/* 휴대폰 폭에서는 머리글자 원을 숨긴다 ─ 375px에서 헤더가 8px 넘쳤다 (별·로그아웃만으로 충분) */}
+      <span className="hidden size-8 place-items-center rounded-full bg-line sm:grid text-sm font-semibold uppercase" title={user.username} aria-label={`${user.username} 님`}>
+        {user.username[0]}
+      </span>
+      <Button variant="ghost" size="icon-sm" onClick={handleLogout} aria-label="로그아웃" title="로그아웃">
+        <LogOut />
+      </Button>
+    </div>
   );
 }
 

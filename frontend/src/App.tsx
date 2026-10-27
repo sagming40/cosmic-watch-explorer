@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router";
 
 import Layout from "./components/layout/Layout";
@@ -12,24 +12,21 @@ import SignupPage from "./pages/SignupPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
-import { ensureCsrf } from "./api/client";
+import AuthProvider from "./auth/AuthProvider";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // 디자인 목업 (/mockup) ─ 개발 서버(npm run dev)에서만 존재한다.
 // 배포 빌드에서는 import.meta.env.DEV가 false로 바뀌어 이 코드와 목업 파일이 통째로 빠진다.
 const MockupPage = import.meta.env.DEV ? lazy(() => import("./mockup/MockupPage")) : null;
 
 function App() {
-  // 앱 실행 시 최초 1회, server에서 CSRF cookie를 미리 받아둔다.
-  // 비유: 식당에 들어가자마자 번호표를 뽑아두는 것.
-  // → 주문(POST)할 때가 되어서야 번호표를 뽑으러 가게 되면 늦기 때문.
-  useEffect(() => {
-    ensureCsrf();
-  }, []);
-
   return (
     // BrowserRouter = 주소창 감시자.
     // 주소가 바뀌는 걸 지켜보다가 아래 Routes에 "현 주소"를 알려준다.
     <BrowserRouter>
+      {/* AuthProvider = 로그인 상태 방송국. 앱이 뜰 때 CSRF 쿠키 받기 + /me/ 확인을 여기서 한다
+          (예전엔 App의 useEffect에서 ensureCsrf()만 불렀다) */}
+      <AuthProvider>
       <Routes>
         {/* 목업은 자체 헤더가 있어서 Layout 밖에 둔다 */}
         {MockupPage && (
@@ -54,9 +51,15 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
 
-          {/* 인증 필요 화면. 지금은 그냥 열려 있다 
-              ─ 로그인 상태를 아는 장치(AuthProvider) 구현 후 문지기(ProtectedRoute)를 이 자리에 씌운다. */}
-          <Route path="/watchlist" element={<WatchlistPage />} />
+          {/* 인증 필요 화면 ─ 문지기(ProtectedRoute)가 비로그인이면 /login?next=/watchlist 로 보낸다 */}
+          <Route
+            path="/watchlist"
+            element={
+              <ProtectedRoute>
+                <WatchlistPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* "*" = 위 어느 것에도 걸리지 않은 나머지 전부. 
               404도 Layout 안에 두는 이유: Header가 있어야 다른 곳으로 갈 수 있기 때문
@@ -64,6 +67,7 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />      
         </Route>    
       </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
