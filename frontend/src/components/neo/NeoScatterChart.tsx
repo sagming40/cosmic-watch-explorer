@@ -29,7 +29,6 @@ function NeoScatterChart({ results, hoveredId, onHover }: NeoScatterChartProps) 
           scale="log"
           domain={[LD_MIN, LD_MAX]}
           ticks={[0.1, 1, 10, 100]}
-          allowDataOverflow
           interval={0}
           stroke="var(--line)"
           tick={AXIS_TICK}

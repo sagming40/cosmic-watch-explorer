@@ -27,8 +27,9 @@ function LunarDistanceBar({ results, hoveredId, onHover }: LunarDistanceBarProps
           scale="log"
           domain={[LD_MIN, LD_MAX]}
           ticks={[0.1, 1, 10, 100, 500]}
-          allowDataOverflow
           interval={0} // 겹친다고 첫 눈금(0.1 LD)을 숨기지 않게
+          // allowDataOverflow는 쓰지 않는다 ─ 켜면 그래프 영역 밖을 잘라내서, 0.1 LD 끝에 붙은 점이 반쯤 잘린다.
+          // 범위 밖 값은 이미 clampLd()로 가둬서 넘기므로 넘칠 일이 없다.
           tickFormatter={(v: number) => `${v} LD`}
           stroke="var(--line)"
           tick={AXIS_TICK}
