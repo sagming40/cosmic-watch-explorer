@@ -1,112 +1,19 @@
 /*
 =============================================================================
 목업 전용 스타일 ─ /mockup 화면에서만 쓴다. 디자인 확정 후 이 폴더째 삭제한다.
-
-색 시안 3종을 같은 화면에서 바꿔 보기 위해, 시안 영역([data-mock-theme]) 안에서
-토큰 7개를 덮어쓴다.
-
-⚠️ shadcn 역할 변수(--primary 등)도 여기서 "다시" 선언해야 한다.
-   :root의 --primary: var(--sodium) 은 :root에서 값이 이미 계산된 채로 자식에게 물려진다.
-   → 자식 영역에서 --sodium만 바꾸면 --primary는 옛 색 그대로 남는다.
-   비유: 엄마가 "우리 집 대표 색 = 호박색"이라고 적어서 나눠준 쪽지. 자식이 호박색 물감을
-        바꿔도, 쪽지에는 이미 '호박색'이라고 적혀 있다 → 쪽지를 새로 써줘야 한다.
+(색은 10-27 C 그래파이트로 확정 → index.css :root 토큰을 그대로 쓴다. 시안 덮어쓰기는 삭제)
 =============================================================================
 */
 
-[data-mock-theme] {
+.mock-root {
   font-family: "Pretendard Variable", Pretendard, "IBM Plex Sans", sans-serif;
-
-  --background: var(--ink);
-  --foreground: var(--bone);
-  --card: var(--panel);
-  --card-foreground: var(--bone);
-  --popover: var(--panel);
-  --popover-foreground: var(--bone);
-  --primary: var(--sodium);
-  --primary-foreground: var(--ink);
-  --secondary: var(--line);
-  --secondary-foreground: var(--bone);
-  --muted: var(--panel);
-  --muted-foreground: var(--dim);
-  --accent: var(--line);
-  --accent-foreground: var(--bone);
-  --destructive: var(--hazard);
-  --border: var(--line);
-  --input: var(--line);
-  --ring: var(--sodium);
-}
-
-/* A · 소듐 ─ 지금 토큰을 다듬은 안. 따뜻한 검정 + 호박색 (관제실 적색 조명 콘셉트 유지) */
-[data-mock-theme="sodium"] {
-  --ink: #0d0c0a;
-  --panel: #171512;
-  --line: #2a2621;
-  --bone: #f3efe8;
-  --dim: #948b80;
-  --sodium: #f5a33b;
-  --hazard: #ef4444;
-}
-
-/* B · 딥 스페이스 ─ 남색 배경 + 하늘색 강조. 우주 느낌이 가장 강하다 */
-[data-mock-theme="deep-space"] {
-  --ink: #060a13;
-  --panel: #0d1422;
-  --line: #1b2537;
-  --bone: #e7edf6;
-  --dim: #7f8ca4;
-  --sodium: #4cc2ff;
-  --hazard: #f43f5e;
-}
-
-/* C · 그래파이트 ─ 무채색 + 라임 강조. 개발자 도구(Linear·Vercel·Raycast) 계열의 담백한 안 */
-[data-mock-theme="graphite"] {
-  --ink: #09090b;
-  --panel: #131316;
-  --line: #26262b;
-  --bone: #fafafa;
-  --dim: #8b8b95;
-  --sodium: #c3f53c;
-  --hazard: #f43f5e;
-}
-
-/* D · 바이올렛 ─ 거의 검정 + 보라. 차갑고 세련된 SaaS 톤 */
-[data-mock-theme="violet"] {
-  --ink: #0a0910;
-  --panel: #13121b;
-  --line: #262435;
-  --bone: #f4f2fb;
-  --dim: #8d89a3;
-  --sodium: #a98bff;
-  --hazard: #f43f5e;
-}
-
-/* E · 포스퍼 ─ 녹색 기운 검정 + 레이더 화면 형광 녹색. 관측 계기판 콘셉트와 맞닿는 안 */
-[data-mock-theme="phosphor"] {
-  --ink: #070b09;
-  --panel: #0e1512;
-  --line: #1d2a24;
-  --bone: #e8f3ed;
-  --dim: #7f948a;
-  --sodium: #4ade80;
-  --hazard: #fb4d5b;
-}
-
-/* F · 모노크롬 ─ 무채색 + 흰색 강조. 화면의 유일한 유채색이 위험 빨강이 되는 안 */
-[data-mock-theme="mono"] {
-  --ink: #0a0a0a;
-  --panel: #141414;
-  --line: #2a2a2a;
-  --bone: #f5f5f5;
-  --dim: #8f8f8f;
-  --sodium: #f5f5f5;
-  --hazard: #ff4d4f;
 }
 
 /* 배경 ─ 위쪽에 강조색이 아주 옅게 번지는 빛 + 점 격자(관측 차트 용지 느낌) */
 .mock-backdrop {
   background-color: var(--ink);
   background-image:
-    radial-gradient(60% 40% at 50% -10%, color-mix(in oklab, var(--sodium) 18%, transparent), transparent 70%),
+    radial-gradient(60% 40% at 50% -10%, color-mix(in oklab, var(--signal) 12%, transparent), transparent 70%),
     radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--bone) 7%, transparent) 1px, transparent 0);
   background-size: 100% 100%, 24px 24px;
 }
@@ -118,8 +25,8 @@
 }
 
 .mock-accent-tint {
-  background-color: color-mix(in oklab, var(--sodium) 12%, transparent);
-  color: var(--sodium);
+  background-color: color-mix(in oklab, var(--signal) 12%, transparent);
+  color: var(--signal);
 }
 
 /* 실시간 표시 점 ─ 움직임 최소화 설정을 켠 사용자에게는 깜빡이지 않는다 (03 문서 9장) */

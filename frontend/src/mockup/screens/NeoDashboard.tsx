@@ -1,9 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
-// MockupPage.tsx ─ /mockup (개발 서버에서만 열림)
-//
-// NEO 대시보드 디자인 목업. 하단 떠 있는 막대에서 색 시안 3종(A·B·C)을 바꿔 본다.
-// 데이터는 가짜(data.ts)지만 실제 API 응답 타입과 같은 모양 → 확정되면 이 화면 코드를
-// 실제 NeoDashboardPage로 옮기고, mockup 폴더는 통째로 지운다.
+// NeoDashboard.tsx ─ 목업 화면 1: NEO 대시보드 (/)
+// 확정되면 이 코드를 pages/NeoDashboardPage로 옮기고 가짜 데이터를 api.get() 결과로 바꾼다.
 // ═══════════════════════════════════════════════════════════════════
 
 import { useEffect, useMemo, useState } from "react";
@@ -25,10 +22,8 @@ import {
   ChevronRight,
   Database,
   Moon,
-  Orbit,
   Radar,
   Ruler,
-  Search,
   TriangleAlert,
 } from "lucide-react";
 
@@ -39,19 +34,9 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import type { NeoDashboardItem } from "@/types/api";
 
-import { MOCK_DASHBOARD, MOCK_NEXT_APPROACH } from "./data";
-import "./mockup.css";
+import { MOCK_DASHBOARD, MOCK_NEXT_APPROACH } from "../data";
+import { Legend, PageShell, StatCard } from "../parts";
 
-// ─── 시안 목록 ───────────────────────────────────────────────────────
-const THEMES = [
-  { id: "sodium", label: "A · 소듐", hint: "지금 토큰을 다듬은 안" },
-  { id: "deep-space", label: "B · 딥 스페이스", hint: "남색 + 하늘색" },
-  { id: "graphite", label: "C · 그래파이트", hint: "무채색 + 라임" },
-  { id: "violet", label: "D · 바이올렛", hint: "거의 검정 + 보라" },
-  { id: "phosphor", label: "E · 포스퍼", hint: "레이더 화면 녹색" },
-  { id: "mono", label: "F · 모노크롬", hint: "무채색 + 흰색, 위험 빨강만 유채색" },
-] as const;
-type ThemeId = (typeof THEMES)[number]["id"];
 
 // 스케일 바 고정 범위 (03 문서 3장, v1.2 ─ 0.1 ~ 500 LD)
 const LD_MIN = 0.1;
@@ -91,8 +76,7 @@ function fmtKstTime(iso: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-function MockupPage() {
-  const [theme, setTheme] = useState<ThemeId>("sodium");
+function NeoDashboard() {
   const [sort, setSort] = useState<SortKey>("distance");
   const [subUnit, setSubUnit] = useState<SubUnit>("km");
   const [hazardOnly, setHazardOnly] = useState(false);
@@ -112,21 +96,19 @@ function MockupPage() {
   }, [data.results, hazardOnly, sort]);
 
   return (
-    <div data-mock-theme={theme} className="mock-backdrop min-h-screen text-bone">
-      <MockHeader />
+    <PageShell active="neo">
 
-      <main className="mx-auto max-w-7xl px-4 pb-32 md:px-8">
         {/* ─── 히어로: 제목 + 날짜 이동 / 다음 접근 카운트다운 ─── */}
         <section className="grid gap-6 pt-10 pb-8 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
-            <div className="mb-4 flex items-center gap-2 text-label font-medium tracking-[0.12em] text-sodium uppercase">
-              <span className="mock-live-dot size-1.5 rounded-full bg-sodium" />
+            <div className="mb-4 flex items-center gap-2 text-label font-medium tracking-[0.12em] text-signal uppercase">
+              <span className="mock-live-dot size-1.5 rounded-full bg-signal" />
               Live · NASA NeoWs
             </div>
             <h1 className="text-4xl leading-tight font-bold tracking-tight md:text-5xl">
               오늘 지구 곁을 지나는
               <br />
-              <span className="text-sodium">소행성 {data.summary.total_count}개</span>
+              <span className="text-signal">소행성 {data.summary.total_count}개</span>
             </h1>
             <DatePill date={data.date} />
           </div>
@@ -166,8 +148,8 @@ function MockupPage() {
             <h2 className="text-lg font-semibold">달 거리 스케일</h2>
             <div className="flex items-center gap-4 text-xs text-dim">
               <Legend className="bg-hazard ring-2 ring-hazard ring-offset-2 ring-offset-panel" label="달보다 가까이 (1 LD 안쪽)" />
-              <Legend className="bg-sodium" label="그 밖" />
-              <Legend className="border border-sodium" label="범위 밖 (끝에 표시)" />
+              <Legend className="bg-signal" label="그 밖" />
+              <Legend className="border border-signal" label="범위 밖 (끝에 표시)" />
             </div>
           </div>
           <p className="mb-2 text-sm text-dim">
@@ -225,7 +207,7 @@ function MockupPage() {
               {rows.length === 0 && (
                 <li className="px-5 py-12 text-center text-sm text-dim">
                   오늘은 위험 분류 소행성이 없습니다.
-                  <button className="ml-2 text-sodium underline-offset-4 hover:underline" onClick={() => setHazardOnly(false)}>
+                  <button className="ml-2 text-signal underline-offset-4 hover:underline" onClick={() => setHazardOnly(false)}>
                     전체 보기
                   </button>
                 </li>
@@ -250,51 +232,8 @@ function MockupPage() {
           </span>
           <span>학습·포트폴리오 목적이며 실제 충돌 예측에 사용하지 마세요.</span>
         </footer>
-      </main>
 
-      <ThemeDock theme={theme} onChange={setTheme} />
-    </div>
-  );
-}
-
-// ─── 헤더: 로고 / 알약 모양 메뉴 / 검색(⌘K) / 로그인 ─────────────────────
-function MockHeader() {
-  const items = ["소행성", "외계행성", "크기 비교"];
-  return (
-    <header className="sticky top-0 z-20 border-b border-line/70 bg-ink/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 md:px-8">
-        <a className="flex items-center gap-2 font-semibold tracking-tight" href="#">
-          <span className="grid size-8 place-items-center rounded-lg mock-accent-tint">
-            <Orbit className="size-4.5" />
-          </span>
-          <span className="hidden sm:inline">Cosmic Watch</span>
-        </a>
-
-        <nav className="ml-2 hidden items-center gap-1 rounded-full border border-line bg-panel/70 p-1 md:flex">
-          {items.map((label, i) => (
-            <a
-              key={label}
-              href="#"
-              className={cn(
-                "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
-                i === 0 ? "bg-sodium text-ink" : "text-dim hover:text-bone",
-              )}
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
-
-        <button className="ml-auto flex h-9 items-center gap-2 rounded-lg border border-line bg-panel/70 px-3 text-sm text-dim transition-colors hover:text-bone md:w-72">
-          <Search className="size-4" />
-          <span className="hidden md:inline">소행성·외계행성 검색</span>
-          <kbd className="ml-auto hidden rounded border border-line px-1.5 font-mono text-[11px] md:inline">Ctrl K</kbd>
-        </button>
-        <Button variant="outline" size="sm">
-          로그인
-        </Button>
-      </div>
-    </header>
+    </PageShell>
   );
 }
 
@@ -313,7 +252,7 @@ function DatePill({ date }: { date: string }) {
         <ChevronRight />
       </Button>
       <span className="mx-1 h-5 w-px bg-line" />
-      <button className="rounded-full px-3 py-1 text-sm text-sodium hover:bg-line/60">오늘</button>
+      <button className="rounded-full px-3 py-1 text-sm text-signal hover:bg-line/60">오늘</button>
     </div>
   );
 }
@@ -352,46 +291,6 @@ function Countdown() {
         <span className="font-mono text-hazard">{MOCK_NEXT_APPROACH.miss_distance_ld} LD 예정</span>
       </div>
     </div>
-  );
-}
-
-// ─── 요약 카드 ────────────────────────────────────────────────────────
-function StatCard({
-  icon,
-  label,
-  value,
-  unit,
-  sub,
-  hazard = false,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  unit?: string;
-  sub: string;
-  hazard?: boolean;
-}) {
-  return (
-    <div className={cn("rounded-xl border border-line bg-panel/80 p-5 backdrop-blur", hazard && "mock-hazard-tint")}>
-      <div className={cn("flex items-center gap-2 text-sm text-dim", hazard && "text-hazard")}>
-        {icon}
-        {label}
-      </div>
-      <div className="mt-3 flex items-baseline gap-1.5">
-        <span className={cn("font-mono text-3xl font-medium tabular-nums md:text-4xl", hazard && "text-hazard")}>{value}</span>
-        {unit && value !== "—" && <span className="font-mono text-sm text-dim">{unit}</span>}
-      </div>
-      <div className="mt-1 truncate font-mono text-xs text-dim">{sub}</div>
-    </div>
-  );
-}
-
-function Legend({ className, label }: { className: string; label: string }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className={cn("size-2.5 rounded-full", className)} />
-      {label}
-    </span>
   );
 }
 
@@ -556,7 +455,7 @@ function LunarScale({
           isAnimationActive={false}
           shape={(props: unknown) => {
             const { cx, cy, payload } = props as { cx: number; cy: number; payload: ChartPoint };
-            const color = payload.nearMoon ? "var(--hazard)" : "var(--sodium)";
+            const color = payload.nearMoon ? "var(--hazard)" : "var(--signal)";
             const active = payload.id === hoveredId;
             const r = active ? 8 : 5.5;
             return (
@@ -621,7 +520,7 @@ function DistanceVelocityChart({
           shape={(props: unknown) => {
             const { cx, cy, payload, width } = props as { cx: number; cy: number; payload: ChartPoint; width?: number };
             const r = Math.max(3, (width ?? 8) / 2);
-            const color = payload.nearMoon ? "var(--hazard)" : "var(--sodium)";
+            const color = payload.nearMoon ? "var(--hazard)" : "var(--signal)";
             const active = payload.id === hoveredId;
             return (
               <g onMouseEnter={() => onHover(payload.id)} onMouseLeave={() => onHover(null)}>
@@ -667,28 +566,4 @@ function Faq() {
   );
 }
 
-// ─── 하단 시안 전환 막대 (목업 전용) ──────────────────────────────────
-function ThemeDock({ theme, onChange }: { theme: ThemeId; onChange: (t: ThemeId) => void }) {
-  return (
-    <div className="fixed inset-x-0 bottom-5 z-30 flex justify-center px-4">
-      <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-line bg-panel/90 p-1.5 backdrop-blur-xl">
-        <span className="shrink-0 px-3 text-xs text-dim">색 시안</span>
-        {THEMES.map((t) => (
-          <button
-            key={t.id}
-            title={t.hint}
-            onClick={() => onChange(t.id)}
-            className={cn(
-              "shrink-0 rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
-              theme === t.id ? "bg-sodium text-ink" : "text-dim hover:text-bone",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default MockupPage;
+export default NeoDashboard;
