@@ -10,12 +10,10 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import { Orbit, Rocket } from "lucide-react";
 
 import { api, type AppError } from "@/api/client";
-import { loginPath } from "@/auth/next";
-import { useAuth } from "@/auth/useAuth";
 import { Panel } from "@/components/common/Panel";
 import { ErrorState, LoadingState } from "@/components/common/StateViews";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,8 +44,6 @@ function insertAt<T>(list: T[], index: number, item: T): T[] {
 }
 
 function WatchlistPage() {
-  const navigate = useNavigate();
-  const { logout } = useAuth();
   const [params, setParams] = useSearchParams();
   const tab = params.get("tab") === "exo" ? "exo" : "neo";
 
@@ -60,12 +56,8 @@ function WatchlistPage() {
   const [left, setLeft] = useState(UNDO_SECONDS);
   const [undoing, setUndoing] = useState(false);
 
-  // 세션이 만료된 경우(401) ─ 화면의 로그인 상태부터 지운다.
-  // 안 지우면 로그인 화면이 "이미 로그인됨"으로 보고 next(/watchlist)로 바로 돌려보내 둘이 핑퐁한다.
-  async function sessionExpired() {
-    await logout().catch(() => {});
-    navigate(loginPath("/watchlist"), { replace: true });
-  }
+  // 세션 만료(401)는 여기서 처리하지 않는다 ─ AuthProvider의 응답 감시가 로그인 상태를 지우고
+  // ProtectedRoute가 /login?next=지금 주소 로 보낸다 (10-27 화면 잠금 때 한 곳으로 모음)
 
   // ─── 목록 두 개를 한 번에 ─ 탭 숫자(소행성 3 · 외계행성 2)를 처음부터 보여주려고 ───
   useEffect(() => {
@@ -79,12 +71,7 @@ function WatchlistPage() {
       })
       .catch((err: AppError) => {
         if (ignore) return;
-        if (err.code === "AUTH_REQUIRED") {
-          logout()
-            .catch(() => {})
-            .then(() => navigate(loginPath("/watchlist"), { replace: true }));
-          return;
-        }
+        if (err.code === "AUTH_REQUIRED") return; // 곧 로그인 화면으로 넘어간다
         setLoaded({ key, lists: null, error: err });
       });
     const slow = setTimeout(() => setSlowKey(key), 3000);
@@ -92,7 +79,7 @@ function WatchlistPage() {
       ignore = true;
       clearTimeout(slow);
     };
-  }, [key, logout, navigate]);
+  }, [key]);
 
   // ─── 실행 취소 카운트다운 ─ 5초 뒤 토스트를 닫는다 (DELETE는 이미 클릭 즉시 나갔다) ───
   const toastId = removed?.id;
@@ -130,7 +117,7 @@ function WatchlistPage() {
     const url = base.kind === "neo" ? `/watchlist/neo/${base.item.nasa_id}/` : `/watchlist/exoplanets/${base.item.id}/`;
 
     const deleting = api.delete(url).catch((err: AppError) => {
-      if (err.code === "AUTH_REQUIRED") return sessionExpired();
+      if (err.code === "AUTH_REQUIRED") return; // 곧 로그인 화면으로 넘어간다
       // 서버엔 남아 있다 ─ 화면도 되돌리고 알린다
       restore({ ...base, index: target.index });
       setRemoved((r) => (r?.id === id ? { ...r, error: "삭제하지 못했어요. 잠시 후 다시 시도해 주세요." } : r));
@@ -158,7 +145,7 @@ function WatchlistPage() {
       setRemoved((cur) => (cur?.id === r.id ? null : cur));
     } catch (e) {
       const err = e as AppError;
-      if (err.code === "AUTH_REQUIRED") return sessionExpired();
+      if (err.code === "AUTH_REQUIRED") return; // 곧 로그인 화면으로 넘어간다
       if (err.code === "ALREADY_EXISTS") {
         restore(r); // 다른 탭에서 다시 저장한 경우 ─ 결과적으로 "저장돼 있음"이 맞다
         setRemoved((cur) => (cur?.id === r.id ? null : cur));

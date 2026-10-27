@@ -50,7 +50,7 @@ function LoginPage() {
   return (
     <AuthLayout next={next}>
       <h1 className="text-3xl font-bold tracking-tight">로그인</h1>
-      <p className="mt-2 text-sm text-dim">관심 천체를 저장하고 다음 접근을 한눈에 확인하세요.</p>
+      <p className="mt-2 text-sm text-dim">로그인하면 지구 근접 소행성과 외계행성 데이터를 볼 수 있어요.</p>
 
       <form className="mt-8 space-y-4" onSubmit={submit}>
         {formError && <FormAlert>{formError}</FormAlert>}

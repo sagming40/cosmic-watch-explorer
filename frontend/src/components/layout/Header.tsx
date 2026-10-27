@@ -1,7 +1,6 @@
-import { NavLink, useLocation, useNavigate } from "react-router";
+import { NavLink, useLocation } from "react-router";
 import { LogOut, Orbit, Star } from "lucide-react";
 
-import { loginPath } from "@/auth/next";
 import { useAuth } from "@/auth/useAuth";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +25,7 @@ function isNeoPath(pathname: string) {
 
 function Header() {
   const { pathname } = useLocation();
+  const { user } = useAuth();
   return (
     <header className="sticky top-0 z-20 border-b border-line/70 bg-ink/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4 md:px-8">
@@ -37,6 +37,8 @@ function Header() {
           <span className="hidden sm:inline">Cosmic Watch</span>
         </NavLink>
 
+        {/* 메뉴는 로그인했을 때만 ─ 비로그인이면 어느 메뉴를 눌러도 로그인 화면으로 튕기기만 한다 (10-27 화면 잠금) */}
+        {user && (
         <nav className="flex items-center gap-0.5 rounded-full border border-line bg-panel/70 p-1 sm:ml-2 sm:gap-1">
           {NAV_ITEMS.map((item) => (
             <NavLink
@@ -57,6 +59,7 @@ function Header() {
             </NavLink>
           ))}
         </nav>
+        )}
 
         <AuthArea />
       </div>
@@ -69,27 +72,24 @@ function Header() {
 function AuthArea() {
   const { status, user, logout } = useAuth();
   const { pathname, search } = useLocation();
-  const navigate = useNavigate();
+  // 로그아웃 뒤 이동은 따로 안 한다 ─ 로그인 상태가 지워지면 ProtectedRoute가 /login?next=지금 주소 로 보낸다
+  // (같은 사람이 다시 로그인하면 보던 화면으로. 여기서 navigate("/login")을 해도 문지기의 이동이 나중에 덮어썼다)
 
   if (status === "loading") return <div className="ml-auto h-8 w-20" aria-hidden />;
 
   if (!user) {
-    // 로그인 화면에 있을 때는 next를 덧붙이지 않는다
-    const onAuthPage = pathname === "/login" || pathname === "/signup";
+    // 비로그인이면 로그인·회원가입 화면에만 있을 수 있다(나머지는 ProtectedRoute가 보냄)
+    // → 지금 화면의 반대쪽을 보여준다. ?next=는 그대로 들고 간다
+    const toSignup = pathname === "/login";
     return (
       <Button variant="outline" size="sm" className="ml-auto" asChild>
-        <NavLink to={onAuthPage ? "/login" : loginPath(pathname + search)} className="text-bone">
-          로그인
+        <NavLink to={(toSignup ? "/signup" : "/login") + search} className="text-bone">
+          {toSignup ? "회원가입" : "로그인"}
         </NavLink>
       </Button>
     );
   }
 
-  async function handleLogout() {
-    await logout();
-    // 로그인해야 보는 화면에 있었다면 홈으로. 공개 화면이면 그 자리에 머문다
-    if (pathname.startsWith("/watchlist")) navigate("/", { replace: true });
-  }
 
   return (
     <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
@@ -103,7 +103,7 @@ function AuthArea() {
       <span className="hidden size-8 place-items-center rounded-full bg-line sm:grid text-sm font-semibold uppercase" title={user.username} aria-label={`${user.username} 님`}>
         {user.username[0]}
       </span>
-      <Button variant="ghost" size="icon-sm" onClick={handleLogout} aria-label="로그아웃" title="로그아웃">
+      <Button variant="ghost" size="icon-sm" onClick={logout} aria-label="로그아웃" title="로그아웃">
         <LogOut />
       </Button>
     </div>

@@ -1,7 +1,8 @@
 // WatchlistButton ─ 관심 천체 저장/해제 (03 문서 10장, 04 문서 7장)
 // - 토글 API가 아니라 POST(저장) / DELETE(해제)로 나뉜다 → 지금 상태(saved)를 보고 어느 쪽을 부를지 정한다 (7.1절)
-// - 비로그인이면 서버가 401(AUTH_REQUIRED) → /login?next=지금 주소 로 보낸다 (03 문서 4.3절)
-// - 로그인 안 된 게 확실하면(AuthProvider) API를 부르지 않고 바로 로그인 화면으로
+// - 10-27부터 상세 화면 자체가 로그인 필요라 보통은 로그인 상태에서만 보인다.
+//   세션이 끝나 401이 오면 AuthProvider가 로그인 상태를 지우고 ProtectedRoute가 /login?next= 로 보낸다
+// - 그래도 로그인 안 된 게 확실하면(AuthProvider) API를 부르지 않고 바로 로그인 화면으로 (안전장치)
 // - 로그아웃하면 "저장됨" 표시도 바로 풀린다 (저장 목록은 "그 사람"의 것이라)
 
 import { useState } from "react";
@@ -21,7 +22,7 @@ function WatchlistButton({ target, initialSaved }: { target: Target; initialSave
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { status, user, logout } = useAuth();
+  const { status, user } = useAuth();
   const shownSaved = saved && user !== null;
   const goLogin = () => navigate(loginPath(location.pathname + location.search));
 
@@ -42,12 +43,8 @@ function WatchlistButton({ target, initialSaved }: { target: Target; initialSave
       setSaved(!shownSaved);
     } catch (e) {
       const err = e as AppError;
-      if (err.code === "AUTH_REQUIRED") {
-        // 세션이 만료된 경우 등 ─ 화면은 로그인으로 알고 있었지만 서버는 아니었다.
-        // 화면의 로그인 상태부터 지운다 (안 지우면 로그인 화면이 "이미 로그인됨"으로 보고 바로 되돌려 보낸다)
-        await logout().catch(() => {});
-        goLogin();
-      } else if (err.code === "ALREADY_EXISTS") {
+      // AUTH_REQUIRED(세션 만료)는 AuthProvider가 로그인 상태를 지우고 ProtectedRoute가 로그인 화면으로 보낸다
+      if (err.code === "ALREADY_EXISTS") {
         setSaved(true); // 다른 탭에서 이미 저장한 경우 ─ 결과적으로 "저장됨"이 맞다
       }
     } finally {

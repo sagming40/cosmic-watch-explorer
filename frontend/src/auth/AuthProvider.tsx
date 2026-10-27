@@ -7,11 +7,15 @@
 //
 // 세션은 서버(httpOnly 쿠키)에 있고, 여기 user는 "화면 표시용 사본"이다.
 // 새로고침하면 사본은 사라지지만 쿠키는 남아서, /me/로 다시 받아온다 (04 문서 4.2절).
+//
+// 10-27부터 화면·API 전부 로그인 필요 → 어느 요청이든 401(AUTH_REQUIRED)이 오면 "세션이 끝났다"는 뜻.
+// 아래 응답 감시(interceptor)가 사본을 지우면 ProtectedRoute가 /login?next=지금 주소 로 보낸다.
+// (화면마다 401을 따로 처리하지 않아도 된다)
 // ═══════════════════════════════════════════════════════════════════
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { api, ensureCsrf } from "@/api/client";
+import { api, ensureCsrf, type AppError } from "@/api/client";
 import type { AuthStatus, AuthUser } from "@/types/api";
 
 import { AuthContext, type AuthContextValue } from "./context";
@@ -29,7 +33,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
         if (!ignore) setUser(res.data.user);
       })
       .catch(() => {
-        // 서버가 꺼져 있으면 "비로그인"으로 본다 ─ 공개 화면은 계속 쓸 수 있게
+        // 서버가 꺼져 있으면 "비로그인"으로 본다 ─ 로그인 화면으로 가고, 로그인 시도에서 "서버 연결 불가"가 뜬다
         if (!ignore) setUser(null);
       })
       .finally(() => {
@@ -38,6 +42,15 @@ function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       ignore = true;
     };
+  }, []);
+
+  // ─── 세션 만료 감시 ─ client.ts의 감시자(오류 봉투 → AppError)가 먼저 등록돼 있어서 여기엔 AppError가 온다 ───
+  useEffect(() => {
+    const id = api.interceptors.response.use(undefined, (err: AppError) => {
+      if (err?.code === "AUTH_REQUIRED") setUser(null);
+      return Promise.reject(err); // 오류는 그대로 화면에 넘긴다 ─ 지우기만 하고 삼키지 않는다
+    });
+    return () => api.interceptors.response.eject(id);
   }, []);
 
   // 오류는 여기서 삼키지 않는다 ─ 화면(로그인 폼)이 AppError.code/fields를 보고 문구를 고른다

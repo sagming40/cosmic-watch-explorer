@@ -24,10 +24,10 @@ function AuthLayout({ next, action = "로그인", children }: { next: string; ac
         </h2>
         <ul className="mt-8 space-y-3 text-sm text-dim">
           <li className="flex gap-2">
-            <Check className="size-4 text-signal" /> 소행성·외계행성을 관심 천체로 저장
+            <Check className="size-4 text-signal" /> 오늘 접근하는 소행성 · 외계행성 6,000여 개 탐색
           </li>
           <li className="flex gap-2">
-            <Check className="size-4 text-signal" /> 저장한 소행성의 다음 접근일을 한곳에서
+            <Check className="size-4 text-signal" /> 관심 천체 저장, 다음 접근일을 한곳에서
           </li>
           <li className="flex gap-2">
             <Check className="size-4 text-signal" /> 가입 즉시 로그인, 보던 페이지로 바로 복귀
