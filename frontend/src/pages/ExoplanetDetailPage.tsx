@@ -96,7 +96,7 @@ function ExoplanetDetail({ planet: p }: { planet: ExoplanetDetailResponse }) {
               {p.discovery_year ?? DASH} 발견
             </Badge>
           </div>
-          <h1 className="text-4xl font-bold tracking-tight break-words md:text-5xl">{p.planet_name}</h1>
+          <h1 className="text-4xl font-bold tracking-tight wrap-break-word md:text-5xl">{p.planet_name}</h1>
           <p className="mt-3 text-dim">
             {star.name} 계 ·{" "}
             {/* 값이 없을 때 "— 광년"처럼 단위만 남지 않게 */}

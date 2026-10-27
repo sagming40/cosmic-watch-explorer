@@ -103,7 +103,7 @@ function NeoDetail({ neo }: { neo: NeoDetailResponse }) {
               잠재적 위험 소행성 (PHA)
             </div>
           )}
-          <h1 className="text-4xl font-bold tracking-tight break-words md:text-5xl">{neo.name}</h1>
+          <h1 className="text-4xl font-bold tracking-tight wrap-break-word md:text-5xl">{neo.name}</h1>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-sm text-dim">
             <span>NASA ID {neo.nasa_id}</span>
             <span>명칭 {neo.designation ?? DASH}</span>
