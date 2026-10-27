@@ -63,6 +63,14 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
     ],
+    # ⭐ M4 추가 (10-27) ─ 기본값 = "로그인해야 들어올 수 있다".
+    # 처음 설계는 비회원도 NEO·외계행성을 조회할 수 있었지만(01 문서 2장), 화면을 로그인 뒤로 잠그기로 바꿨다.
+    # 화면만 잠그면 /api/neo/ 주소를 직접 치면 데이터가 다 보인다 → API도 같이 잠근다.
+    # 뷰마다 하나씩 붙이지 않고 "기본 잠금"으로 둔 이유: 나중에 만든 API는 저절로 잠긴다(빠뜨려서 열리는 사고가 없다).
+    # 열어야 하는 곳(인증 API 4개: csrf·me·signup·login)만 accounts/views.py에서 AllowAny로 명시한다.
+    "DEFAULT_PERMISSION_CLASSES": [
+        "config.permissions.IsAuthenticatedOr401",
+    ],
     "DEFAULT_PAGINATION_CLASS": "config.pagination.CommonPagination",  # ⭐ M2 추가
     "PAGE_SIZE": 20,  # ⭐ M2 추가 — (DEFAULT_PAGINATION_CLASS와 짝을 이뤄야 동작함)
 
