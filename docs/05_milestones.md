@@ -245,7 +245,7 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 - [x] `NotFoundPage`(404 캐치올 라우트) 추가 — *계획에 없던 작업*
 - [x] Tailwind CSS v4 + shadcn/ui 도입 (디자인 토큰 연결, `@layer` 정리) — *계획에 없던 작업*
 - [x] 프론트엔드 TypeScript 전환 (`types/api.ts` 응답 타입, `tsc -b` 빌드 검사) — *계획에 없던 작업*
-- [ ] 화면 목업 재작성 (`/mockup`, Tailwind + shadcn/ui, 7화면) — *계획에 없던 작업* · NEO 대시보드 색 시안 3종 완료, 시안 선택 대기
+- [ ] 화면 목업 재작성 (`/mockup`, Tailwind + shadcn/ui, 7화면) — *계획에 없던 작업* · NEO 대시보드 색 시안 6종(A~F) 완료, 시안 선택 대기
 
 ### 완료 기준
 
