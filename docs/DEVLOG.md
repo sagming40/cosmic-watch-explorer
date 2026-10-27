@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M2 — 백엔드 완성 ✅** |
-| 다음 작업 | M3 진행중 — NEO 대시보드 완료, Tailwind·shadcn/ui 도입 완료. 화면 목업 재작성(`/mockup`) → LunarDistanceBar(Recharts) → NEO 상세 순 |
+| 다음 작업 | M3 진행중 — NEO 대시보드 완료, Tailwind·shadcn/ui 도입·TypeScript 전환 완료. 화면 목업 재작성(`/mockup`) → LunarDistanceBar(Recharts) → NEO 상세 순 |
 | 최근 병합 커밋 | `merge(M3): M3 중간 작업분 병합 및 main 단일 브랜치 전환 (#3)` |
 | 작업 방식 | 2026-10-27부터 `main` 단일 브랜치, Claude Code 로컬 세션 — 규칙은 [`CLAUDE.md`](../CLAUDE.md) |
 
@@ -154,11 +154,29 @@
 **배운 것**
 CLI가 "알아서" 설치해주는 의존성도 이름을 확인해야 한다 — 이름이 그럴듯한 엉뚱한 패키지가 들어오는 건 공급망 사고와 같은 모양이다.
 
+### [설계] 프론트엔드 TypeScript 전환
+
+**이유**
+화면 목업을 새로 만들기 전에 전환하면 목업도 처음부터 `.tsx`로 쓰게 되어 이중 작업이 없다. 지금까지 반복된 실수(`date`/`data` 혼동, `is_cashed` 같은 필드명 오타, `null` 처리 누락)가 전부 "실행해 봐야 아는" 종류였는데, 응답 타입이 있으면 실행 전에 잡힌다. 화면 코드는 목업 후 바뀔 수 있지만 파일이 작아 전환 비용이 작고, 핵심 가치인 API 응답 타입·client·utils는 화면과 무관하게 남는다.
+
+**설계**
+- `src/types/api.ts` — 04 문서 + 실제 `serializers.py` 기준으로 17개 엔드포인트 응답 타입 전부 정의. NASA 값은 `number | null`.
+- `api/client.ts` — catch로 받는 오류를 `AppError`(code/fields/status) 타입으로 고정.
+- Vite react-ts 템플릿 구성(`tsconfig.json` 참조 → app/node), `strict: true`, `npm run build` = `tsc -b && vite build`.
+- shadcn `components.json`을 `tsx: true`로 바꾸고 Button을 TS 원본으로 재생성.
+
+**사전 검증에서 잡은 것**
+- TypeScript 최신 7.0.2는 `typescript-eslint`(지원 범위 `<6.1.0`)와 호환 안 됨 → `~6.0.3`으로 고정.
+- `NeoListItem`의 직경 `null` → `"0 ~ 0"` 버그는 타입이 `number | null`이 되는 순간 드러나는 문제라, 전환 전에 JS로 먼저 고쳐 별도 `fix` 커밋으로 분리.
+- shadcn CLI의 `cn` 패키지 오설치 버그는 TS 모드에서도 똑같이 재현 → 같은 방법으로 처리.
+
+**검증**: `tsc -b` 에러 0, `npm run build` 통과, lint는 기존 1건만. 브라우저에서 대시보드 표시, ◀ 클릭 시 `?date=2026-10-26`으로 바뀌며 재조회, `?date=2026-13-99` → `INVALID_DATE` 문구, `/asdf` → 404 화면 확인.
+
 **알려진 이슈 (이번 세션에서 확인, 미처리)**
 - `npm run lint` 에러 1건 (`react-hooks/set-state-in-effect`, NeoDashboardPage의 useEffect 안 `setIsLoading(true)`). 처음 5건 중 2건은 wip 정리에서 뺀 CSS LunarDistanceBar·scale.js 쪽이었고, shadcn 생성 파일 2건은 eslint 설정으로 완화.
 - `npm audit` high 5건 — 런타임은 `follow-redirects`(axios 의존) 1건, 나머지는 개발 도구. 별도 `chore` 커밋으로 처리 예정.
 - `settings.py`의 `ALLOWED_HOSTS = []` — 9/8 기록엔 변경했다고 되어 있으나 실제 코드는 빈 목록(테스트 Client 검증 시 shell 안에서만 임시 추가했던 것으로 보임).
-- `NeoListItem`의 `formatDiameterRange`가 직경 null이면 `"0 ~ 0"` 표시 (`Math.round(null)` = 0) — NULL은 `—` 원칙 위반.
+- ~~`NeoListItem`의 `formatDiameterRange`가 직경 null이면 `"0 ~ 0"` 표시~~ → 같은 날 수정 (`fix(M3)` 커밋)
 - NASA API 키가 과거 채팅 로그(traceback URL)에 노출된 적 있음 → 재발급 권장.
 
 **이번 세션 커밋**
@@ -170,7 +188,10 @@ CLI가 "알아서" 설치해주는 의존성도 이름을 확인해야 한다 �
 - `docs: CLAUDE.md에 구현 전 사전 검증 규칙 추가`
 - `chore(M3): Tailwind CSS v4 + shadcn/ui 도입 및 디자인 토큰 연결`
 - `chore: 로컬 미리보기용 .claude/launch.json 추가`
-- `docs(M3): Tailwind·shadcn 도입 결정 및 사용 규칙 문서화` (이 커밋 자체)
+- `docs(M3): Tailwind·shadcn 도입 결정 및 사용 규칙 문서화`
+- `fix(M3): 추정 직경이 null인 소행성이 "0 ~ 0 m"로 표시되던 문제 수정`
+- `refactor(M3): 프론트엔드 TypeScript 전환 및 API 응답 타입 정의`
+- `docs(M3): TypeScript 전환 기록 및 규칙 문서화` (이 커밋 자체)
 
 **다음에 할 일**
 - 화면 목업 재작성 — 로컬 Vite 앱 `/mockup` 라우트에 Tailwind + shadcn/ui로 7화면 (아티팩트는 회사 계정이라 사용 안 함)

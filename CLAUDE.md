@@ -1,7 +1,7 @@
 # CLAUDE.md — Cosmic Watch & Explorer
 
 NASA 공개 데이터로 만드는 지구 근접 소행성(NEO) 모니터링 + 외계행성 탐색 포털. 1인 학습·포트폴리오 프로젝트.
-Backend: Django 6.1 + DRF + MariaDB / Frontend: React 19 + Vite + React Router + axios + Tailwind CSS v4 + shadcn/ui (+ Recharts 예정).
+Backend: Django 6.1 + DRF + MariaDB / Frontend: React 19 + TypeScript 6.0 + Vite + React Router + axios + Tailwind CSS v4 + shadcn/ui (+ Recharts 예정).
 
 > 이 파일은 **모든 기기(회사 PC / 집 PC / 노트북)의 로컬 Claude Code 세션**이 같은 규칙으로 작업하기 위한 지침이다.
 > Claude의 메모리(`~/.claude/projects/.../memory/`)는 **기기마다 따로**라서 다른 기기로 넘어가지 않는다. 기기와 상관없이 지켜야 할 규칙은 전부 이 파일에 적는다.
@@ -165,14 +165,15 @@ backend/
   apps/accounts/     인증 API 5종 (세션 쿠키 + CSRF)
   apps/watchlist/    NeoWatchlist, ExoplanetWatchlist + API 4종
 frontend/src/
-  api/client.js      axios 인스턴스 (withCredentials, CSRF, 오류 봉투 → {code, message, fields, status})
+  api/client.ts      axios 인스턴스 (withCredentials, CSRF, 오류 봉투 → AppError {code, message, fields, status})
+  types/api.ts       백엔드 응답 타입 전부 (04 문서 + serializers.py 기준) — API 호출은 api.get<타입>()으로
   components/ui/     shadcn/ui가 생성한 원본 부품 (Button …) — 직접 고치지 말고 감싸서 쓴다
-  lib/utils.js       cn() — className 합치기 (shadcn 공용)
+  lib/utils.ts       cn() — className 합치기 (shadcn 공용)
   components/common/ DataField (null → "—", 수치는 Mono 서체)
   components/layout/ Header, Layout(Outlet)
   components/neo/    NeoSummary, NeoListItem, DateNavigator
   pages/             라우트별 화면 9개 (NeoDashboardPage 외 대부분 스텁)
-  utils/date.js      날짜 ↔ 문자열 (로컬 시간 기준)
+  utils/date.ts      날짜 ↔ 문자열 (로컬 시간 기준)
   index.css          Tailwind import + 디자인 토큰(:root) + 테마 연결(@theme) + 기존 섹션별 스타일(@layer)
 ```
 
@@ -197,10 +198,19 @@ frontend/src/
   2. `npx shadcn@latest add <이름>` 실행 후, `npm uninstall cn` + 생성 파일의 `import { cn } from "cn"`을 `import { cn } from "@/lib/utils"`로 수정
   3. `package.json`에 낯선 패키지가 추가되지 않았는지 확인, `npm run build`·`npm run lint`
 
-### 3.5 자주 빠지는 함정 (DEVLOG에서 반복된 것)
+### 3.5 TypeScript 규칙 (2026-10-27 전환)
+- 프론트는 전부 `.ts`/`.tsx`, `strict: true`. `npm run build`가 `tsc -b`(타입 검사)부터 돌리므로 타입 에러가 있으면 빌드가 실패한다.
+- **API 응답 타입은 `src/types/api.ts` 한 곳에.** 백엔드 serializer를 바꾸면 이 파일도 같이 고친다. 호출은 `api.get<NeoDashboardResponse>(...)`처럼 타입을 붙인다.
+- NASA 값은 `number | null`이 기본. `!`(non-null 단언)이나 `as`로 null을 지우지 말고 화면에서 처리한다(DataField가 `—` 표시). `any` 금지.
+- catch에서 받는 오류는 `AppError`(`api/client.ts`) — `err.code`로 분기.
+- props는 컴포넌트 위에 `interface 컴포넌트명Props`로 선언.
+- **TypeScript 버전은 `~6.0.x` 고정.** 7.0이 나왔지만 `typescript-eslint`가 `<6.1`까지만 지원한다. 올릴 때는 `npm view typescript-eslint peerDependencies`부터 확인.
+- 설정: `tsconfig.json`(참조) → `tsconfig.app.json`(src) / `tsconfig.node.json`(vite.config.ts). 경로 별칭 `@/*`는 `baseUrl` 없이 `paths`만(TS 6에서 `baseUrl` deprecated).
+
+### 3.6 자주 빠지는 함정 (DEVLOG에서 반복된 것)
 - `getattr(obj, "속성", 기본값)` 계열은 오타가 나도 에러 없이 기본값으로 넘어간다(`throttle_scope`, `is_custom_error` 사례). 반드시 실제 응답으로 검증.
 - 역방향 OneToOne(`neo.orbital_data`)은 행이 없으면 예외 → `getattr(neo, "orbital_data", None)`.
 - `manage.py shell`에서 코드 수정은 shell 재시작 전까지 반영 안 됨. `LocMemCache`는 프로세스별이라 shell에서 runserver 캐시가 안 보인다.
 - `django.test.Client`는 Host가 `testserver` → `ALLOWED_HOSTS`에 없으면 `DisallowedHost`.
-- 프론트 날짜: `toISOString()`·`new Date("YYYY-MM-DD")`는 UTC 기준이라 하루 어긋난다 → `utils/date.js`만 사용.
+- 프론트 날짜: `toISOString()`·`new Date("YYYY-MM-DD")`는 UTC 기준이라 하루 어긋난다 → `utils/date.ts`만 사용.
 - 반복 오타 주의 필드: `observations_used`, `data_arc_days`.

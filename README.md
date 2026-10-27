@@ -21,7 +21,7 @@ NASA API는 소행성의 접근 거리를 `4,821,033 km` 같은 숫자로 준다
 | 구분 | 기술 |
 |---|---|
 | Backend | Python, Django, Django REST Framework |
-| Frontend | React, Vite, Tailwind CSS v4, shadcn/ui, Recharts |
+| Frontend | React, TypeScript, Vite, Tailwind CSS v4, shadcn/ui, Recharts |
 | Database | MariaDB |
 | 인증 | Django 세션 인증 (httpOnly 쿠키) |
 | 외부 데이터 | NASA NeoWs API, NASA Exoplanet Archive |
@@ -32,6 +32,7 @@ NASA API는 소행성의 접근 거리를 `4,821,033 km` 같은 숫자로 준다
 - **세션 인증** — 서버 1대 규모라 무상태(stateless)의 이점이 없고, 즉시 로그아웃과 `httpOnly` 쿠키의 XSS 방어가 더 중요하다고 판단했다.
 - **Recharts** — React 컴포넌트 형태라 JSX 안에서 바로 쓸 수 있다. D3는 SVG를 직접 다뤄야 해 학습 비용이 크다.
 - **Tailwind CSS + shadcn/ui** — 순수 CSS로 화면을 짜면 코드가 길어져, 디자인 토큰을 유틸리티 클래스로 등록해 쓰고 버튼·카드 같은 기본 부품은 shadcn/ui로 가져온다. 색은 여전히 프로젝트 토큰 7개만 쓴다.
+- **TypeScript** — API 응답 모양을 `src/types/api.ts`에 타입으로 옮겨 두면, 필드명 오타나 `null` 처리 누락을 실행 전에 잡는다. 백엔드가 NULL을 그대로 내려주는 설계(NASA 원본 보존)라 특히 효과가 크다.
 
 ---
 
@@ -99,8 +100,9 @@ cosmic-watch-explorer/
 │   │   ├── api/                     # axios 클라이언트
 │   │   ├── components/
 │   │   ├── pages/
-│   │   └── App.jsx
-│   ├── vite.config.js
+│   │   ├── types/api.ts             # 백엔드 응답 타입
+│   │   └── App.tsx
+│   ├── vite.config.ts
 │   └── package.json
 │
 ├── docs/
