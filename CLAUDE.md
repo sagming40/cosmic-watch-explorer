@@ -169,10 +169,12 @@ frontend/src/
   types/api.ts       백엔드 응답 타입 전부 (04 문서 + serializers.py 기준) — API 호출은 api.get<타입>()으로
   components/ui/     shadcn/ui가 생성한 원본 부품 (Button …) — 직접 고치지 말고 감싸서 쓴다
   lib/utils.ts       cn() — className 합치기 (shadcn 공용)
-  components/common/ DataField (null → "—", 수치는 Mono 서체)
-  components/layout/ Header, Layout(Outlet)
-  components/neo/    NeoSummary, NeoListItem, DateNavigator
-  pages/             라우트별 화면 9개 (NeoDashboardPage 외 대부분 스텁)
+  components/common/ Panel·PanelTitle(카드 틀), StatCard(요약 칸, 수치 Mono), HazardBadge(위험 3중 표시)
+  components/layout/ Header(알약 메뉴), Layout(배경 + Outlet)
+  components/neo/    DateNavigator, NeoSummary, LunarDistanceBar, NeoScatterChart, NeoListItem, NeoFaq,
+                     chart.ts(차트 공용 값), ChartTooltip
+  utils/format.ts    표시 포맷 (null → "—", KST 날짜, "약 N년 뒤") — 단위 환산은 하지 않는다
+  pages/             라우트별 화면 9개 (NeoDashboardPage만 실제 구현, 나머지는 스텁 → /mockup 디자인으로 하나씩 옮기는 중)
   utils/date.ts      날짜 ↔ 문자열 (로컬 시간 기준)
   mockup/            /mockup 디자인 목업 8화면 (개발 서버 전용, ?screen=로 전환, 실제 화면으로 옮긴 뒤 폴더째 삭제)
   index.css          Tailwind import + 디자인 토큰(:root) + 테마 연결(@theme) + 기존 섹션별 스타일(@layer)

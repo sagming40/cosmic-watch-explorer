@@ -60,7 +60,7 @@
 | 항목 | 내용 |
 |---|---|
 | 마지막 완료 마일스톤 | **M2 — 백엔드 완성 ✅** |
-| 다음 작업 | M3 진행중 — 화면 목업 재작성 중(`/mockup`, 8화면 완료, 색 C 그래파이트 확정) → 목업 검토 → 실제 화면 구현 |
+| 다음 작업 | M3 진행중 — 화면 목업 재작성 중(`/mockup`, 8화면 완료, 색 C 그래파이트 확정) → **NEO 대시보드 실제 구현 완료** → NEO 상세 구현 |
 | 최근 병합 커밋 | `merge(M3): M3 중간 작업분 병합 및 main 단일 브랜치 전환 (#3)` |
 | 작업 방식 | 2026-10-27부터 `main` 단일 브랜치, Claude Code 로컬 세션 — 규칙은 [`CLAUDE.md`](../CLAUDE.md) |
 
@@ -217,8 +217,29 @@ CLI가 "알아서" 설치해주는 의존성도 이름을 확인해야 한다 �
 
 **검증**: `tsc -b` 0건, lint 기존 1건. 8화면 모두 375px 가로 스크롤 없음(스크롤 허용 영역 제외), 삭제→실행 취소→5초 후 토스트 닫힘 실측, 오류 테두리 계산값 `#FAFAFA`(빨강 아님), 실제 앱 `/`도 새 토큰으로 정상.
 
+### [설계] 폼 오류 색 확정 — shadcn `destructive` 역할을 `--bone`으로
+
+사용자 확정: 폼 오류는 빨강 없이 흰 테두리 + 아이콘. 입력칸마다 `aria-invalid` 스타일을 덮어쓰면 한 곳만 빠뜨려도 빨강이 샌다 → 역할(`--destructive`) 자체를 `--bone`에 연결해 shadcn 부품 전체에 자동 적용. 빨강은 `text-hazard`로 직접 쓴 곳에만 남는다. (03 v1.6)
+
+### [완료] NEO 대시보드를 목업 디자인 + 실제 API로 재작성
+
+목업(`/mockup`)의 대시보드를 `pages/NeoDashboardPage.tsx`로 옮기고 가짜 데이터를 `api.get<NeoDashboardResponse>`로 교체. 함께 옮긴 것: 새 헤더·레이아웃(배경 포함), `components/common`(Panel·StatCard·HazardBadge), `components/neo`(DateNavigator·NeoSummary·LunarDistanceBar·NeoScatterChart·NeoListItem·NeoFaq), `utils/format.ts`. 옛 컴포넌트(옛 DateNavigator·NeoSummary·NeoListItem, DataField)와 옛 CSS 클래스(`.header`·`.data-field`·`.neo-*`·`.date-navigator`) 삭제.
+
+**사전 검증에서 바꾼 설계**
+- **lint `set-state-in-effect` 해결** ─ effect 안에서 `setIsLoading(true)`를 바로 부르던 구조 대신, 결과에 "요청 키(날짜:재시도)"를 붙여 두고 `로딩 = 받아 둔 키 ≠ 지금 키`로 계산. 처음부터 있던 lint 에러 1건이 사라짐(0건).
+- **"다음 접근까지" 카운트다운 제외** ─ 그 값을 주는 API가 없다. 가짜 값을 실제 화면에 둘 수 없어 결정 전까지 뺌(01 문서 3.2절에 후보로 기록).
+- **헤더 통합 검색(Ctrl K) 제외** ─ 목업에서 나온 새 기능. 01 기능 목록에 없어 범위 관리 규칙대로 3.2절에 후보로만 기록.
+- **상태 화면을 지금 같이** (03 문서 11장 "각 단계마다 조금씩") ─ 로딩 스켈레톤 + 3초 넘으면 "NASA에서 가져오는 중", 오류는 코드별 문구 + 다시 시도(잘못된 날짜면 "오늘로 가기"), 0건이면 전날·다음 날 버튼.
+- **날짜 이동은 로딩·오류 중에도 보이게** ─ 화면 전체를 갈아끼우면 오류 화면이 막다른 길이 된다.
+- **보기 설정(정렬·보조 단위·위험만)은 페이지에** ─ 날짜를 바꿀 때 로딩 화면이 끼면서 목록이 새로 만들어져 설정이 초기화되던 것을 막음.
+- **FAQ의 "384,400 km" → "약 38만 km"** ─ M3 완료 기준("프론트 코드에 384400 없음")을 grep으로 속을 수 없게 확인하려고 주석까지 숫자 제거.
+- 헤더 "소행성" 메뉴는 `/neo/...`에서도 켜지게(색만), `aria-current`는 "/"에서만.
+
+**검증 (브라우저 실측)**: 오늘 5건 표시 → ◀로 10-26(9건), 정렬(속도순) 유지·내림차순 확인 → `?date=2026-13-99`에서 오류 문구 + "오늘로 가기" 동작 → 10-26 위험 분류 카드 hazard 색, "위험 분류만" 1건 + 배지 → 목록 클릭 시 `/neo/3831888` 이동·직접 열어도 유지 → 375px 가로 스크롤 없음. `tsc -b`·lint 0건, `npm run build` 통과.
+**확인 못 한 것**: 1 LD 안쪽 접근이 있는 실제 날짜(빨간 점), 0건인 날짜, NASA 장애(UPSTREAM_ERROR), 3초 넘는 느린 응답 안내.
+
 **알려진 이슈 (이번 세션에서 확인, 미처리)**
-- `npm run lint` 에러 1건 (`react-hooks/set-state-in-effect`, NeoDashboardPage의 useEffect 안 `setIsLoading(true)`). 처음 5건 중 2건은 wip 정리에서 뺀 CSS LunarDistanceBar·scale.js 쪽이었고, shadcn 생성 파일 2건은 eslint 설정으로 완화.
+- ~~`npm run lint` 에러 1건 (`react-hooks/set-state-in-effect`)~~ → 같은 날 대시보드 재작성으로 해결 (0건) 처음 5건 중 2건은 wip 정리에서 뺀 CSS LunarDistanceBar·scale.js 쪽이었고, shadcn 생성 파일 2건은 eslint 설정으로 완화.
 - `npm audit` high 5건 — 런타임은 `follow-redirects`(axios 의존) 1건, 나머지는 개발 도구. 별도 `chore` 커밋으로 처리 예정.
 - `settings.py`의 `ALLOWED_HOSTS = []` — 9/8 기록엔 변경했다고 되어 있으나 실제 코드는 빈 목록(테스트 Client 검증 시 shell 안에서만 임시 추가했던 것으로 보임).
 - ~~`NeoListItem`의 `formatDiameterRange`가 직경 null이면 `"0 ~ 0"` 표시~~ → 같은 날 수정 (`fix(M3)` 커밋)
@@ -245,10 +266,16 @@ CLI가 "알아서" 설치해주는 의존성도 이름을 확인해야 한다 �
 - `docs(M3): DEVLOG 현재 상태의 시안 개수 정정 (3종 → 6종)`
 - `refactor(M3): 색 토큰 C 그래파이트로 확정, --sodium → --signal 이름 변경`
 - `feat(M3): 목업 7화면 추가 (NEO 상세·외계행성 목록/상세·크기 비교·로그인·회원가입·Watchlist)`
-- `docs(M3): 색 확정·화면 목업 기록` (이 커밋 자체)
+- `docs(M3): 색 확정·화면 목업 기록`
+- `chore(M3): Tailwind 임의값 클래스를 표준 클래스로 교체 (VS Code 경고 3건)`
+- `refactor(M3): 폼 오류 색 확정 — shadcn destructive 역할을 hazard → bone으로`
+- `docs(M3): 폼 오류 규칙 확정 반영 ('확인 대기' 제거)`
+- `feat(M3): NEO 대시보드를 새 디자인 + 실제 API로 재작성`
+- `docs(M3): 대시보드 이전 기록, 완료 기준 5개 체크` (이 커밋 자체)
 
 **다음에 할 일**
-- 목업 검토 → 폼 오류 색 규칙 확정 → 화면별로 실제 페이지에 옮기기 (대시보드부터, 가짜 데이터 → api.get)
+- NEO 상세를 목업 디자인 + 실제 API(`/api/neo/{id}/`, `/approaches/`)로 → M3 남은 완료 기준("더 보기", 1 LD 안쪽 빨간 점 실물) 확인
+- "다음 접근까지" 카운트다운 API를 만들지 결정
 - "다음 접근까지" 카운트다운용 API를 만들지 결정
 - LunarDistanceBar Recharts 버전 재작성 (`npm install recharts`) → 1 LD 이내 빨간 점·범위 밖 빈 원 실물 확인
 - NEO 상세 (`ApproachTable`, `OrbitPanel`, "더 보기") → M3 완료 기준 실측
