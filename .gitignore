@@ -47,3 +47,6 @@ Thumbs.db
 # ==============================
 *.bak
 *.tmp
+
+# 로컬 전용 문서 (claude.ai 채팅 기록 정리 — 기기 간에는 구글 드라이브로 옮긴다)
+docs/CHAT_HISTORY.md
