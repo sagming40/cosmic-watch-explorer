@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router";
 
 import Layout from "./components/layout/Layout";
@@ -14,6 +14,10 @@ import NotFoundPage from "./pages/NotFoundPage";
 
 import { ensureCsrf } from "./api/client";
 
+// 디자인 목업 (/mockup) ─ 개발 서버(npm run dev)에서만 존재한다.
+// 배포 빌드에서는 import.meta.env.DEV가 false로 바뀌어 이 코드와 목업 파일이 통째로 빠진다.
+const MockupPage = import.meta.env.DEV ? lazy(() => import("./mockup/MockupPage")) : null;
+
 function App() {
   // 앱 실행 시 최초 1회, server에서 CSRF cookie를 미리 받아둔다.
   // 비유: 식당에 들어가자마자 번호표를 뽑아두는 것.
@@ -27,7 +31,19 @@ function App() {
     // 주소가 바뀌는 걸 지켜보다가 아래 Routes에 "현 주소"를 알려준다.
     <BrowserRouter>
       <Routes>
-        {/* path가 없는 Route = 껍데기 담당. 
+        {/* 목업은 자체 헤더가 있어서 Layout 밖에 둔다 */}
+        {MockupPage && (
+          <Route
+            path="/mockup"
+            element={
+              <Suspense fallback={null}>
+                <MockupPage />
+              </Suspense>
+            }
+          />
+        )}
+
+        {/* path가 없는 Route = 껍데기 담당.
             아래 자식들은 전부 Layout의 <Outlet /> 자리에 들어간다. */}
         <Route element={<Layout />}>
           <Route path="/" element={<NeoDashboardPage />} />
