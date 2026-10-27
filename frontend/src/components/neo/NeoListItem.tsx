@@ -1,15 +1,16 @@
-// NeoListItem.jsx ─ 목록 카드 한 장
+// NeoListItem.tsx ─ 목록 카드 한 장
 // 비유: 붕어빵 틀 하나 NeoDashboardPage가 result 배열을 .map()으로
 // 돌리면서 이 틀에 소행성 데이터를 하나씩 넣어 카드를 찍어낸다.
 
 import DataField from "../common/DataField";
+import type { NeoDashboardItem } from "@/types/api";
 
 // 267.0269 / 597.0902 → "267 ~ 597" 로 합치는 지역 함수
 // 현재는 이 components에서만 사용되지만, NeoDetail에서 같은 format이 필요해진다면
-// 그 때, src/utils/format.js로 이동시킨다.
+// 그 때, src/utils/format.ts로 이동시킨다.
 // "한 번 사용할때 이리 공용화 하지 않는다" 
 // ─ 두 번째로 필요해지는 순간이 실제 공용 util이 맞는지 판단할 수 있는 시점이기 때문
-function formatDiameterRange(minM, maxM) {
+function formatDiameterRange(minM: number | null, maxM: number | null): string | null {
   // NASA가 직경을 추정하지 못한 소행성은 null이다.
   // Math.round(null)은 0이 되어 "0 ~ 0"이라는 거짓 값이 찍힌다 → null을 그대로 넘겨
   // DataField가 "—"로 표시하게 한다. (NULL 보존 원칙, 02 문서 1.1절)
@@ -20,7 +21,11 @@ function formatDiameterRange(minM, maxM) {
   return `${Math.round(minM)} ~ ${Math.round(maxM)}`;  
 }
 
-function NeoListItem({ neo }) {
+interface NeoListItemProps {
+  neo: NeoDashboardItem;
+}
+
+function NeoListItem({ neo }: NeoListItemProps) {
   const { name, is_hazardous, diameter_min_m, diameter_max_m, approach } = neo;  
   const { miss_distance_ld, miss_distance_km, velocity_km_s } = approach;  
 

@@ -1,7 +1,15 @@
 // 라벨 + 값 한 쌍을 보여주는 공통 부품
 // 이 컴포넌트에 "숫자는 전부 Mono 서체를 사용한다"라는 약속을 정한다.
 // 나중에 규칙이 바뀌더라도 이 컴포넌트만 수정하면 됨.
-function DataField({ label, value, unit, layout = "stacked" }) {
+interface DataFieldProps {
+  label?: string;
+  // null/undefined = "값이 없다" → "─"로 표시. 0은 진짜 값이라 그대로 표시된다.
+  value?: string | number | null;
+  unit?: string;
+  layout?: "stacked" | "inline";
+}
+
+function DataField({ label, value, unit, layout = "stacked" }: DataFieldProps) {
   // NASA 원본 데이터의 null은 그대로 두지만(DB에서는 건드리지 않음)
   // "화면에서 어떻게 보여줄지"는 별개의 문제이기 때문에 여기서 처리한다.
   // 데이터 응답이 null이나 undefined 라면 대시(─)로 통일 → "값이 없다"는 뜻

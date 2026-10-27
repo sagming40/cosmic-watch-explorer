@@ -1,9 +1,10 @@
-// NeoDashboardPage.jsx ─ Path = '/'
+// NeoDashboardPage.tsx ─ Path = '/'
 // 비유: '/' 경로의 빈 도화지 → 추후 DateNavigator·NeoSummary·NeoListItem 배치 예정
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
-import { api } from "../api/client";
+import { api, type AppError } from "../api/client";
+import type { NeoDashboardResponse } from "@/types/api";
 import { formatDate } from "../utils/date";
 
 import NeoSummary from "../components/neo/NeoSummary";
@@ -33,8 +34,8 @@ function NeoDashboardPage() {
   // ─── 화면 상태 3종 ───
   // 외부 API에 의존하는 화면은 항상 "로딩 중" / "성공" / "실패" 3가지 이다.
   // 이 세 화면을 처음부터 분리해두지 않으면 코드가 엉킨다. (if문, 문서 03 ─ 7장)
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+  const [data, setData] = useState<NeoDashboardResponse | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // ─────────────────────────────────────────────────────────────────
@@ -61,14 +62,15 @@ function NeoDashboardPage() {
     // 직접 문자열을 이어붙이지 않는 이유: 값에 공백이나 한글이 섞일 경우,
     // URL Encoding을 손으로 해줘야 하는데, 이 작업을 자동으로 해주는 옵션이다.
     api
-      .get("/neo/", { params: { date } })
+      // <NeoDashboardResponse> = "이 응답은 이런 모양이다"라는 꼬리표 → res.data에 자동완성·검사가 붙는다
+      .get<NeoDashboardResponse>("/neo/", { params: { date } })
       .then((res) => {
         if (ignore) return;   // 취소된 주문일 경우 폐기한다.
         setData(res.data);
       })
-      .catch((err) => {
+      .catch((err: AppError) => {
         if (ignore) return;
-        // client.js의 interceptor가 이미 { code, message, status } 모양으로
+        // client.ts의 interceptor가 이미 { code, message, status } 모양으로
         // 빚어서 넘겨준 상태이다. 그대로 담기만 하면 된다.
         setError(err);
       })
@@ -87,7 +89,7 @@ function NeoDashboardPage() {
   // DateNavigator가 새 날짜를 알려오면, URL querystring을 갱신한다.
   // 실행되면 date 값이 바뀌고, 그걸 지켜보던 useEffect가 자동으로
   // 새 API 요청을 날린다 ─ fetch 코드를 직접 다시 부르지 않아도 됨
-  function handleDateChange(newDate) {
+  function handleDateChange(newDate: string) {
     setSearchParams({ date: newDate });
   } 
 
@@ -104,6 +106,12 @@ function NeoDashboardPage() {
         {error.message} (code: {error.code})
       </p>
     );
+  }
+
+  // 로딩도 오류도 아니면 data는 반드시 있다. TypeScript는 세 상태의 관계를 모르니
+  // 한 번 더 걸러서 "여기부터 data는 null이 아니다"를 알려준다. (실제로는 지나갈 일 없는 줄)
+  if (!data) {
+    return null;
   }
 
   return (

@@ -1,7 +1,8 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
+import type { ApiErrorCode, FieldErrors } from "@/types/api";
 
 // ──────────────────────────────────────────────────────────
-// COSMIC WATCT 전용 전화기
+// COSMIC WATCH 전용 전화기
 // 단축번호와 (baseURL)와 통화 규칙(cookie·CSRF)을 미리 저장해둔다.
 // 앞으로 모든 API 호출은 이 instance만 사용한다.
 // ──────────────────────────────────────────────────────────
@@ -16,16 +17,44 @@ export const api = axios.create({
 // 은행 창구에서 "서명용 종이 한 장부터 받아두는" 단계.
 // 이 과정을 건너뛰면 csrftoken 쿠키가 아예 없어서
 // 첫 POST(로그인·Watchlist 저장)가 403 CSRF_FAILED로 튕긴다.
-export async function ensureCsrf() {
-  await api.get("/auth/csrf/");  
+export async function ensureCsrf(): Promise<void> {
+  await api.get("/auth/csrf/");
+}
+
+// 컴포넌트가 catch로 받게 되는 오류의 모양.
+// 모든 API 오류는 이 interceptor를 거치므로, catch에서 받은 값은 항상 AppError다.
+// → 화면은 err.code("INVALID_DATE" 등)만 보고 분기하면 된다.
+export type AppError = Error & {
+  code: ApiErrorCode;
+  fields: FieldErrors | null;
+  status: number | null;
+};
+
+// 백엔드 config/exception_handler.py가 씌우는 봉투 모양 (04 문서 1.4절)
+interface ErrorEnvelope {
+  error?: {
+    code: ApiErrorCode;
+    message: string;
+    fields?: FieldErrors;
+  };
 }
 
 // 오류를 한가지 모양으로 빚어내는 틀
 // Error 객체 위에 만든 정보를 얹는다. (code/fields/status)
 // 굳이 Error를 사용하는 이유: console에 스택 추적이 남아서
 // "어느 파일 몇 번째 줄에서 터졌는지"를 추적할 수 있다.
-function toAppError({ code, message, fields = null, status = null }) {
-  return Object.assign(new Error(message), { code, fields, status });  
+function toAppError({
+  code,
+  message,
+  fields = null,
+  status = null,
+}: {
+  code: ApiErrorCode;
+  message: string;
+  fields?: FieldErrors | null;
+  status?: number | null;
+}): AppError {
+  return Object.assign(new Error(message), { code, fields, status });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -37,12 +66,12 @@ function toAppError({ code, message, fields = null, status = null }) {
 api.interceptors.response.use(
   (response) => response,  // 성공하면 건드리지 않고 그대로 통과
   
-  (error) => {
+  (error: AxiosError<ErrorEnvelope>) => {
     // server가 보낸 { error: { code, message, fields } } 봉투를 꺼낸다.
     // server까지 도달하지 못했을 경우, error.response 자체가 없어 undefined가 된다.
     const envelope = error.response?.data?.error;
 
-    if (envelope) {
+    if (envelope && error.response) {
       return Promise.reject(
         toAppError({
           code: envelope.code,

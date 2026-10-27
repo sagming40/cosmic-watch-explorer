@@ -1,14 +1,19 @@
-// NeoSummary.jsx ─ NEO 대시보드 상단 요약 4칸
+// NeoSummary.tsx ─ NEO 대시보드 상단 요약 4칸
 // 비유: 식당 입구의 "오늘의 매출 현황판" ─ 식당 안까지 들어가지 않아도
 // 식당 앞에 붙어있는 현황판만 보면 오늘의 상황을 한눈에 확인할 수 있다.
 
 import DataField from "../common/DataField";
+import type { NeoDashboardSummary } from "@/types/api";
 
 // Summary 객체 하나를 받아와서 4칸으로 펼쳐 보여준다.
 // 값을 직접 계산하지 않는 이유: 04_api_specification.md 5.1절
 // "요약과 목록은 완전히 같은 데이터에서, 서버가 미리 계산해 보내준다." 고 정해둠.
 // FE 단에서는 내려준 데이터를 배치만 한다.
-function NeoSummary({ summary }) {
+interface NeoSummaryProps {
+  summary: NeoDashboardSummary;
+}
+
+function NeoSummary({ summary }: NeoSummaryProps) {
   const {
     total_count,
     hazardous_count,
