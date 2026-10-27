@@ -191,7 +191,7 @@ frontend/src/
 - **새 코드는 Tailwind 유틸리티로 쓴다.** 색·서체·크기는 토큰 이름 유틸리티만: `bg-ink`/`bg-panel`/`border-line`/`text-bone`/`text-dim`/`text-signal`/`text-hazard`, `font-sans`/`font-display`/`font-mono`, `text-display`/`text-h1`/`text-h2`/`text-body`/`text-label`. `bg-[#...]` 같은 임의 색 금지 — 색 값은 `index.css` `:root` 토큰 7개뿐(03 문서 2.5절).
 - shadcn 역할 이름(`bg-primary`, `text-muted-foreground`, `border-border` …)도 토큰에 연결돼 있으니 써도 된다.
 - **색은 C 그래파이트(10-27 확정)**: 무채색 + 신호색 `--signal`(라임, 옛 이름 `--sodium`) + 경고색 `--hazard`. 값은 03 문서 2.1절.
-- **`--hazard`/`text-hazard`/`destructive`는 위험 표시(PHA·1 LD 안쪽) 전용.** shadcn `variant="destructive"` 버튼 금지. **폼 오류도 hazard 금지** → 아이콘 + `text-bone` + 테두리 강조, shadcn Input의 `aria-invalid:*destructive` 스타일은 `aria-invalid:border-bone` 등으로 덮어쓴다.
+- **`--hazard`/`text-hazard`/`bg-hazard`는 위험 표시(PHA·1 LD 안쪽) 전용.** shadcn `destructive` 역할은 `--bone`(폼 오류용)이고, `variant="destructive"` 버튼은 금지. **폼 오류도 hazard 금지** → 아이콘 + `text-bone` + 테두리 강조, shadcn `destructive` 역할이 `--bone`에 연결돼 있어 입력칸 오류는 자동으로 흰색이 된다(10-27 확정).
 - 위험은 색만으로 표시하지 않는다: 색 + 모양(고리·띠) + 아이콘·글자 (라임/빨강은 적록색약에서 헷갈림).
 - 링크(`<a>`)는 `@layer base`에서 `--signal` 색이 기본이라, 이름·제목 링크에는 `text-bone`을 직접 붙인다.
 - 화면에 보이는 날짜·시각은 전부 한국 시각(KST)으로 바꿔서 표시한다(NASA `approach_date`는 UTC 날짜라 하루 어긋날 수 있다).

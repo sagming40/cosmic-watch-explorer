@@ -6,7 +6,7 @@
 | 문서명 | 사용자 시나리오 및 UI/UX 설계서 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.5 |
+| 버전 | v1.6 |
 | 최종 수정일 | 2026-10-27 |
 | 상태 | 확정 |
 
@@ -20,6 +20,7 @@
 | v1.3 | 2026-10-27 | 2.5절 신설 — Tailwind CSS v4 + shadcn/ui로 디자인 토큰 연결 방식, 그림자 제거, `--hazard` 전용 규칙 유지 |
 | v1.4 | 2026-10-27 | 2.4절 모서리 4px → 8/12/16px(둥근 스타일), 한글 서체 Pretendard 추가 — /mockup 목업 재작성 중 결정 |
 | v1.5 | 2026-10-27 | 2.1절 팔레트를 C 그래파이트로 교체(색 시안 6종 비교 후 확정), `--sodium` → `--signal` 이름 변경, 2.5절 폼 오류 표시 규칙 추가 |
+| v1.6 | 2026-10-27 | 2.5절 폼 오류 규칙 확정 ─ shadcn `destructive` 역할을 `--hazard` → `--bone`으로 변경 |
 
 ---
  
@@ -123,10 +124,10 @@
 |---|---|
 | 프로젝트 토큰 | `:root`의 `--ink` / `--panel` / `--line` / `--bone` / `--dim` / `--signal` / `--hazard` — 유일한 실제 색 값 |
 | Tailwind 유틸리티 | `bg-panel`, `text-signal`, `border-line`, `text-dim`, `text-hazard`, `font-mono`, `font-display`, `text-h1`, `text-label` … |
-| shadcn/ui 역할 | background=ink, foreground=bone, card·popover·muted=panel, primary=signal, secondary·accent·border·input=line, muted-foreground=dim, ring=signal |
+| shadcn/ui 역할 | background=ink, foreground=bone, card·popover·muted=panel, primary=signal, secondary·accent·border·input=line, muted-foreground=dim, ring=signal, **destructive=bone** (폼 오류용, 빨강 아님) |
 | 모서리·그림자 | `rounded-md` 8px · `rounded-lg` 12px · `rounded-xl` 16px, 그림자 유틸리티 전부 제거 |
 
-- **폼 오류는 `--hazard`를 쓰지 않는다.** 아이콘(ⓘ) + 밝은 글자(`--bone`) + 입력칸 테두리 강조로 표시한다. shadcn Input의 `aria-invalid` 기본 스타일(destructive)도 덮어쓴다. (v1.5 목업 결정 ─ 사용자 확인 대기)
+- **폼 오류는 `--hazard`를 쓰지 않는다.** 아이콘(ⓘ) + 밝은 글자(`--bone`) + 입력칸 테두리 강조로 표시한다. shadcn Input의 `aria-invalid` 기본 스타일(destructive)도 덮어쓴다. (v1.6 확정 ─ shadcn `destructive` 역할을 `--bone`에 연결해 부품 전체에 자동 적용)
 - **`--hazard` 전용 규칙(2.1절)은 그대로다.** shadcn의 `destructive` 역할이 hazard에 연결돼 있지만, `variant="destructive"` 버튼처럼 위험 소행성이 아닌 곳에는 쓰지 않는다.
 - 이 서비스는 항상 어두운 화면이라 `<html class="dark">`로 고정한다(라이트 모드 없음).
 ---
