@@ -101,7 +101,7 @@ function Compare() {
           <PanelTitle title="수치로 보기" />
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] text-sm">
+          <table className="w-full min-w-130 text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs text-dim">
                 <th className="px-5 py-3 font-medium md:px-6">이름</th>

@@ -267,7 +267,7 @@ function ApproachTable({ rows }: { rows: NeoApproachRow[] }) {
   };
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-sm">
+      <table className="w-full min-w-160 text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs text-dim">
             <th className="px-5 py-3 font-medium md:px-6">일시 (KST)</th>
