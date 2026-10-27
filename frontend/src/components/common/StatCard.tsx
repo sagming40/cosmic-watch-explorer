@@ -17,12 +17,13 @@ interface StatCardProps {
 
 function StatCard({ icon, label, value, unit, sub, hazard = false }: StatCardProps) {
   return (
-    <div className={cn("rounded-xl border border-line bg-panel/80 p-5 backdrop-blur", hazard && "hazard-tint")}>
+    <div className={cn("min-w-0 rounded-xl border border-line bg-panel/80 p-5 backdrop-blur", hazard && "hazard-tint")}>
       <div className={cn("flex items-center gap-2 text-sm text-dim", hazard && "text-hazard")}>
         {icon}
         {label}
       </div>
-      <div className="mt-3 flex items-baseline gap-1.5">
+      {/* flex-wrap ─ 휴대폰 2열 카드에서 "6,356.57 × 지구"처럼 길면 단위가 다음 줄로 (카드 밖으로 안 밀려나게) */}
+      <div className="mt-3 flex flex-wrap items-baseline gap-x-1.5">
         <span className={cn("font-mono text-3xl font-medium tabular-nums md:text-4xl", hazard && "text-hazard")}>{value}</span>
         {/* 값이 없을 때 "— m"처럼 단위만 남지 않게 */}
         {unit && value !== DASH && <span className="font-mono text-sm text-dim">{unit}</span>}
