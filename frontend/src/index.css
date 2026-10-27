@@ -204,219 +204,41 @@ a {
 
 /*
 =============================================================================
-─── Layouts Container ───
-Max Width = 1280px로 가두고 화면 가운데 정렬
-class 하나로 묶어둔다 ─ 페이지마다 이 값을 반복하여 사용한다.
+화면 공용 클래스 (10-27 목업에서 옮겨 옴)
+옛 .header / .data-field / .neo-* / .date-navigator 클래스는 화면을 Tailwind로 다시 쓰면서 삭제했다.
 =============================================================================
 */
-.content-container {
-  max-width: var(--content-max-width);
-  margin: 0 auto;
-  padding: 0 var(--space-2);
+
+/* 배경 ─ 위쪽에 신호색이 아주 옅게 번지는 빛 + 점 격자(관측 차트 용지 느낌) */
+.app-backdrop {
+  background-color: var(--ink);
+  background-image:
+    radial-gradient(60% 40% at 50% -10%, color-mix(in oklab, var(--signal) 12%, transparent), transparent 70%),
+    radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--bone) 7%, transparent) 1px, transparent 0);
+  background-size: 100% 100%, 24px 24px;
 }
 
-/*
-=============================================================================
-                                  HEADER
-=============================================================================
-*/
-.header {
-  /* --line = "구분선 전용" 토큰. Header 밑줄에 딱 알맞은 용도이다. */
-  border-bottom: 1px solid var(--line);
+/* 위험 카드 ─ hazard를 아주 옅게 깔아 "위험 표시 전용" 규칙 안에서만 강조 */
+.hazard-tint {
+  background-color: color-mix(in oklab, var(--hazard) 10%, var(--panel));
+  border-color: color-mix(in oklab, var(--hazard) 45%, transparent);
 }
 
-.header-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-}
-
-.header-logo {
-  font-family: var(--font-display);
-  font-weight: var(--text-h2-weight);
-  font-size: var(--text-h2-size);
-  color: var(--bone);
-  text-decoration: none;
-  letter-spacing: 0.02em;
-}
-
-.header-nav {
-  display: flex;
-  gap: var(--space-3);
-  /* 화면 여백을 nav가 다 채워버리지 않도록, 
-     로고/nav/로그인 세 덩어리 중 가운데 공간만 넓게 밀어주는 trick */
-  margin-right: auto;
-  margin-left: var(--space-5);   
-}
-
-.header-nav-link {
-  font-family: var(--font-body);
-  font-size: var(--text-body-size);
-  font-weight: 500;
-  color: var(--dim);
-  text-decoration: none;   
-}
-
-.header-nav-link:hover {
-  color: var(--bone);
-}
-
-/* 현재 보고 있는 메뉴만 강조 ─ NavLink가 자동으로 붙여주는 class */
-.header-nav-link.is-active {
+/* 신호색 옅은 바탕 + 신호색 글자 (로고 아이콘 칸 등) */
+.accent-tint {
+  background-color: color-mix(in oklab, var(--signal) 12%, transparent);
   color: var(--signal);
 }
 
-.header-login-link {
-  font-family: var(--font-body);
-  font-size: var(--text-body-size);
-  color: var(--bone);
-  text-decoration: none;
+/* 실시간 표시 점 ─ 움직임 최소화 설정을 켠 사용자에게는 깜빡이지 않는다 (03 문서 9장) */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
-
-/*
-=============================================================================
-                                 DATA FIELD
-=============================================================================
-*/
-.data-field {
-  display: flex;
+.live-dot {
+  animation: live-pulse 2s ease-in-out infinite;
 }
-
-.data-field--stacked {
-  flex-direction: column;
-  gap: 4px;
-}
-
-.data-field--inline {
-  flex-direction: row;
-  align-items: baseline;
-  gap: var(--space-1);
-}
-
-.data-field-label {
-  font-family: var(--font-body);
-  font-size: var(--text-label-size);
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dim);
-}
-
-.data-field-value {
-  font-family: var(--font-mono);
-  font-size: var(--text-body-size);
-  color: var(--bone);
-}
-
-.data-field-unit {
-  font-family: var(--font-mono);
-  font-size: var(--text-label-size);
-  color: var(--dim);
-}
-
-/*
-=============================================================================
-                                NEO SUMMARY
-=============================================================================
-*/
-.neo-summary {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.neo-summary-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* 보조 줄(km, 이름)의 DataField는 --dim 색으로 낯춰서 메인 값(LD, m)보다 눈에 덜 띄게 만든다. */
-.neo-summary-cell .data-field--inline .data-field-value {
-  color: var(--dim);
-  font-size: var(--text-label-size);
-}
-
-/*
-=============================================================================
-                              NEO LIST ITEM
-=============================================================================
-*/
-.neo-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.neo-list-item {
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.neo-list-item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.neo-list-item-name {
-  font-family: var(--font-body);
-  font-weight: 500;
-}
-
-.neo-list-item-hazard-icon {
-  color: var(--hazard);
-  margin-right: 8px;
-}
-
-.neo-list-item-sub {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.neo-list-item-distance-km {
-  font-family: var(--font-mono);
-  font-size: var(--text-label-size);
-  color: var(--dim);
-}
-
-/*
-=============================================================================
-                              DATE NAVIGATOR
-=============================================================================
-*/
-.date-navigator {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-2) 0;
-}
-
-.date-navigator-arrow {
-  /* Browser 기본 버튼 스타일(회색 배경, 테두리)을 지우고 직접 만든 Design Token으로 새로 칠한다. */
-  background: none;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  color: var(--bone);
-  font-family: var(--font-body);
-  padding: 4px 12px;
-  cursor: pointer;
-}
-
-.date-navigator-arrow:hover{
-  border-color: var(--signal);
-  color: var(--signal);
-}
-
-.date-navigator-input {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  color: var(--bone);
-  font-family: var(--font-mono);
-  font-size: var(--text-body-size);
-  padding: 4px 8px;
+@media (prefers-reduced-motion: reduce) {
+  .live-dot { animation: none; }
 }
 } /* @layer components 끝 */

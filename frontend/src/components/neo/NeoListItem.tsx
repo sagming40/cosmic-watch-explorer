@@ -1,65 +1,78 @@
-// NeoListItem.tsx ─ 목록 카드 한 장
-// 비유: 붕어빵 틀 하나 NeoDashboardPage가 result 배열을 .map()으로
-// 돌리면서 이 틀에 소행성 데이터를 하나씩 넣어 카드를 찍어낸다.
+// NeoListItem.tsx ─ 대시보드 목록 한 줄. 누르면 상세(/neo/:nasa_id)로 이동한다.
 
-import DataField from "../common/DataField";
+import { Link } from "react-router";
+import { ArrowUpRight } from "lucide-react";
+
+import HazardBadge from "@/components/common/HazardBadge";
+import { cn } from "@/lib/utils";
 import type { NeoDashboardItem } from "@/types/api";
+import { DASH, dec2, diameterRange, int, kstTime } from "@/utils/format";
 
-// 267.0269 / 597.0902 → "267 ~ 597" 로 합치는 지역 함수
-// 현재는 이 components에서만 사용되지만, NeoDetail에서 같은 format이 필요해진다면
-// 그 때, src/utils/format.ts로 이동시킨다.
-// "한 번 사용할때 이리 공용화 하지 않는다" 
-// ─ 두 번째로 필요해지는 순간이 실제 공용 util이 맞는지 판단할 수 있는 시점이기 때문
-function formatDiameterRange(minM: number | null, maxM: number | null): string | null {
-  // NASA가 직경을 추정하지 못한 소행성은 null이다.
-  // Math.round(null)은 0이 되어 "0 ~ 0"이라는 거짓 값이 찍힌다 → null을 그대로 넘겨
-  // DataField가 "—"로 표시하게 한다. (NULL 보존 원칙, 02 문서 1.1절)
-  if (minM === null || maxM === null) return null;
+import { NEAR_MOON_LD } from "./chart";
 
-  // Math.round: 소수점 아래를 반올림 해서 Integer로.
-  // "267.0269 m"보다 "267 m"이 훨씬 읽기 편하다.
-  return `${Math.round(minM)} ~ ${Math.round(maxM)}`;  
-}
+export type SubUnit = "km" | "au";
 
 interface NeoListItemProps {
   neo: NeoDashboardItem;
+  subUnit: SubUnit; // 보조 단위 토글 ─ LD는 항상 크게, km/AU 중 하나를 작게 (03 문서 6.1절)
+  active: boolean; // 차트에서 이 소행성에 마우스를 올렸는지
+  onHover: (id: string | null) => void;
 }
 
-function NeoListItem({ neo }: NeoListItemProps) {
-  const { name, is_hazardous, diameter_min_m, diameter_max_m, approach } = neo;  
-  const { miss_distance_ld, miss_distance_km, velocity_km_s } = approach;  
+function subDistance(neo: NeoDashboardItem, unit: SubUnit): string {
+  const { miss_distance_km, miss_distance_au } = neo.approach;
+  if (unit === "km") return miss_distance_km === null ? DASH : `${int(miss_distance_km)} km`;
+  return miss_distance_au === null ? DASH : `${miss_distance_au.toFixed(4)} AU`;
+}
+
+function NeoListItem({ neo, subUnit, active, onHover }: NeoListItemProps) {
+  const ld = neo.approach.miss_distance_ld;
+  const nearMoon = ld !== null && ld < NEAR_MOON_LD;
+  const diameter = diameterRange(neo.diameter_min_m, neo.diameter_max_m);
 
   return (
-    <div className="neo-list-item">
-      <div className="neo-list-item-header">
-        {/* 위험할 때만 ⚠️ 아이콘 노출. --hazard 색은 이 용도 전용이라는
-            규칙(03 문서 2.1절)을 지키기 위해 안전한 항목에는 아예 렌더링 하지 않음 */}
-        <span className="neo-list-item-name">
-          {is_hazardous && (<span className="neo-list-item-hazard-icon">{"\u26A0\uFE0E"}</span>)}
-          {name}  
-        </span> 
+    <li onMouseEnter={() => onHover(neo.nasa_id)} onMouseLeave={() => onHover(null)} className="border-b border-line last:border-b-0">
+      <Link
+        to={`/neo/${neo.nasa_id}`}
+        className={cn(
+          "group relative grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 px-5 py-4 text-bone transition-colors focus-visible:bg-line/40",
+          active ? "bg-line/40" : "hover:bg-line/40",
+        )}
+      >
+        {/* 위험 분류는 왼쪽 세로 띠 + 아이콘 + 글자 3중 표시 (03 문서 9장 ─ 색만으로 구분하지 않는다) */}
+        {neo.is_hazardous && <span className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-hazard" />}
 
-        <div className="neo-list-item-distance">
-          <DataField value={miss_distance_ld} unit="LD" layout="inline" />
-        </div>   
-      </div>  
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate font-semibold">{neo.name}</span>
+            {neo.is_hazardous && <HazardBadge />}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-dim">
+            <span>
+              추정 직경 <span className="font-mono text-bone">{diameter ?? DASH}</span>
+              {diameter && <span className="font-mono text-xs"> m</span>}
+            </span>
+            <span>
+              상대속도 <span className="font-mono text-bone">{dec2(neo.approach.velocity_km_s)}</span>
+              <span className="font-mono text-xs"> km/s</span>
+            </span>
+            <span>
+              최근접 <span className="font-mono text-bone">{kstTime(neo.approach.datetime_utc)}</span>
+            </span>
+          </div>
+        </div>
 
-      <div className="neo-list-item-sub">
-        <span className="neo-list-item-distance-km">
-          {miss_distance_km?.toLocaleString()} km  
-        </span>
-      </div>
+        <div className="text-right">
+          <div className={cn("font-mono text-2xl font-medium tabular-nums", nearMoon && "text-hazard")}>
+            {dec2(ld)}
+            <span className="ml-1 text-sm text-dim">LD</span>
+          </div>
+          <div className="mt-1 font-mono text-xs text-dim">{subDistance(neo, subUnit)}</div>
+        </div>
 
-      <div className="neo-list-item-details">
-        <DataField
-          label="추정 직경"
-          value={formatDiameterRange(diameter_min_m, diameter_max_m)}
-          unit="m"
-          layout="inline"
-        />
-        <DataField label="상대속도" value={velocity_km_s} unit="km/s" layout="inline" />  
-      </div>
-    </div>
+        <ArrowUpRight className="absolute top-4 right-1 size-3.5 text-dim opacity-0 transition-opacity group-hover:opacity-100" />
+      </Link>
+    </li>
   );
 }
 

@@ -1,141 +1,308 @@
-// NeoDashboardPage.tsx ─ Path = '/'
-// 비유: '/' 경로의 빈 도화지 → 추후 DateNavigator·NeoSummary·NeoListItem 배치 예정
+// ═══════════════════════════════════════════════════════════════════
+// NeoDashboardPage.tsx ─ Path = '/' (03 문서 6.1절, 04 문서 5.1절)
+// 10-27 /mockup 디자인으로 다시 씀. "다음 접근까지" 카운트다운은 이 값을 주는 API가 아직 없어 뺐다.
+// ═══════════════════════════════════════════════════════════════════
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { api, type AppError } from "../api/client";
-import type { NeoDashboardResponse } from "@/types/api";
-import { formatDate } from "../utils/date";
+import { CircleAlert, Database, RotateCw } from "lucide-react";
 
-import NeoSummary from "../components/neo/NeoSummary";
-import NeoListItem from "../components/neo/NeoListItem";
-import DateNavigator from "../components/neo/DateNavigator";
+import { api, type AppError } from "@/api/client";
+import { Panel } from "@/components/common/Panel";
+import DateNavigator from "@/components/neo/DateNavigator";
+import LunarDistanceBar from "@/components/neo/LunarDistanceBar";
+import NeoFaq from "@/components/neo/NeoFaq";
+import NeoListItem, { type SubUnit } from "@/components/neo/NeoListItem";
+import NeoScatterChart from "@/components/neo/NeoScatterChart";
+import NeoSummary from "@/components/neo/NeoSummary";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
+import type { NeoDashboardItem, NeoDashboardResponse } from "@/types/api";
+import { addDays, formatDate, parseDateString } from "@/utils/date";
+import { kstDateTime } from "@/utils/format";
 
-// ──────────────────────────────────────────────────────────────
-// Date 객체 → 'YYYY-MM-DD' 문자열
-//
-// ⚠️ toISOSrting()을 사용하면 안된다.
-// toISOString()은 무조건 UTC(런던 시각) 기준으로 변환한다.
-// 우리나라는 UTC+9라서 '한국 시각 새벽 2시'는 'UTC 전날 17시' 이다.
-// 즉, 아침 9시에 접속을 하면 화면에 어제 날짜가 뜨는 버그가 된다.
-// 벽시계를 볼 때 런던 시계를 보는게 아니라 내 방 시계를 보는 것
-// ──────────────────────────────────────────────────────────────
+type SortKey = "distance" | "velocity" | "size";
+interface ViewOptions {
+  sort: SortKey;
+  subUnit: SubUnit;
+  hazardOnly: boolean;
+}
+
+// 정렬은 서버를 다시 부르지 않고 받아 둔 배열로 한다 (04 문서 8.1절 ─ 하루치는 5~20건)
+// 값이 없는(null) 항목은 오름·내림 상관없이 항상 뒤로 (외계행성 정렬과 같은 원칙)
+const SORTERS: Record<SortKey, (n: NeoDashboardItem) => number> = {
+  distance: (n) => n.approach.miss_distance_ld ?? Infinity,
+  velocity: (n) => -(n.approach.velocity_km_s ?? -Infinity),
+  size: (n) => -(n.diameter_max_m ?? -Infinity),
+};
+
+// 요청 한 번의 결과. key = "날짜:재시도 횟수" ─ 지금 화면이 원하는 key와 다르면 "로딩 중"이다.
+type Loaded =
+  | { key: string; data: NeoDashboardResponse; error: null }
+  | { key: string; data: null; error: AppError };
+
 function NeoDashboardPage() {
   // ── 조회 날짜는 URL 주소창에 둔다 ──
-  // useSearchParams는 useState와 사용하는 모양이 거의 같은데,
-  // 값이 저장되는 곳이 컴포넌트 머릿속이 아니라 '주소창'이라는 점만 다르다.
-  // 머릿속 메모(useState)는 새로고침을 하면 사라지지만, 주소창에 적힌 건 남는다.
+  // useSearchParams는 useState와 쓰는 모양이 거의 같지만, 값이 '주소창'에 저장된다.
+  // 새로고침해도 남고, 뒤로가기·공유가 공짜로 된다.
   const [searchParams, setSearchParams] = useSearchParams();
+  const today = formatDate(new Date());
+  const date = searchParams.get("date") ?? today;
+  const isToday = date === today;
 
-  // 주소에 ?date=...가 없으면 오늘 날짜를 기본으로 사용한다.
-  // 주소를 실제로 바꾸지는 않는다 ─ 경로가 "/" 여도 오늘이 보이면 되는거니까
-  const date = searchParams.get("date") ?? formatDate(new Date());
-
-  // ─── 화면 상태 3종 ───
-  // 외부 API에 의존하는 화면은 항상 "로딩 중" / "성공" / "실패" 3가지 이다.
-  // 이 세 화면을 처음부터 분리해두지 않으면 코드가 엉킨다. (if문, 문서 03 ─ 7장)
-  const [data, setData] = useState<NeoDashboardResponse | null>(null);
-  const [error, setError] = useState<AppError | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
+  const key = `${date}:${retry}`;
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [slowKey, setSlowKey] = useState<string | null>(null);
+  // 보기 설정 ─ 페이지에 둬야 날짜를 바꿔도(로딩 화면이 끼어도) 유지된다
+  const [view, setView] = useState<ViewOptions>({ sort: "distance", subUnit: "km", hazardOnly: false });
 
   // ─────────────────────────────────────────────────────────────────
-  // useEffect = "화면이 그려진 뒤에 할 일"을 예약하는 자리
-  //
-  // React는 화면을 그리는 작업이 본업이다. 서버 호출 같은 일은 본업 이외의
-  // 일이기 때문에 후순위로 미룬다. 미뤄둔 작업들을 useEffect에 적어둔다.
-  //
-  // 두 번째 인자 [date] = "값이 바뀌면 실행해달라"는 조건표
-  // 비워두면(=[]) 최초 1회만, 아예 선언하지 않을 경우 "무한 호출 지옥"에 빠진다.
+  // useEffect = "화면이 그려진 뒤에 할 일"을 예약하는 자리.
+  // 이 안에서 setState를 "바로" 부르지 않는다(lint: set-state-in-effect).
+  // → 로딩 여부는 상태로 따로 들지 않고, "받아 둔 결과의 key ≠ 지금 key"로 계산한다.
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    // ignore = "주문이 이미 취소되었습니다."
-    //
-    // 날짜 화살표를 빠르게 세번 누르면 요청 3개가 동시에 날아간다.
-    // 하지만 network는 보낸 순서대로 도착한다는 보장이 없다.
-    // 따라서, 취소된 주문에는 표식(ignore)을 달아두고, 도착하더라도 받지 않는다.
+    // ignore = "주문이 이미 취소되었습니다." ─ 날짜를 빠르게 바꾸면 응답 순서가 뒤바뀔 수 있어서
     let ignore = false;
-
-    setIsLoading(true);
-    setError(null);
-
-    // params 옵션을 사용할 경우 axios가 자동으로 ?date=2026-09-15를 붙여준다.
-    // 직접 문자열을 이어붙이지 않는 이유: 값에 공백이나 한글이 섞일 경우,
-    // URL Encoding을 손으로 해줘야 하는데, 이 작업을 자동으로 해주는 옵션이다.
     api
-      // <NeoDashboardResponse> = "이 응답은 이런 모양이다"라는 꼬리표 → res.data에 자동완성·검사가 붙는다
       .get<NeoDashboardResponse>("/neo/", { params: { date } })
       .then((res) => {
-        if (ignore) return;   // 취소된 주문일 경우 폐기한다.
-        setData(res.data);
+        if (!ignore) setLoaded({ key, data: res.data, error: null });
       })
       .catch((err: AppError) => {
-        if (ignore) return;
-        // client.ts의 interceptor가 이미 { code, message, status } 모양으로
-        // 빚어서 넘겨준 상태이다. 그대로 담기만 하면 된다.
-        setError(err);
-      })
-      .finally(() => {
-        if (ignore) return;
-        setIsLoading(false);
+        if (!ignore) setLoaded({ key, data: null, error: err });
       });
-    
-    // return하는 함수 = "정리(cleanup) 담당"
-    // date가 바뀌어 이 effect를 다시 돌리기 직전, 또는 화면을 떠날 때 실행된다.
+    // 3초가 넘으면 "NASA에서 가져오는 중" 안내 (03 문서 7.2절 ─ 왜 기다리는지 알려주면 덜 지루하다)
+    const slow = setTimeout(() => setSlowKey(key), 3000);
     return () => {
       ignore = true;
-    }; 
-  }, [date]);
+      clearTimeout(slow);
+    };
+  }, [date, key]);
 
-  // DateNavigator가 새 날짜를 알려오면, URL querystring을 갱신한다.
-  // 실행되면 date 값이 바뀌고, 그걸 지켜보던 useEffect가 자동으로
-  // 새 API 요청을 날린다 ─ fetch 코드를 직접 다시 부르지 않아도 됨
-  function handleDateChange(newDate: string) {
-    setSearchParams({ date: newDate });
-  } 
+  const isLoading = loaded?.key !== key;
+  const data = !isLoading ? loaded?.data ?? null : null;
+  const error = !isLoading ? loaded?.error ?? null : null;
 
-  // ─── 세 화면을 순차적으로 처리 ───
-  // Loading/Error를 먼저 걸러내고 나면, 아래쪽 코드는
-  // "data가 반드시 존재한다"라고 믿고 사용할 수 있다. 조건문이 깔끔해지는 요령.
-  if (isLoading) {
-    return <p>불러오는 중...</p>;
-  }
-
-  if (error) {
-    return (
-      <p>
-        {error.message} (code: {error.code})
-      </p>
-    );
-  }
-
-  // 로딩도 오류도 아니면 data는 반드시 있다. TypeScript는 세 상태의 관계를 모르니
-  // 한 번 더 걸러서 "여기부터 data는 null이 아니다"를 알려준다. (실제로는 지나갈 일 없는 줄)
-  if (!data) {
-    return null;
+  function goTo(newDate: string) {
+    setSearchParams(newDate === today ? {} : { date: newDate });
   }
 
   return (
-    <div>
-      <h1>지구 근접 소행성</h1>
-      <p>조회 날짜: {date}</p>
-      <DateNavigator date={date} onChange={handleDateChange} />
-      <NeoSummary summary={data.summary} />
-      <div className="neo-list">
-        {data.results.map((neo) => (
-          <NeoListItem key={neo.nasa_id} neo={neo} />
+    <>
+      {/* ─── 히어로: 제목 + 날짜 이동 (로딩·오류 중에도 날짜는 옮길 수 있게 항상 보인다) ─── */}
+      <section className="pt-10 pb-8">
+        <div className="mb-4 flex items-center gap-2 text-label font-medium tracking-[0.12em] text-signal uppercase">
+          {isToday && <span className="live-dot size-1.5 rounded-full bg-signal" />}
+          {isToday ? "Live · " : ""}NASA NeoWs
+        </div>
+        <h1 className="text-4xl leading-tight font-bold tracking-tight md:text-5xl">
+          {isToday ? "오늘" : date} 지구 곁을 지나는
+          <br />
+          <span className="text-signal">{data ? `소행성 ${data.summary.total_count}개` : "소행성"}</span>
+        </h1>
+        <div className="mt-6">
+          <DateNavigator date={date} onChange={goTo} />
+        </div>
+      </section>
+
+      {isLoading && <LoadingState slow={slowKey === key} />}
+      {error && <ErrorState error={error} onRetry={() => setRetry((n) => n + 1)} onToday={() => goTo(today)} />}
+      {data && (
+        <Dashboard
+          data={data}
+          isToday={isToday}
+          date={date}
+          view={view}
+          onViewChange={(patch) => setView((v) => ({ ...v, ...patch }))}
+          onMove={(d) => goTo(formatDate(addDays(parseDateString(date), d)))}
+        />
+      )}
+    </>
+  );
+}
+
+// ─── 성공 화면 ──────────────────────────────────────────────────────
+interface DashboardProps {
+  data: NeoDashboardResponse;
+  isToday: boolean;
+  date: string;
+  view: ViewOptions;
+  onViewChange: (patch: Partial<ViewOptions>) => void;
+  onMove: (delta: number) => void;
+}
+
+function Dashboard({ data, isToday, date, view, onViewChange, onMove }: DashboardProps) {
+  const { sort, subUnit, hazardOnly } = view;
+  // 목록 ↔ 차트 연결 ─ 한쪽에 마우스를 올리면 다른 쪽도 같이 강조된다
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  const rows = useMemo(() => {
+    const list = hazardOnly ? data.results.filter((n) => n.is_hazardous) : [...data.results];
+    return list.sort((a, b) => SORTERS[sort](a) - SORTERS[sort](b));
+  }, [data.results, hazardOnly, sort]);
+
+  // 빈 화면은 막다른 길이 아니라 다음 행동을 안내하는 자리 (03 문서 7.1절)
+  if (data.summary.total_count === 0) {
+    return (
+      <Panel className="flex flex-col items-center py-16 text-center">
+        <p className="font-medium">{date}에는 지구에 접근하는 소행성이 없습니다.</p>
+        <p className="mt-1 text-sm text-dim">NASA가 이날 기록한 지구 근접 접근이 0건이에요.</p>
+        <div className="mt-6 flex gap-2">
+          <Button variant="outline" onClick={() => onMove(-1)}>
+            전날 보기
+          </Button>
+          <Button variant="outline" onClick={() => onMove(1)}>
+            다음 날 보기
+          </Button>
+        </div>
+      </Panel>
+    );
+  }
+
+  return (
+    <>
+      <NeoSummary summary={data.summary} isToday={isToday} />
+
+      {/* ─── 시그니처: 달 거리 스케일 ─── */}
+      <Panel className="mt-3">
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-semibold">달 거리 스케일</h2>
+          <div className="flex flex-wrap items-center gap-4 text-xs text-dim">
+            <Legend className="bg-hazard ring-2 ring-hazard ring-offset-2 ring-offset-panel" label="달보다 가까이 (1 LD 안쪽)" />
+            <Legend className="bg-signal" label="그 밖" />
+            <Legend className="border border-signal" label="범위 밖 (끝에 표시)" />
+          </div>
+        </div>
+        <p className="mb-2 text-sm text-dim">모든 거리를 지구–달 평균 거리(1 LD) 기준으로 놓은 로그 눈금. 점선 왼쪽이면 달보다 가까이 온 것이다.</p>
+        <LunarDistanceBar results={data.results} hoveredId={hoveredId} onHover={setHoveredId} />
+      </Panel>
+
+      {/* ─── 목록 + 산점도·FAQ ─── */}
+      <section className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <Panel className="p-0 md:p-0">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-line px-5 py-4">
+            <ToolbarGroup label="정렬">
+              <ToggleGroup type="single" size="sm" variant="outline" value={sort} onValueChange={(v) => v && onViewChange({ sort: v as SortKey })}>
+                <ToggleGroupItem value="distance">거리</ToggleGroupItem>
+                <ToggleGroupItem value="velocity">속도</ToggleGroupItem>
+                <ToggleGroupItem value="size">크기</ToggleGroupItem>
+              </ToggleGroup>
+            </ToolbarGroup>
+            <ToolbarGroup label="보조 단위">
+              <ToggleGroup type="single" size="sm" variant="outline" value={subUnit} onValueChange={(v) => v && onViewChange({ subUnit: v as SubUnit })}>
+                <ToggleGroupItem value="km">km</ToggleGroupItem>
+                <ToggleGroupItem value="au">AU</ToggleGroupItem>
+              </ToggleGroup>
+            </ToolbarGroup>
+            <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm text-dim">
+              <Switch checked={hazardOnly} onCheckedChange={(on) => onViewChange({ hazardOnly: on })} />
+              위험 분류만
+            </label>
+          </div>
+
+          <ul>
+            {rows.map((neo) => (
+              <NeoListItem key={neo.nasa_id} neo={neo} subUnit={subUnit} active={hoveredId === neo.nasa_id} onHover={setHoveredId} />
+            ))}
+            {rows.length === 0 && (
+              <li className="px-5 py-12 text-center text-sm text-dim">
+                이날은 위험 분류 소행성이 없습니다.
+                <button className="ml-2 text-signal underline-offset-4 hover:underline" onClick={() => onViewChange({ hazardOnly: false })}>
+                  전체 보기
+                </button>
+              </li>
+            )}
+          </ul>
+        </Panel>
+
+        <div className="flex flex-col gap-3">
+          <Panel>
+            <h2 className="text-lg font-semibold">거리 × 속도</h2>
+            <p className="mb-3 text-sm text-dim">점이 클수록 큰 소행성. 왼쪽 위일수록 가깝고 빠르다.</p>
+            <NeoScatterChart results={data.results} hoveredId={hoveredId} onHover={setHoveredId} />
+          </Panel>
+          <NeoFaq />
+        </div>
+      </section>
+
+      <footer className="mt-10 flex flex-wrap items-center justify-between gap-2 text-xs text-dim">
+        <span className="flex items-center gap-1.5">
+          <Database className="size-3.5" />
+          데이터: NASA NeoWs ·{" "}
+          {data.cache.is_cached ? `${kstDateTime(data.cache.fetched_at)} 수집 (저장된 데이터)` : "방금 NASA에서 가져옴"}
+        </span>
+        <span>학습·포트폴리오 목적이며 실제 충돌 예측에 사용하지 마세요.</span>
+      </footer>
+    </>
+  );
+}
+
+// ─── 로딩 ─ 스피너 대신 자리표시자(스켈레톤). 화면이 비어 보이지 않게 (03 문서 7.2절) ─────
+function LoadingState({ slow }: { slow: boolean }) {
+  const block = "rounded-xl border border-line bg-panel/60 motion-safe:animate-pulse";
+  return (
+    <div aria-busy="true" aria-live="polite">
+      {slow && <p className="mb-3 text-sm text-dim">NASA에서 데이터를 가져오는 중입니다. 처음 조회하는 날짜는 몇 초 걸릴 수 있어요.</p>}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className={cn(block, "h-32")} />
         ))}
       </div>
+      <div className={cn(block, "mt-3 h-44")} />
+      <div className={cn(block, "mt-3 h-96")} />
+    </div>
+  );
+}
 
-      {/* 원본 JSON ─ 개발 중 확인용. */}
-      <details>
-        {/* 1단계 ─ '길이 뚫렸는지만' 확인하는 단계
-            JSON.stringify(값, null, 2) = 들여쓰기 2칸으로 보기 좋게 펼치기
-            <pre>는 줄바꿈·공백을 그대로 보존하는 Tag라 JSON 확인에 딱 알맞다.
-            이 block은 2단계에서 NeoListItem으로 통째로 교체된다. */}
-        <pre style={{ whiteSpace: "pre-wrap", fontFamily: "var(--font-mono)" }}>
-          {JSON.stringify(data, null, 2)}
-        </pre> 
-      </details>   
+// ─── 오류 ─ 사과하지 않는다. 무슨 일이 있었고 지금 무엇을 할 수 있는지 (03 문서 7.3절) ─────
+function ErrorState({ error, onRetry, onToday }: { error: AppError; onRetry: () => void; onToday: () => void }) {
+  const message: Partial<Record<AppError["code"], string>> = {
+    INVALID_DATE: "주소의 날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)",
+    RATE_LIMITED: "요청이 많아 잠시 멈췄어요. 잠시 후 다시 시도해 주세요.",
+    UPSTREAM_ERROR: "NASA 데이터 서버에 연결할 수 없습니다. 저장된 데이터가 없는 날짜예요.",
+    NETWORK_ERROR: "서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.",
+    UNKNOWN_ERROR: "서버에 연결할 수 없습니다.",
+  };
+  return (
+    <Panel className="flex flex-col items-center py-14 text-center">
+      <span className="grid size-11 place-items-center rounded-full bg-line text-bone">
+        <CircleAlert className="size-5" />
+      </span>
+      <p role="alert" className="mt-4 font-medium">
+        {message[error.code] ?? error.message}
+      </p>
+      <p className="mt-1 font-mono text-xs text-dim">{error.code}</p>
+      <div className="mt-6 flex gap-2">
+        {error.code === "INVALID_DATE" ? (
+          <Button onClick={onToday}>오늘로 가기</Button>
+        ) : (
+          <Button onClick={onRetry}>
+            <RotateCw /> 다시 시도
+          </Button>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+function Legend({ className, label }: { className: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={cn("size-2.5 rounded-full", className)} />
+      {label}
+    </span>
+  );
+}
+
+function ToolbarGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-dim">{label}</span>
+      {children}
     </div>
   );
 }

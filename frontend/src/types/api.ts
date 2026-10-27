@@ -45,7 +45,7 @@ export interface NeoApproach {
   datetime_utc: string; // ISO 8601 UTC
   miss_distance_km: number | null;
   miss_distance_au: number | null;
-  miss_distance_ld: number | null; // 서버가 계산 (units.py) ─ 프론트에서 384400으로 나누지 않는다
+  miss_distance_ld: number | null; // 서버가 계산 (units.py) ─ 프론트에서 km를 직접 나누지 않는다
   velocity_km_s: number | null;
   velocity_km_h: number | null;
   orbiting_body: string;

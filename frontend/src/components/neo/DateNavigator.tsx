@@ -1,59 +1,58 @@
-// DateNavigator.tsx ─ 대시보드 상단 날짜 이동 컨트롤
-// 좌우 화살표(±1일 이동) + 날짜 클릭 시 Browser 기본 달력
+// DateNavigator.tsx ─ 날짜 이동 알약: ◀ [달력 2026-10-26 (월)] ▶ | 오늘
+// 이 컴포넌트는 날짜 상태를 직접 갖지 않는다 ─ "지금 몇 일인지"는 부모가 URL(?date=)에 들고 있고,
+// 여기서는 "바뀌었다"는 사실만 위로 알려준다. (리모컨이 채널 값을 갖지 않고 "다음 채널"만 요청하는 것)
 
 import type { ChangeEvent } from "react";
-import { parseDateString, addDays, formatDate } from "../../utils/date";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { addDays, formatDate, parseDateString } from "@/utils/date";
 
 interface DateNavigatorProps {
-  date: string; // 현재 조회 중인 날짜 문자열 ("2026-09-16")
-  onChange: (newDate: string) => void; // 새 날짜 문자열을 부모(NeoDashboardPage)에게 알려주는 함수
+  date: string; // "YYYY-MM-DD"
+  onChange: (newDate: string) => void;
 }
 
-//
-// 이 컴포넌트는 날짜 상태를 직접 갖지 않는다 
-// ─ "지금 몇 일인지"는 부모가 URL에 들고 있고, 여기서는 "바뀌었다"는 사실만 위로 알려준다. 
-// 비유: 리모컨이 TV 채널 값을 직접 갖는 것이 아니라, TV에 "다음 채널"만 요청하는 것과 같다.
-function DateNavigator({ date, onChange }: DateNavigatorProps) {
-  function moveByDays(delta: number) {
-    const current = parseDateString(date);
-    const next = addDays(current, delta);
-    onChange(formatDate(next));
-  }  
+const weekdayFmt = new Intl.DateTimeFormat("ko-KR", { weekday: "short" });
 
-  // <input type="date">는 Browser가 기본으로 제공하는 달력 UI이다.
-  // 값이 바뀌면(달력에서 날짜를 고르면) 그 값을 그대로 위로 전달한다.
+function DateNavigator({ date, onChange }: DateNavigatorProps) {
+  const parsed = parseDateString(date);
+  const valid = !Number.isNaN(parsed.getTime()) && formatDate(parsed) === date; // 2026-13-99 같은 값 걸러내기
+  const today = formatDate(new Date());
+
+  function moveByDays(delta: number) {
+    // 주소가 잘못된 날짜면 오늘을 기준으로 이동한다
+    onChange(formatDate(addDays(valid ? parsed : new Date(), delta)));
+  }
+
+  // <input type="date">는 브라우저 기본 달력. 값을 고르면 그대로 위로 전달한다.
+  // ⚠️ 알려진 동작: 달력 팝업에서 월 이동 화살표만 눌러도 onChange가 생긴다 (DEVLOG 10-27, M5에서 판단)
   function handlePick(e: ChangeEvent<HTMLInputElement>) {
-    if (e.target.value) {
-      onChange(e.target.value);  
-    }
+    if (e.target.value) onChange(e.target.value);
   }
 
   return (
-    <div className="date-navigator">
+    <div className="inline-flex items-center gap-1 rounded-full border border-line bg-panel/80 p-1 backdrop-blur">
+      <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label="이전 날짜" onClick={() => moveByDays(-1)}>
+        <ChevronLeft />
+      </Button>
+      <label className="flex items-center gap-2 rounded-full px-2 py-1 font-mono text-sm hover:bg-line/60">
+        <span className="sr-only">조회 날짜</span>
+        <input type="date" value={valid ? date : ""} onChange={handlePick} className="bg-transparent outline-none" />
+        {valid && <span className="text-dim">({weekdayFmt.format(parsed)})</span>}
+      </label>
+      <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label="다음 날짜" onClick={() => moveByDays(1)}>
+        <ChevronRight />
+      </Button>
+      <span className="mx-1 h-5 w-px bg-line" />
       <button
         type="button"
-        className="date-navigator-arrow"
-        onClick={() => moveByDays(-1)}
-        aria-label="이전 날짜"
+        onClick={() => onChange(today)}
+        disabled={date === today}
+        className="rounded-full px-3 py-1 text-sm text-signal hover:bg-line/60 disabled:text-dim disabled:hover:bg-transparent"
       >
-        ◀
+        오늘
       </button>
-
-      <input 
-        type="date"
-        className="date-navigator-input"
-        value={date}
-        onChange={handlePick}
-      />
-
-      <button
-        type="button"
-        className="date-navigator-arrow"
-        onClick={() => moveByDays(1)}
-        aria-label="다음 날짜"
-      >
-        ▶
-      </button>    
     </div>
   );
 }
