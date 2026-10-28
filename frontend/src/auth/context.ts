@@ -12,6 +12,8 @@ export interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>;
   signup: (input: { username: string; email: string; password: string; password_confirm: string }) => Promise<void>;
   logout: () => Promise<void>;
+  /** 마이페이지에서 이메일·설정을 바꾼 뒤 화면의 사본을 맞춘다. null = 탈퇴 직후 (10-28) */
+  updateUser: (user: AuthUser | null) => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

@@ -9,6 +9,7 @@ import ComparePage from "./pages/ComparePage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import WatchlistPage from "./pages/WatchlistPage";
+import AccountPage from "./pages/AccountPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 import AuthProvider from "./auth/AuthProvider";
@@ -46,6 +47,7 @@ function App() {
             <Route path="/exoplanets/:id" element={<ExoplanetDetailPage />} />
             <Route path="/compare" element={<ComparePage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
+            <Route path="/account" element={<AccountPage />} />
 
             {/* "*" = 위 어느 것에도 걸리지 않은 나머지 전부.
                 404도 Layout 안에 두는 이유: Header가 있어야 다른 곳으로 갈 수 있기 때문

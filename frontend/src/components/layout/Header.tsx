@@ -99,11 +99,19 @@ function AuthArea() {
           <span className="hidden lg:inline">내 관심 천체</span>
         </NavLink>
       </Button>
-      {/* 휴대폰 폭에서는 머리글자 원을 숨긴다 ─ 375px에서 헤더가 8px 넘쳤다 (별·로그아웃만으로 충분) */}
-      <span className="hidden size-8 place-items-center rounded-full bg-line sm:grid text-sm font-semibold uppercase" title={user.username} aria-label={`${user.username} 님`}>
+      {/* 머리글자 원 = 마이페이지 입구 (10-28). 휴대폰 폭에선 공간이 모자라(375px에서 8px 넘침) 이 원 대신 로그아웃 아이콘을 숨긴다
+          ─ 로그아웃은 마이페이지 안에도 있다 */}
+      <NavLink
+        to="/account"
+        className={({ isActive }) =>
+          cn("grid size-8 place-items-center rounded-full text-sm font-semibold text-bone uppercase transition-colors", isActive ? "bg-signal text-ink" : "bg-line hover:bg-dim/40")
+        }
+        title="내 계정"
+        aria-label={`내 계정 (${user.username})`}
+      >
         {user.username[0]}
-      </span>
-      <Button variant="ghost" size="icon-sm" onClick={logout} aria-label="로그아웃" title="로그아웃">
+      </NavLink>
+      <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex" onClick={logout} aria-label="로그아웃" title="로그아웃">
         <LogOut />
       </Button>
     </div>

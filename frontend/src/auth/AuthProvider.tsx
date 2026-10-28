@@ -74,7 +74,10 @@ function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const value = useMemo(() => ({ status, user, login, signup, logout }), [status, user, login, signup, logout]);
+  // 마이페이지 ─ 서버가 돌려준 최신 user 블록으로 사본을 바꾼다 (setUser는 안정적인 함수라 그대로 넘겨도 된다)
+  const updateUser = setUser;
+
+  const value = useMemo(() => ({ status, user, login, signup, logout, updateUser }), [status, user, login, signup, logout, updateUser]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

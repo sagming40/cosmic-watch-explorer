@@ -8,6 +8,7 @@ import { useSearchParams } from "react-router";
 import { Database } from "lucide-react";
 
 import { api, type AppError } from "@/api/client";
+import { useAuth } from "@/auth/useAuth";
 import { Panel } from "@/components/common/Panel";
 import { ErrorState, LoadingState } from "@/components/common/StateViews";
 import DateNavigator from "@/components/neo/DateNavigator";
@@ -58,7 +59,13 @@ function NeoDashboardPage() {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [slowKey, setSlowKey] = useState<string | null>(null);
   // 보기 설정 ─ 페이지에 둬야 날짜를 바꿔도(로딩 화면이 끼어도) 유지된다
-  const [view, setView] = useState<ViewOptions>({ sort: "distance", subUnit: "km", hazardOnly: false });
+  // 처음 값 = 마이페이지 "표시 설정" (10-28). 여기서 바꾼 건 이번 방문에만 ─ 기본값을 바꾸려면 마이페이지에서
+  const { user } = useAuth();
+  const [view, setView] = useState<ViewOptions>(() => ({
+    sort: user?.preferences.dashboard_sort ?? "distance",
+    subUnit: user?.preferences.distance_unit ?? "km",
+    hazardOnly: user?.preferences.hazard_only ?? false,
+  }));
 
   // ─────────────────────────────────────────────────────────────────
   // useEffect = "화면이 그려진 뒤에 할 일"을 예약하는 자리.

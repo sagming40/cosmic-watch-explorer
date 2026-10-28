@@ -199,10 +199,25 @@ export interface ExoplanetMetaResponse {
 
 // ─── 인증 (04 문서 4장) ───────────────────────────────────────────
 
+/** 마이페이지 "표시 설정" ─ 대시보드를 열 때 처음 보일 모양 (04 문서 4.6절, 10-28) */
+export interface Preferences {
+  distance_unit: "km" | "au"; // 목록의 보조 거리 단위 (기본 단위 LD는 고정)
+  dashboard_sort: "distance" | "velocity" | "size";
+  hazard_only: boolean;
+}
+
 export interface AuthUser {
   id: number;
   username: string;
   email: string;
+  date_joined: string; // ISO 8601 UTC ─ 화면에선 KST 날짜로
+  preferences: Preferences; // 설정을 한 번도 안 바꿨으면 서버 기본값
+}
+
+/** GET /api/account/ ─ 마이페이지 "내 정보" */
+export interface AccountSummary {
+  user: AuthUser;
+  watchlist_counts: { neo: number; exoplanet: number };
 }
 
 /** GET /api/auth/me/, POST signup·login 응답 */

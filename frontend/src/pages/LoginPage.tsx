@@ -55,6 +55,12 @@ function LoginPage() {
       <p className="mt-2 text-sm text-dim">로그인하면 지구 근접 소행성과 외계행성 데이터를 볼 수 있어요.</p>
 
       <form className="mt-8 space-y-4" onSubmit={submit}>
+        {/* 마이페이지에서 탈퇴하고 넘어온 경우 (10-28) */}
+        {params.get("bye") === "1" && !formError && (
+          <p role="status" className="rounded-md border border-line px-3 py-2 text-sm text-dim">
+            계정을 삭제했어요. 그동안 이용해 주셔서 고마워요.
+          </p>
+        )}
         {formError && <FormAlert>{formError}</FormAlert>}
         {/* required ─ 빈 칸은 브라우저가 먼저 막는다 (서버의 "blank일 수 없습니다" 문구까지 가지 않게) */}
         <TextField
