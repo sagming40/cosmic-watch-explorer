@@ -210,7 +210,7 @@ frontend/src/
   components/account/ ProfileSection·PreferencesSection·PasswordSection·DeleteAccountSection (마이페이지 4칸)
   components/auth/   AuthLayout(로그인·가입 틀 + next 안내), AuthFields(입력칸·비밀번호 보기·FormAlert), ProtectedRoute(로그인·가입 외 전체 화면의 문지기)
   components/layout/ Header(알약 메뉴 + 로그인 상태), Layout(배경 + Outlet)
-  components/neo/    대시보드: DateNavigator, NeoSummary, LunarDistanceBar, NeoScatterChart, NeoListItem, NeoFaq
+  components/neo/    대시보드: DateNavigator(◀ 날짜 버튼=달력 ▶ 오늘), NeoSummary, LunarDistanceBar, NeoScatterChart, NeoListItem, NeoFaq
                      상세: OrbitPanel(궤도 모식도), NeoSizePanel, ObservationPanel, ApproachTable
                      공용: chart.ts(눈금 범위·점 변환), ChartTooltip
   components/exoplanet/ FilterPanel(9개 조건), FilterChips, ExoplanetListItem, HostStarPanel, PlanetSizePanel, SiblingPlanets
@@ -236,7 +236,7 @@ frontend/src/
 - 백엔드 기능을 바꾸면 테스트도 같이 추가한다(`apps/*/tests.py`).
 - `--hazard` 색(#F43F5E)은 위험 표시 전용. 버튼·링크에 쓰지 않는다.
 - 접근성(10-28 M5): 입력칸·버튼 테두리는 shadcn `--input`(= `--dim`, 대비 5.59). `--line`은 장식 테두리 전용(1.23). `outline-none`을 새로 쓰면 감싼 요소에 `focus-within` 링을 준다. 전역 `:focus-visible` 링·reduced-motion 규칙은 `index.css` `@layer base`.
-- 범위 관리: 새 기능이 떠오르면 구현하지 않고 `01` 문서 3.2절(MVP 제외 범위)에 적는다. 확정된 "나중에" 항목: error boundary·커스텀 달력(M5).
+- 범위 관리: 새 기능이 떠오르면 구현하지 않고 `01` 문서 3.2절(MVP 제외 범위)에 적는다. 확정됐던 "나중에" 항목(error boundary·커스텀 달력)은 10-28 M5에서 구현 완료.
 
 ### 3.4 스타일 규칙 (Tailwind CSS v4 + shadcn/ui, 2026-10-27 도입)
 - **새 코드는 Tailwind 유틸리티로 쓴다.** 색·서체·크기는 토큰 이름 유틸리티만: `bg-ink`/`bg-panel`/`border-line`/`text-bone`/`text-dim`/`text-signal`/`text-hazard`, `font-sans`/`font-display`/`font-mono`, `text-display`/`text-h1`/`text-h2`/`text-body`/`text-label`. `bg-[#...]` 같은 임의 색 금지 — 색 값은 `index.css` `:root` 토큰 7개뿐(03 문서 2.5절).
