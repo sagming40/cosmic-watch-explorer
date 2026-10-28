@@ -363,3 +363,16 @@ class ExoplanetTests(BaseAPITestCase):
         meta = self.client.get("/api/exoplanets/meta/").json()
         self.assertEqual(meta["total_count"], 6)
         self.assertEqual(float(meta["ranges"]["radius_earth"]["min"]), 1.0)  # NULL은 Min/Max에서 빠진다
+
+
+class PrepareE2ESafetyTests(BaseAPITestCase):
+    """prepare_e2e(10-28 M6) ─ DB를 통째로 비우는 명령이라, 이름이 _e2e로 끝나지 않는 DB에선 아무것도 하지 말아야 한다"""
+
+    def test_refuses_non_e2e_database(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+
+        make_neo("81")  # 지워지면 안 되는 데이터
+        with self.assertRaises(CommandError):
+            call_command("prepare_e2e")  # 테스트 DB 이름은 test_cosmic_watch ─ _e2e로 안 끝남
+        self.assertTrue(Neo.objects.filter(nasa_id="81").exists())
