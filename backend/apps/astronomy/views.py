@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.utils import timezone
 from django.core.cache import cache   # ⭐ 추가
@@ -41,6 +41,15 @@ def _parse_query_date(date_str):
     except ValueError:
         raise InvalidDate() 
 
+# 오늘 이후 날짜의 수집 결과 유효기간 (10-28). NASA 미래 예측은 관측이 쌓이면 바뀐다(거리·시각).
+# 지난 날짜는 이미 일어난 일이라 한 번 받은 것으로 충분하다 ─ 다시 받지 않는다.
+FUTURE_FEED_TTL = timedelta(hours=24)
+
+
+def _is_stale(log, target_date):
+    return target_date >= timezone.localdate() and timezone.now() - log.fetched_at > FUTURE_FEED_TTL
+
+
 # sort 파라미터 → 실제 정렬 기준 컬럼 매핑
 # 비유: "거리 순", "속도 순", "크기 순" 정렬 버튼을 누르면 
 # 주방(ORM)이 읽을 수 있는 실제 컬럼명("miss_distance_km")으로 바꿔주는 번역표
@@ -76,28 +85,33 @@ class NeoDashboardView(APIView):
         body = request.query_params.get("body", "Earth")
         
         # ① 캐시 판정 먼저 — 여기서 미스가 확정되면 그 즉시 throttle을 직접 체크한다.
+        #   미스 = 장부에 없음, 또는 오늘 이후 날짜인데 받은 지 24시간이 지남(stale, 10-28)
         log = NeoFetchLog.objects.filter(fetch_date=target_date).first()
-        if log is None:
+        stale = log is not None and _is_stale(log, target_date)
+        is_cached = True
+        fetched_at = log.fetched_at if log else None
+
+        if log is None or stale:
             # ⭐ 실제 self throttling — 직접 인스턴스를 만들어 검사한다.
             # get_throttles()가 [](빈 목록)을 주는 한, 이 검사가 유일한 검사이다.
             throttle = ScopedRateThrottle()
             if not throttle.allow_request(request, self):
-                # DRF 자동 검사와 동일한 방식으로 429 throw/
-                # throttle.wait() = "몇 초 후에 다시 시도"하라는 안내 시간
-                self.throttled(request, throttle.wait())
-            
-            try:
-                fetch_feed(target_date.strftime("%Y-%m-%d"))
-            except NasaUnavailable as exc:
-                # NASA 탓인 실패만 503. 우리 코드 버그(KeyError 등)는 잡지 않는다 → 500으로 드러난다 (10-28)
-                logger.warning("[NeoDashboardView] %s: NASA Feed 실패(%s)", target_date, exc)
-                raise UpstreamError() from exc
-            
-            is_cached = False
-            fetched_at = timezone.now()
-        else:
-            is_cached = True
-            fetched_at = log.fetched_at
+                if not stale:
+                    # 보여줄 게 아무것도 없다 → DRF 자동 검사와 동일한 방식으로 429
+                    # throttle.wait() = "몇 초 후에 다시 시도"하라는 안내 시간
+                    self.throttled(request, throttle.wait())
+                # stale이면 갱신만 미루고 예전 데이터로 응답한다 (fetched_at이 그대로 오래된 시각)
+            else:
+                try:
+                    fetch_feed(target_date.strftime("%Y-%m-%d"))
+                    is_cached = False
+                    fetched_at = timezone.now()
+                except NasaUnavailable as exc:
+                    # NASA 탓인 실패만 503. 우리 코드 버그(KeyError 등)는 잡지 않는다 → 500으로 드러난다 (10-28)
+                    logger.warning("[NeoDashboardView] %s: NASA Feed 실패(%s)", target_date, exc)
+                    if not stale:
+                        raise UpstreamError() from exc
+                    # 갱신만 실패 ─ 저장된 예전 데이터가 있는데 503으로 바꿀 이유가 없다 (결정 A와 같은 생각)
         
         # ② 목록 조회 — 02_database_design.md 8.2절 쿼리 패턴    
         order_field = SORT_FIELD_MAP.get(sort, "miss_distance_km")

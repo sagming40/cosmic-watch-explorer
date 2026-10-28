@@ -151,6 +151,7 @@ def _save_close_approaches(neo, approach_list):
     나중에 양식이 바뀔 때 한 창구만 고치고 다른 창구는 잊어버린다. 
     """    
     saved_count = 0
+    kept_pks = []  # 이번 응답으로 확인된 행들 ─ Feed 재수집 때 "예전 예측" 행을 지우는 기준 (10-28)
 
     for approach in approach_list:
         approach_datetime = _parse_datetime_utc(approach.get("close_approach_date_full"))
@@ -159,7 +160,7 @@ def _save_close_approaches(neo, approach_list):
         # 날짜 parsing에 실패한 data는 조용히 건너뜀
         # 수백 건 중 하나가 이상하다 해도 전체 수집이 멈추면 안된다.
 
-        _, created = CloseApproach.objects.get_or_create(
+        row, created = CloseApproach.objects.update_or_create(
             neo=neo,
             approach_datetime_utc=approach_datetime,
             orbiting_body=approach.get("orbiting_body", ""),
@@ -175,16 +176,17 @@ def _save_close_approaches(neo, approach_list):
                 "miss_distance_au": _to_decimal(approach["miss_distance"]["astronomical"]),
             },
         )
-        # update_or_create가 아닌 get_or_create를 사용하는 이유
-        # neo + approach_datetime_utc + orbiting_body = UniqueConstraint(uk_ca_unique) 조합.
-        # 이미 있다면 그냥 두고, 없으면 새로 생성
-        # → 같은 소행성을 Feed로 한 번, Lookup으로 또 한 번 수집해도
-        #   겹치는 접근 기록은 중복 저장 되지 않는다.
-
+        # neo + approach_datetime_utc + orbiting_body = UniqueConstraint(uk_ca_unique) 조합으로 찾는다.
+        # → 같은 소행성을 Feed로 한 번, Lookup으로 또 한 번 수집해도 겹치는 접근 기록은 중복 저장되지 않는다.
+        #
+        # get_or_create → update_or_create (10-28): 미래 날짜를 다시 받을 때(뷰의 24시간 유효기간)
+        # NASA가 고친 거리·속도가 예전엔 무시됐다("이미 있으면 그냥 둔다"). 이제 최신 값으로 덮어쓴다.
+        # 궤도(OrbitalData)에 처음부터 update_or_create를 쓴 것과 같은 이유 ─ 예측은 관측이 쌓이면 바뀐다.
+        kept_pks.append(row.pk)
         if created:
             saved_count += 1
 
-    return saved_count        
+    return saved_count, kept_pks
 
 
 def fetch_feed(date_str):
@@ -264,9 +266,15 @@ def _save_feed(date_str, element_count, neo_list):
         # "이 값은 사용하지 않는 값이므로 이름을 붙일 필요가 없다" ─ Python의 관례
 
         # ② 소행성의 접근 기록 저장 — 공통 함수에 위임
-        saved_approach_count += _save_close_approaches(
-            neo, neo_data.get("close_approach_data", [])
-        )
+        saved, kept_pks = _save_close_approaches(neo, neo_data.get("close_approach_data", []))
+        saved_approach_count += saved
+
+        # ②-1 같은 소행성·같은 날짜·지구 접근인데 이번 응답에 없는 행 = NASA가 시각을 고치기 전의 "예전 예측"
+        #   지우지 않으면 재수집 때 예전 행 + 새 행이 둘 다 남아 대시보드에 같은 소행성이 두 번 나온다.
+        #   범위를 일부러 좁힌다 ─ 이번 응답에 나온 소행성만, 그 날짜만. Lookup으로 받은 다른 날짜의 기록은 건드리지 않는다.
+        CloseApproach.objects.filter(neo=neo, approach_date=date_str, orbiting_body="Earth").exclude(
+            pk__in=kept_pks
+        ).delete()
 
     # ③ 발주 장부에 "해당 날짜 수집 완료"라고 기록 ─ 같은 묶음 안이라, 위 저장이 하나라도 실패하면 장부도 안 적힌다
     NeoFetchLog.objects.update_or_create(
@@ -274,6 +282,9 @@ def _save_feed(date_str, element_count, neo_list):
         defaults={
             "element_count": element_count,
             "is_success": True,
+            # fetched_at은 auto_now_add라 "처음 만들 때"만 자동으로 찍힌다 → 다시 받았으면 직접 새로 찍는다.
+            # 안 찍으면 재수집해도 계속 "오래됨"으로 보여 매번 NASA를 부른다 (10-28 사전 검증에서 발견)
+            "fetched_at": timezone.now(),
         },
     )
 
@@ -351,9 +362,7 @@ def _save_lookup(data):
     #   Feed는 하루치 1건만 주지만, 수십 ~ 수백 건이 한꺼번에 온다.
     #   Earth 이외에 Venus, Mars 같은 다른 천체 접근도 섞여 있다.
     # 문서 02 ― 5.3절의 body 필터가 여기서 의미를 갖는다.
-    saved_approach_count = _save_close_approaches(
-        neo, data.get("close_approach_data", [])
-    )
+    saved_approach_count, _ = _save_close_approaches(neo, data.get("close_approach_data", []))
 
     # ③ 궤도 정보 ― Lookup에만 있는 알맹이
     orbital = data.get("orbital_data") or {}

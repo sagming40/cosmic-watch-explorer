@@ -7,9 +7,11 @@ NASA는 부르지 않는다 ─ requests.get을 가짜로 바꿔서 "NASA가 이
 가짜가 불렸는지(called)까지 확인하면 "캐시면 NASA를 안 부른다"도 검증할 수 있다.
 """
 
+from datetime import timedelta
 from unittest.mock import patch
 
 import requests
+from django.utils import timezone
 
 from apps.astronomy.models import CloseApproach, Neo, NeoFetchLog, OrbitalData
 from config.test_utils import (
@@ -115,6 +117,64 @@ class NeoDashboardTests(BaseAPITestCase):
         res = self.client.get("/api/neo/?date=2026-13-99")
         self.assertEqual(res.status_code, 400)
         self.assertEqual(res.json()["error"]["code"], "INVALID_DATE")
+
+
+class NeoFeedRefreshTests(BaseAPITestCase):
+    """#7 (10-28) ─ 오늘 이후 날짜는 받은 지 24시간이 지나면 다시 받는다"""
+
+    def setUp(self):
+        super().setUp()
+        self.login_as(make_user())
+        self.future = (timezone.localdate() + timedelta(days=5)).isoformat()
+        self.neo = make_neo("51")
+        make_approach(self.neo, self.future, km="9000000", hour=3)  # 예전 예측: 03시, 900만 km
+        self.log = NeoFetchLog.objects.create(fetch_date=self.future, element_count=1)
+
+    def _age(self, hours):
+        NeoFetchLog.objects.filter(pk=self.log.pk).update(fetched_at=timezone.now() - timedelta(hours=hours))
+
+    def test_fresh_future_date_is_not_refetched(self):
+        self._age(23)
+        with patch(NASA_GET) as nasa:
+            self.assertTrue(self.client.get(f"/api/neo/?date={self.future}").json()["cache"]["is_cached"])
+        nasa.assert_not_called()
+
+    def test_past_date_is_never_refetched(self):
+        past = "2020-01-01"
+        NeoFetchLog.objects.create(fetch_date=past, element_count=0)
+        NeoFetchLog.objects.filter(fetch_date=past).update(fetched_at=timezone.now() - timedelta(days=900))
+        with patch(NASA_GET) as nasa:
+            self.client.get(f"/api/neo/?date={past}")
+        nasa.assert_not_called()
+
+    def test_stale_future_date_is_refetched_and_corrected(self):
+        self._age(25)
+        # NASA가 예측을 고쳤다: 12시, 800만 km (시각도 거리도 바뀜)
+        feed = nasa_feed(self.future, [nasa_neo_item("51", self.future, km="8000000")])
+        with patch(NASA_GET, return_value=FakeResponse(200, feed)) as nasa:
+            body = self.client.get(f"/api/neo/?date={self.future}").json()
+        nasa.assert_called_once()
+        self.assertFalse(body["cache"]["is_cached"])
+        rows = CloseApproach.objects.filter(neo=self.neo, approach_date=self.future)
+        self.assertEqual(rows.count(), 1)  # 예전 예측(03시) 행은 지워져 중복이 없다
+        self.assertEqual(float(rows.get().miss_distance_km), 8000000)
+        self.assertEqual(body["summary"]["total_count"], 1)
+        self.assertLess(timezone.now() - NeoFetchLog.objects.get(pk=self.log.pk).fetched_at, timedelta(minutes=1))
+
+    def test_refresh_failure_serves_stored_data(self):
+        self._age(25)
+        with patch(NASA_GET, side_effect=requests.ConnectionError("down")):
+            res = self.client.get(f"/api/neo/?date={self.future}")
+        self.assertEqual(res.status_code, 200)  # 503 아님 ─ 예전 데이터가 있다
+        self.assertTrue(res.json()["cache"]["is_cached"])
+        self.assertEqual(res.json()["summary"]["total_count"], 1)
+
+    def test_refresh_throttled_serves_stored_data(self):
+        self._age(25)
+        with patch("apps.astronomy.views.ScopedRateThrottle.allow_request", return_value=False), patch(NASA_GET) as nasa:
+            res = self.client.get(f"/api/neo/?date={self.future}")
+        nasa.assert_not_called()
+        self.assertEqual(res.status_code, 200)  # 429 아님
 
 
 class NeoDetailTests(BaseAPITestCase):
