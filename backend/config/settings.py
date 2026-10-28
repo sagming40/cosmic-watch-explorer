@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 
 load_dotenv()   # .env 파일을 읽어서 환경변수로 등록
 NASA_API_KEY = os.getenv('NASA_API_KEY')
+# JPL 근접 접근 API 주소 (카운트다운, 10-28). 키가 없는 공개 API ─ E2E는 닿지 않는 주소를 줘서 바깥 호출 0으로 만든다
+JPL_API_BASE = os.getenv('JPL_API_BASE', 'https://ssd-api.jpl.nasa.gov')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

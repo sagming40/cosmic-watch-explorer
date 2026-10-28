@@ -18,6 +18,9 @@ LUNAR_DISTANCE_KM = Decimal("384400")
 # 이 숫자가 units.py 밖에 등장하면 안 되는 이유는 파일 맨 위 설명과 같다.
 # ─ 384400과 정확히 같은 신분의 상수이다.
 LIGHT_YEARS_PER_PARSEC = Decimal("3.26156")
+# 1 AU(천문단위, 지구~태양 평균 거리) = 몇 km인가. IAU 2012 결의로 정한 정확한 값.
+# JPL 근접 접근 API(services/jpl_cad.py)는 거리를 AU로만 준다 → km·LD는 여기서 만든다. (10-28 카운트다운)
+KM_PER_AU = Decimal("149597870.7")
 
 
 def km_to_lunar_distance(km):
@@ -92,3 +95,26 @@ def parsec_to_light_year(pc):
     # ROUND_HALF_UP을 명시하는 이유도 위 함수와 같다.
     # Decimal의 기본값(은행식 반올림)은 사람이 기대하는 결과와 다르다.
     return light_year.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def au_to_km(au):
+    """
+    AU → km ─ 소수 첫째 자리까지. au가 None이면 None.
+
+    비유: 해외 직구 가격(달러)을 원화로 바꿔 적는 것. 환율(KM_PER_AU)은 이 파일에만 있다.
+    LD가 필요하면 이 값을 km_to_lunar_distance()에 한 번 더 넣는다 ─ LD 기준(384400)도 한 곳에서만 쓰게.
+    """
+    if au is None:
+        return None
+    km = Decimal(str(au)) * KM_PER_AU
+    return km.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+
+
+def is_within_lunar_distance(km):
+    """
+    달보다 가까운가(1 LD 안쪽). 반올림한 LD(0.995 → 1.00)가 아니라 km 원본으로 비교한다 ─ 경계에서 뒤집히지 않게.
+    km가 None이면 None (모른다 ≠ 아니다).
+    """
+    if km is None:
+        return None
+    return Decimal(str(km)) < LUNAR_DISTANCE_KM

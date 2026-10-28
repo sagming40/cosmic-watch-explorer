@@ -7,7 +7,7 @@ NASA는 부르지 않는다 ─ requests.get을 가짜로 바꿔서 "NASA가 이
 가짜가 불렸는지(called)까지 확인하면 "캐시면 NASA를 안 부른다"도 검증할 수 있다.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import requests
@@ -376,3 +376,132 @@ class PrepareE2ESafetyTests(BaseAPITestCase):
         with self.assertRaises(CommandError):
             call_command("prepare_e2e")  # 테스트 DB 이름은 test_cosmic_watch ─ _e2e로 안 끝남
         self.assertTrue(Neo.objects.filter(nasa_id="81").exists())
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 다음 근접 접근 카운트다운 ─ JPL CAD (04 문서 5.4절, 10-28 M6)
+# ═══════════════════════════════════════════════════════════════════
+CAD_FIELDS = ["des", "orbit_id", "jd", "cd", "dist", "dist_min", "dist_max", "v_rel", "v_inf", "t_sigma_f", "h", "fullname"]
+
+
+def _jd_tdb(dt):
+    """UTC datetime → JPL이 주는 JD(TDB) 문자열 ─ jpl_cad._jd_to_utc의 거꾸로"""
+    return repr((dt.timestamp() + 69.184) / 86400 + 2440587.5)
+
+
+def cad_row(des, when, dist="0.0021032915876806", sigma="01:00", fullname=None):
+    return [des, "1", _jd_tdb(when), "-", dist, "0.0005765819642422", "0.00377866262208323",
+            "7.83419285217263", "7.67", sigma, "29.83", fullname or f"       ({des})"]
+
+
+def jpl_fake(cad_rows, fail=False):
+    """가짜 JPL CAD. fail=True면 연결 실패"""
+    def answer(url, params=None, timeout=None):
+        assert "cad.api" in url
+        if fail:
+            raise requests.ConnectionError("down")
+        return FakeResponse(200, {"count": str(len(cad_rows)), "fields": CAD_FIELDS, "data": cad_rows})
+    return answer
+
+
+class NeoNextApproachTests(BaseAPITestCase):
+    URL = "/api/neo/next-approach/"
+
+    def setUp(self):
+        super().setUp()
+        self.login_as(make_user())
+        self.soon = timezone.now() + timedelta(days=2, hours=3)
+
+    def test_requires_login(self):
+        self.client.logout()
+        with patch(NASA_GET) as nasa:
+            res = self.client.get(self.URL)
+        nasa.assert_not_called()
+        self.assertEqual(res.status_code, 401)
+
+    def test_not_swallowed_by_detail_route(self):
+        # neo/<str:nasa_id>/보다 위에 등록했는지 ─ 아래였다면 "next-approach"를 소행성 ID로 보고 404(NOT_FOUND)
+        with patch(NASA_GET, side_effect=jpl_fake([cad_row("2025 UK9", self.soon)])):
+            res = self.client.get(self.URL)
+        self.assertEqual(res.status_code, 200)
+
+    def test_values_are_converted_on_server(self):
+        with patch(NASA_GET, side_effect=jpl_fake([cad_row("2025 UK9", self.soon, sigma="2_19:21")])):
+            body = self.client.get(self.URL).json()
+        na = body["next_approach"]
+        self.assertEqual(na["name"], "(2025 UK9)")                 # JPL 정렬용 앞 공백 제거
+        self.assertIsNone(na["nasa_id"])                           # 우리 DB에 없으면 링크 없음
+        self.assertEqual(na["approach_date"], self.soon.date().isoformat())  # UTC 날짜 (대시보드 ?date= 기준)
+        self.assertEqual(na["time_sigma_minutes"], 2 * 1440 + 19 * 60 + 21)
+        self.assertEqual(na["miss_distance_ld"], 0.82)             # 0.0021033 AU = 314,645 km = 0.82 LD
+        self.assertTrue(na["is_within_lunar_distance"])
+        self.assertEqual(na["miss_distance_min_ld"], 0.22)
+        self.assertEqual(na["miss_distance_max_ld"], 1.47)
+        # TDB → UTC: JD를 그대로 쓰면 69초 늦게 끝난다. 1초 안으로 맞아야 한다
+        got = datetime.fromisoformat(na["approach_datetime_utc"].replace("Z", "+00:00"))
+        self.assertLess(abs((got - self.soon).total_seconds()), 1)
+        self.assertEqual(body["criteria"]["max_distance_ld"], 19.46)  # 0.05 AU
+        self.assertEqual(body["criteria"]["window_days"], 60)
+
+    def test_second_request_uses_cache(self):
+        with patch(NASA_GET, side_effect=jpl_fake([cad_row("2025 UK9", self.soon)])) as nasa:
+            self.client.get(self.URL)
+            self.client.get(self.URL)
+        self.assertEqual(nasa.call_count, 1)
+
+    def test_skips_approaches_already_passed(self):
+        past = timezone.now() - timedelta(minutes=5)
+        with patch(NASA_GET, side_effect=jpl_fake([cad_row("2026 OLD", past), cad_row("2026 NEW", self.soon)])):
+            na = self.client.get(self.URL).json()["next_approach"]
+        self.assertEqual(na["designation"], "2026 NEW")
+
+    def test_refetches_when_all_saved_approaches_passed(self):
+        with patch(NASA_GET, side_effect=jpl_fake([cad_row("2026 OLD", timezone.now() + timedelta(seconds=1))])):
+            self.client.get(self.URL)
+        later = timezone.now() + timedelta(seconds=5)
+        with patch("apps.astronomy.services.jpl_cad.timezone.now", return_value=later), \
+                patch(NASA_GET, side_effect=jpl_fake([cad_row("2026 NEW", self.soon)])) as nasa:
+            na = self.client.get(self.URL).json()["next_approach"]
+        self.assertTrue(nasa.called)
+        self.assertEqual(na["designation"], "2026 NEW")
+
+    def test_none_in_window_is_null_not_error(self):
+        with patch(NASA_GET, side_effect=jpl_fake([])):
+            res = self.client.get(self.URL)
+        self.assertEqual(res.status_code, 200)
+        self.assertIsNone(res.json()["next_approach"])
+
+    def test_jpl_down_without_saved_list_is_503_and_backs_off(self):
+        with patch(NASA_GET, side_effect=jpl_fake([], fail=True)):
+            res = self.client.get(self.URL)
+        self.assertEqual(res.status_code, 503)
+        self.assertEqual(res.json()["error"]["code"], "UPSTREAM_ERROR")
+        with patch(NASA_GET) as nasa:   # 1분 안 재요청은 JPL을 다시 두드리지 않는다
+            self.assertEqual(self.client.get(self.URL).status_code, 503)
+        nasa.assert_not_called()
+
+    def test_jpl_down_uses_old_list_if_still_upcoming(self):
+        with patch(NASA_GET, side_effect=jpl_fake([cad_row("2025 UK9", self.soon)])):
+            self.client.get(self.URL)
+        seven_hours_later = timezone.now() + timedelta(hours=7)   # 6시간이 지나 새로 받아야 하는 때
+        with patch("apps.astronomy.services.jpl_cad.timezone.now", return_value=seven_hours_later), \
+                patch(NASA_GET, side_effect=jpl_fake([], fail=True)) as nasa:
+            res = self.client.get(self.URL)
+        self.assertTrue(nasa.called)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["next_approach"]["designation"], "2025 UK9")
+
+    def test_links_to_our_neo_by_name_not_jpl_id(self):
+        # JPL 번호(50802451)와 NeoWs 번호(3802428)가 다르다 ─ 이름으로 우리 DB의 ID를 찾는다 (10-28 실제로 겪음)
+        make_neo("3802428", name="(2018 GS1)")
+        with patch(NASA_GET, side_effect=jpl_fake([cad_row("2018 GS1", self.soon)])):
+            na = self.client.get(self.URL).json()["next_approach"]
+        self.assertEqual(na["nasa_id"], "3802428")
+
+
+class JplSigmaParseTests(BaseAPITestCase):
+    def test_formats(self):
+        from apps.astronomy.services.jpl_cad import _sigma_minutes
+        for text, want in [("< 00:01", 0), ("01:00", 60), ("05:41", 341), ("2_19:21", 4041), ("", None), (None, None), ("NA", None)]:
+            with self.subTest(text=text):
+                self.assertEqual(_sigma_minutes(text), want)

@@ -1,11 +1,13 @@
 from django.urls import path
 from .views import (
-    NeoDashboardView, NeoDetailView, NeoApproachListView,
+    NeoDashboardView, NeoDetailView, NeoApproachListView, NeoNextApproachView,
     ExoplanetListView, ExoplanetDetailView, ExoplanetMetaView,
 )
 
 urlpatterns = [
     path("neo/", NeoDashboardView.as_view(), name="neo-dashboard"),
+    # next-approach/는 반드시 <str:nasa_id>/보다 위 ─ 아래에 두면 "next-approach"가 소행성 ID로 잡혀 404가 된다
+    path("neo/next-approach/", NeoNextApproachView.as_view(), name="neo-next-approach"),
     path("neo/<str:nasa_id>/", NeoDetailView.as_view(), name="neo-detail"),
     path("neo/<str:nasa_id>/approaches/", NeoApproachListView.as_view(), name="neo-approaches"),
     

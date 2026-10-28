@@ -19,7 +19,11 @@ from .serializers import (
     ExoplanetRowSerializer, ExoplanetDetailSerializer, # ⭐ 추가
 )  
 from .services.nasa_neo import NasaUnavailable, fetch_feed, fetch_neo_detail
-from .units import km_to_lunar_distance, parsec_to_light_year  # ⭐ parsec_to_light_year 추가
+from .services.jpl_cad import (
+    MAX_DISTANCE_AU as CAD_MAX_DISTANCE_AU, SOURCE_NAME as CAD_SOURCE_NAME, WINDOW_DAYS as CAD_WINDOW_DAYS,
+    get_next_approach,
+)
+from .units import au_to_km, is_within_lunar_distance, km_to_lunar_distance, parsec_to_light_year  # ⭐ parsec_to_light_year 추가
 from .filters import build_exoplanet_queryset  # ⭐ 추가
 
 logger = logging.getLogger(__name__)
@@ -312,6 +316,63 @@ class NeoApproachListView(generics.ListAPIView):
         #   NeoDetailView.recent_approaches의 '앞으로 다가올 순'과는 목적이 달라
         #   정렬 방향도 다르다 ─ "다음에 어떤 소행성이 다가오나" / "전체 역사"
         return queryset.order_by("approach_datetime_utc")
+
+
+class NeoNextApproachView(APIView):
+    """
+    GET /api/neo/next-approach/ ─ 대시보드 "다음 근접 접근까지" 카운트다운 (04 문서 5.4절, 10-28 M6)
+
+    지금 이후 가장 먼저 오는 0.05 AU(약 19.5 LD) 안쪽 지구 접근 1건. 원본은 NASA/JPL CAD (services/jpl_cad.py).
+    - 우리 DB에서 고르지 않는다 ─ 누가 연 날짜만 들어 있어서 기기마다 답이 달라진다
+    - JPL 호출은 서버 전체에서 6시간에 1번(+ 받아 둔 접근이 전부 지나갔을 때)이라, 사용자 요청 수와 상관없다
+      → 스로틀 없음 (사용자가 아무리 눌러도 JPL 호출이 늘지 않는다). NeoWs 키 한도와도 무관(JPL은 키가 없다)
+    - 60일 안에 없으면 next_approach: null (200). 못 받았고 남은 것도 없을 때만 503
+    """
+
+    def get(self, request):
+        try:
+            row, fetched_at = get_next_approach()
+        except NasaUnavailable as exc:
+            logger.warning("[NeoNextApproachView] JPL CAD 실패(%s)", exc)
+            raise UpstreamError() from exc
+
+        criteria_km = au_to_km(CAD_MAX_DISTANCE_AU)
+        return Response({
+            "next_approach": _next_approach_body(row) if row else None,
+            "criteria": {
+                "max_distance_au": CAD_MAX_DISTANCE_AU,
+                "max_distance_ld": km_to_lunar_distance(criteria_km),
+                "window_days": CAD_WINDOW_DAYS,
+            },
+            "source": CAD_SOURCE_NAME,
+            "fetched_at": fetched_at,
+        })
+
+
+def _next_approach_body(row):
+    # 상세 링크 ─ 우리 DB에 있는 소행성만 (상세 API는 DB에 없는 ID면 404). 없으면 null → 화면은 그날 대시보드로 안내
+    # 이름으로 찾는 이유: JPL과 NeoWs의 ID 번호 체계가 다르다(2018 GS1 = 50802451 / 3802428). 이름은 같은 모양이다
+    nasa_id = Neo.objects.filter(name=row["name"]).values_list("nasa_id", flat=True).first()
+    km = au_to_km(row["dist_au"])
+    min_km = au_to_km(row["dist_min_au"])
+    max_km = au_to_km(row["dist_max_au"])
+    return {
+        "designation": row["designation"],
+        "name": row["name"],
+        "nasa_id": nasa_id,
+        "approach_datetime_utc": row["approach_at"],
+        "approach_date": row["approach_at"].date(),       # UTC 날짜 = 대시보드 ?date= 와 같은 기준(NeoWs approach_date)
+        "time_sigma_minutes": row["time_sigma_minutes"],  # 예측 시각 오차(±분). 0 = 1분 미만, null = JPL이 안 줌
+        "miss_distance_au": row["dist_au"],
+        "miss_distance_km": km,
+        "miss_distance_ld": km_to_lunar_distance(km),
+        # 궤도 오차까지 넣은 최소·최대 거리 ─ 궤도가 덜 정해진 천체는 0.2~1.5 LD처럼 폭이 넓다
+        "miss_distance_min_ld": km_to_lunar_distance(min_km),
+        "miss_distance_max_ld": km_to_lunar_distance(max_km),
+        "is_within_lunar_distance": is_within_lunar_distance(km),
+        "velocity_km_s": row["velocity_km_s"],
+        "absolute_magnitude_h": row["absolute_magnitude_h"],
+    }
 
 
 class ExoplanetListView(generics.ListAPIView):
