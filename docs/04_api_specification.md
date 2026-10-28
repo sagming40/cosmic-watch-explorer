@@ -6,7 +6,7 @@
 | 문서명 | API 명세서 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.7 |
+| 버전 | v1.8 |
 | 최종 수정일 | 2026-09-10 |
 | 프레임워크 | Django REST Framework |
 | 상태 | 확정 |
@@ -23,6 +23,7 @@
 | v1.5 | 2026-09-10 | 5.1절 summary에 `largest_diameter_m`/`largest_diameter_name` 추가, 응답 예시·설계 결정 ①의 예시 수치를 실측값으로 교체 (M3 NeoDashboardView 구현 반영) |
 | v1.6 | 2026-10-27 | 3장 6~11번 조회 API 인증 "—" → "필요" (기본 잠금), 2장 Vite 프록시 예시에 `changeOrigin: false` 반영 |
 | v1.7 | 2026-10-28 | 4.4 로그인·가입 횟수 제한(429), 5.1 미래 날짜 24시간 유효기간·조회 범위 1900~2200, 5.2 `orbit_status`와 NASA 실패 시 200(설계 결정 ④), 재시도·로그 규칙 · 4.4 브라우저 종료 시 로그아웃(세션 쿠키) |
+| v1.8 | 2026-10-28 | 4.6절 마이페이지 API 5개 신설(18~22번, 엔드포인트 22개), 4.2 user 블록에 `date_joined`·`preferences` |
  
 ---
  
@@ -186,6 +187,11 @@ export default {
 | 15 | GET | `/api/watchlist/exoplanets/` | 내 관심 천체 | 필요 |
 | 16 | POST | `/api/watchlist/exoplanets/` | 저장 버튼 | 필요 |
 | 17 | DELETE | `/api/watchlist/exoplanets/{id}/` | 저장 해제 | 필요 |
+| 18 | GET | `/api/account/` | 마이페이지 내 정보 | 필요 (10-28) |
+| 19 | DELETE | `/api/account/` | 계정 삭제 | 필요 (10-28) |
+| 20 | PATCH | `/api/account/preferences/` | 표시 설정 | 필요 (10-28) |
+| 21 | PATCH | `/api/account/email/` | 이메일 변경 | 필요 (10-28) |
+| 22 | POST | `/api/account/password/` | 비밀번호 변경 | 필요 (10-28) |
 
 > **2026-10-27 변경 ─ 기본 잠금.** `settings.py`의 `DEFAULT_PERMISSION_CLASSES = [IsAuthenticatedOr401]`로 모든 API가 로그인 필요가 기본이고, 인증 API 1~4번만 `AllowAny`로 연다. 6~11번은 처음엔 "—"(누구나)였다. 비로그인 요청은 뷰에 들어가기 전에 401로 막혀서 NASA를 부르지도 않는다(스로틀 낭비도 없다). 새로 만드는 API는 따로 붙이지 않아도 잠긴다.
  
@@ -236,7 +242,9 @@ CSRF 토큰 쿠키를 발급한다. 앱이 처음 로드될 때 한 번 호출�
   "user": {
     "id": 3,
     "username": "mingyu",
-    "email": "mingyu@example.com"
+    "email": "mingyu@example.com",
+    "date_joined": "2026-10-28T01:47:31Z",
+    "preferences": { "distance_unit": "km", "dashboard_sort": "distance", "hazard_only": false }
   }
 }
 ```
@@ -247,6 +255,8 @@ CSRF 토큰 쿠키를 발급한다. 앱이 처음 로드될 때 한 번 호출�
 { "is_authenticated": false, "user": null }
 ```
  
+> **10-28**: `user` 블록(login·signup 응답과 공용)에 `date_joined`·`preferences`(4.6절) 추가. 앱이 뜰 때 이 응답을 이미 받으므로 대시보드가 그려지기 전에 사용자 설정을 알 수 있다(기본값으로 그렸다가 바뀌는 깜빡임 없음).
+
 > 비로그인일 때 `401`을 반환하지 않는다. "로그인 안 했음"은 오류가 아니라 정상적인 조회 결과다. 여기서 401을 던지면 프론트의 공통 오류 처리기가 로그인 페이지로 튕겨버린다.
  
 ---
@@ -333,9 +343,32 @@ CSRF 토큰 쿠키를 발급한다. 앱이 처음 로드될 때 한 번 호출�
 요청 본문 없음. 세션을 삭제한다.
  
 **응답 `204`** (본문 없음)
- 
+
 ---
- 
+
+### 4.6 마이페이지 `/api/account/...` (10-28 추가)
+
+전부 로그인 필요(기본 잠금). **비밀번호를 다시 받는 곳(이메일 변경·비밀번호 변경·탈퇴)은 `account_sensitive` 시간당 10번** ─ "현재 비밀번호" 칸도 무한 대입 통로가 될 수 있어서. 비밀번호가 틀리면 `400 VALIDATION_ERROR` + 해당 칸 `fields`.
+
+| API | 요청 | 응답 |
+|---|---|---|
+| `GET /api/account/` | ─ | `{ "user": {…4.2 user 블록}, "watchlist_counts": { "neo": 3, "exoplanet": 2 } }` |
+| `PATCH /api/account/preferences/` | 바꿀 칸만 `{ "distance_unit": "au" }` | 바뀐 뒤 3칸 전부 |
+| `PATCH /api/account/email/` | `{ "email", "password" }` | `{ "user": {…} }` · 중복이면 `fields.email` |
+| `POST /api/account/password/` | `{ "current_password", "new_password", "new_password_confirm" }` | `204` |
+| `DELETE /api/account/` | `{ "password" }` | `204` · 관심 천체·설정 CASCADE 삭제, 로그아웃 |
+
+**`preferences` 값** ─ `distance_unit`: `km`·`au` (대시보드 목록의 보조 거리 단위) / `dashboard_sort`: `distance`·`velocity`·`size` / `hazard_only`: 위험 분류만 보기로 시작. 정해진 값 밖이면 `fields` 오류. 한 번도 안 바꾼 사용자는 기본값(km·distance·false) ─ 조회만으로는 행을 만들지 않는다.
+
+#### 설계 결정
+- **설정은 서버(DB)에** ─ 사용자가 여러 기기에서 쓴다. 브라우저 저장소면 기기마다 따로 맞춰야 한다.
+- **비밀번호 변경 후 이 기기는 로그인 유지, 다른 기기는 로그아웃** ─ Django는 비밀번호가 바뀌면 세션을 전부 무효로 보는데, `update_session_auth_hash`로 지금 세션만 다시 묶는다. 비밀번호를 바꾸는 이유가 보통 "남이 알았을까 봐"라서.
+- **아이디는 못 바꾼다** ─ 로그인 아이디라 바뀌면 헷갈린다.
+- **이메일 변경·탈퇴도 비밀번호를 다시 받는다** ─ 세션(쿠키)만 훔친 사람이 계정을 통째로 가져가지 못하게.
+- **탈퇴 후 화면은 페이지를 새로 연다** (`window.location.replace`) ─ React Router의 주소 이동이 낮은 우선순위라 로그인 상태 지우기와 한 번에 안 그려지고 문지기가 먼저 `/login?next=/account`로 보냈다(실측).
+
+---
+
 ## 5. NEO API
  
 ### 5.1 `GET /api/neo/` — 대시보드

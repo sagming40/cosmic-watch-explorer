@@ -6,7 +6,7 @@
 | 문서명 | DB 설계서 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.2 |
+| 버전 | v1.3 |
 | 최종 수정일 | 2026-08-31 |
 | DBMS | MariaDB (InnoDB / utf8mb4) |
 | 상태 | 확정 |
@@ -18,6 +18,7 @@
 | v1.0 | 2026-08-21 | 최초 작성 |
 | v1.1 | 2026-08-31 | 7장 Django 모델 코드블록을 `apps/astronomy/models.py` / `apps/watchlist/models.py` 두 개로 분리 (구현 시 앱 2개로 나눈 실제 구조와 일치시킴, 원래는 코드블록 하나에 전부 포함돼 있었음) |
 | v1.2 | 2026-10-28 | neo_fetch_log.fetched_at = 마지막 수집 시각(미래 날짜 재수집 시 갱신). close_approach 저장은 update_or_create로(재수집 시 NASA가 고친 값 반영) |
+| v1.3 | 2026-10-28 | user_preference 테이블 추가(마이페이지 표시 설정, 사용자 1:1, CASCADE) |
 
 
 ---
@@ -27,7 +28,7 @@
 01번 요구사항 문서에서 확정한 기능을 저장 구조로 옮긴 문서다. 다음을 포함한다.
  
 - 전체 ERD
-- 테이블 9개의 상세 정의 (DDL 포함)
+- 테이블 9개의 상세 정의 (DDL 포함) ─ 프로젝트 테이블 9개(10-28 user_preference 포함) + Django 기본 auth_user
 - NASA API 응답 필드 ↔ DB 컬럼 매핑
 - 인덱스 전략
 - NULL 처리 정책
@@ -354,6 +355,19 @@ close_approach     NASA API 호출
  
 ---
  
+### 3.8 `user_preference` — 사용자 표시 설정 (10-28 추가, 마이페이지)
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| `id` | BIGINT | PK | |
+| `user_id` | INT | FK → auth_user, UNIQUE, ON DELETE CASCADE | 사용자 1명당 1행. 탈퇴하면 같이 삭제 |
+| `distance_unit` | VARCHAR(4) | NOT NULL, DEFAULT 'km' | `km`·`au` ─ 대시보드 목록의 보조 거리 단위 |
+| `dashboard_sort` | VARCHAR(10) | NOT NULL, DEFAULT 'distance' | `distance`·`velocity`·`size` |
+| `hazard_only` | BOOLEAN | NOT NULL, DEFAULT FALSE | 위험 분류만 보기로 시작 |
+| `updated_at` | DATETIME | NOT NULL | |
+
+> 행은 사용자가 설정을 처음 바꿀 때 만든다. 없으면 기본값과 같다고 본다 ─ 기존 사용자용 데이터 마이그레이션이 필요 없다. 모델은 `apps/accounts/models.py` `UserPreference`, 마이그레이션 `accounts 0002_userpreference`.
+
 ## 4. 인덱스 전략
  
 인덱스는 **책 뒤의 찾아보기**와 같다. 없어도 내용은 다 있지만, 원하는 항목을 찾으려면 첫 페이지부터 전부 넘겨야 한다. 데이터가 수만 건 쌓이면 체감 차이가 크다.

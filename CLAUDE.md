@@ -158,6 +158,7 @@ Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필
 | `/exoplanets/6400` · `/exoplanets/72` · `/exoplanets/4546` | 값 없음 `—`(프록시마 b) · 형제 행성 6개·거리 미측정(TRAPPIST-1 e) · 반지름 87배(축척 축소) ─ id는 기기 DB마다 다를 수 있으니 이름으로 검색해서 찾기 |
 | `/login?next=%2F%2Fevil.com` | next 무시 → 안내 문구 없음, 로그인 후 `/` (오픈 리다이렉트 방지) |
 | `/watchlist` (로그인 필요) | 탭 개수, 삭제 → 실행 취소 5초, 전부 지우면 빈 화면, `?tab=exo` 새로고침 유지. 테스트 계정은 확인 후 지울 것 |
+| `/account` | 설정 바꾸면 "저장됨" → 대시보드 처음 보기값 반영, 비밀번호 변경 후 로그인 유지, 계정 삭제 → `/login?bye=1` (테스트 계정으로만!) |
 | `/compare?exo=72,6400,4546&neo=2099942,9999999` | 지구 고정(자물쇠), 크기 미측정(프록시마 b), 축척 축소(87배), 이중 원(아포피스), 없는 id 칩, 로그 눈금 띠. 대상 없는 `/compare`도 확인 |
 
 - **2.5절 주소는 전부 로그인해야 열린다(10-27~).** 테스트 계정은 화면에서 가입해 쓰고(비밀번호는 대화에 남기지 않는다), 확인 뒤 `manage.py shell`에서 지운다.
@@ -173,8 +174,8 @@ Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필
 |---|---|---|
 | `DEVLOG.md` | 현재 상태, 날짜별 작업·트러블슈팅 기록 | Tier 1 (매 세션) |
 | `05_milestones.md` | M0~M6 작업 목록·완료 기준 | Tier 1 (매 세션) |
-| `02_database_design.md` | ERD, 테이블 8개, DDL | Tier 2 (구현과 어긋날 때) |
-| `04_api_specification.md` | 엔드포인트 17개, 오류 봉투, 페이징 | Tier 2 |
+| `02_database_design.md` | ERD, 테이블 9개(+ Django auth_user), DDL | Tier 2 (구현과 어긋날 때) |
+| `04_api_specification.md` | 엔드포인트 22개(마이페이지 5개 포함), 오류 봉투, 페이징 | Tier 2 |
 | `01_requirements_and_features.md` | 요구사항, MVP 범위, 우선순위 | Tier 3 (드물게) |
 | `03_user_scenarios_and_uiux.md` | 화면 설계, 디자인 토큰, 컴포넌트 목록 | Tier 3 |
 
@@ -188,7 +189,8 @@ backend/
                      services/(nasa_neo.py ─ NasaUnavailable·재시도 Session·_save_atomic, exoplanet_archive.py — 외부 API 격리),
                      management/commands/fetch_exoplanets.py
   config/test_utils.py 테스트 공용(BaseAPITestCase·데이터 생성·가짜 NASA 응답). 각 앱 tests.py가 쓴다
-  apps/accounts/     인증 API 5종 (세션 쿠키 + CSRF), 로그인 10/분·가입 10/시간 제한
+  apps/accounts/     인증 API 5종 (세션 쿠키 + CSRF), 로그인 10/분·가입 10/시간 제한,
+                     마이페이지 API 5종(account_urls.py ─ /api/account/), UserPreference(표시 설정, 사용자 1:1)
   apps/watchlist/    NeoWatchlist, ExoplanetWatchlist + API 4종
 frontend/src/
   api/client.ts      axios 인스턴스 (withCredentials, CSRF, 오류 봉투 → AppError {code, message, fields, status})
@@ -202,6 +204,7 @@ frontend/src/
   components/compare/ SizeGroups(행성·소행성 그림, 그룹마다 실제 비율), LogScaleStrip(한 자 로그 눈금), AddTargetPanel(외계행성 검색·오늘의 소행성),
                      TargetChip(지구 = 자물쇠), CompareTable, types.ts
   components/watchlist/ NeoWatchItem·ExoWatchItem(관심 천체 한 줄), RemoveButton, UndoToast(실행 취소 5초), WatchlistEmpty
+  components/account/ ProfileSection·PreferencesSection·PasswordSection·DeleteAccountSection (마이페이지 4칸)
   components/auth/   AuthLayout(로그인·가입 틀 + next 안내), AuthFields(입력칸·비밀번호 보기·FormAlert), ProtectedRoute(로그인·가입 외 전체 화면의 문지기)
   components/layout/ Header(알약 메뉴 + 로그인 상태), Layout(배경 + Outlet)
   components/neo/    대시보드: DateNavigator, NeoSummary, LunarDistanceBar, NeoScatterChart, NeoListItem, NeoFaq
@@ -211,7 +214,7 @@ frontend/src/
   utils/compareQuery.ts 비교 대상 ↔ 주소(?exo=&neo=), 그룹당 최대 4개, 지구 반지름 상수(6371 ─ NASA 값 환산용이 아닌 고정 기준)
   utils/exoplanetQuery.ts 검색 조건 ↔ 주소 변환, 칩 문구, 정렬 목록 (파라미터 이름 = API 이름)
   utils/format.ts    표시 포맷 (null → "—", KST 날짜, "약 N년 뒤") — 단위 환산은 하지 않는다
-  pages/             라우트별 화면 9개 전부 구현: NeoDashboard·NeoDetail(M3), ExoplanetList·ExoplanetDetail·Login·Signup·Watchlist·Compare(M4), NotFound
+  pages/             라우트별 화면 10개: NeoDashboard·NeoDetail(M3), ExoplanetList·ExoplanetDetail·Login·Signup·Watchlist·Compare(M4), Account(M5 마이페이지), NotFound
   utils/date.ts      날짜 ↔ 문자열 (로컬 시간 기준)
   index.css          Tailwind import + 디자인 토큰(:root) + 테마 연결(@theme) + 기존 섹션별 스타일(@layer)
 ```
