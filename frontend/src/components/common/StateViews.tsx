@@ -28,7 +28,7 @@ export function LoadingState({ slow, blocks }: { slow: boolean; blocks: string[]
 
 // 오류 코드 → 화면 문구. 사과하지 않는다 ─ 무슨 일이 있었고 지금 무엇을 할 수 있는지 (7.3절)
 const MESSAGE: Partial<Record<AppError["code"], string>> = {
-  INVALID_DATE: "주소의 날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)",
+  // INVALID_DATE는 서버 문구를 그대로 쓴다 ─ "형식이 틀림"과 "범위 밖(1900~2200)" 두 경우가 있다 (10-28)
   NOT_FOUND: "찾는 항목이 없습니다. 주소를 확인해 주세요.",
   RATE_LIMITED: "요청이 많아 잠시 멈췄어요. 잠시 후 다시 시도해 주세요.",
   UPSTREAM_ERROR: "NASA 데이터 서버에 연결할 수 없습니다. 저장된 데이터도 없는 항목이에요.",

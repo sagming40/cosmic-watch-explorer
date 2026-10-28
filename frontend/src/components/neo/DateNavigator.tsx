@@ -38,7 +38,8 @@ function DateNavigator({ date, onChange }: DateNavigatorProps) {
       </Button>
       <label className="flex items-center gap-2 rounded-full px-2 py-1 font-mono text-sm hover:bg-line/60">
         <span className="sr-only">조회 날짜</span>
-        <input type="date" value={valid ? date : ""} onChange={handlePick} className="bg-transparent outline-none" />
+        {/* min/max ─ 서버가 받는 범위(NASA/JPL 예측 범위)와 같게. 범위 밖을 고르면 서버가 INVALID_DATE (10-28) */}
+        <input type="date" min="1900-01-01" max="2200-12-31" value={valid ? date : ""} onChange={handlePick} className="bg-transparent outline-none" />
         {valid && <span className="text-dim">({weekdayFmt.format(parsed)})</span>}
       </label>
       <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label="다음 날짜" onClick={() => moveByDays(1)}>
