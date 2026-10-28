@@ -50,6 +50,15 @@ class AuthFlowTests(BaseAPITestCase):
         self.assertEqual(wrong_pw.json(), no_user.json())
         self.assertEqual(wrong_pw.json()["error"]["code"], "INVALID_CREDENTIALS")
 
+    def test_login_cookie_ends_with_browser(self):
+        # 10-28 ─ sessionid 쿠키에 만료일(expires/max-age)이 없어야 브라우저를 닫을 때 같이 지워진다
+        make_user("u2")
+        res = self.client.post("/api/auth/login/", {"username": "u2", "password": PASSWORD}, format="json")
+        cookie = res.cookies["sessionid"]
+        self.assertEqual(cookie["expires"], "")
+        self.assertEqual(cookie["max-age"], "")
+        self.assertTrue(cookie["httponly"])  # 자바스크립트가 못 읽는 쿠키 ─ 그대로인지 같이 확인
+
     def test_login_then_logout(self):
         make_user("u1")
         self.assertEqual(self.client.post("/api/auth/login/", {"username": "u1", "password": PASSWORD}, format="json").status_code, 200)

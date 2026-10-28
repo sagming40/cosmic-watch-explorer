@@ -63,6 +63,13 @@ LOGGING = {
     "loggers": {"apps": {"handlers": ["console"], "level": "INFO"}},
 }
 
+# ─── 로그인 유지 기간 (10-28) ─ 브라우저를 닫으면 로그아웃 ───────────────────
+# 기본값은 쿠키 만료 2주(SESSION_COOKIE_AGE 1,209,600초)라, 브라우저를 껐다 켜도 로그인이 남아 있었다.
+# True면 sessionid 쿠키에 만료일을 안 붙인다(= 세션 쿠키) → 브라우저가 닫힐 때 같이 지워진다.
+# ⚠️ 크롬·엣지의 "시작 시 이전 세션 계속하기"를 켜 두면 브라우저가 이런 쿠키까지 되살린다 ─ 서버가 막을 수 없는 브라우저 동작.
+# 서버 쪽 세션 행은 SESSION_COOKIE_AGE(2주)가 지나면 만료 (DB 정리는 manage.py clearsessions)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "config.exception_handler.custom_exception_handler",
     # ⭐ M2 추가 ─ 인증 방식을 세션 쿠키 하나로 못 박는다. (문서 04 ─ 1.1절)
