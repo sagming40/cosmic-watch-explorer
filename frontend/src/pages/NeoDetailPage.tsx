@@ -65,7 +65,7 @@ function NeoDetailPage() {
       {isLoading && <LoadingState slow={slowKey === key} blocks={["h-28", "h-32", "h-96", "h-72"]} />}
       {error && <div className="pt-6"><ErrorState error={error} onRetry={() => setRetry((n) => n + 1)} /></div>}
       {/* key={id} ─ 다른 소행성으로 넘어가면 "전체 기록 펼침" 같은 안쪽 상태를 새로 시작 */}
-      {neo && <NeoDetail key={neo.nasa_id} neo={neo} />}
+      {neo && <NeoDetail key={neo.nasa_id} neo={neo} onRetry={() => setRetry((n) => n + 1)} />}
     </>
   );
 }
@@ -87,7 +87,7 @@ function BackButton() {
   );
 }
 
-function NeoDetail({ neo }: { neo: NeoDetailResponse }) {
+function NeoDetail({ neo, onRetry }: { neo: NeoDetailResponse; onRetry: () => void }) {
   const next = neo.recent_approaches[0] ?? null;
   const today = formatDate(new Date());
   const diameter = diameterRange(neo.diameter_min_m, neo.diameter_max_m);
@@ -144,7 +144,8 @@ function NeoDetail({ neo }: { neo: NeoDetailResponse }) {
 
       {/* ─── 궤도 / 크기·신뢰도 ─── */}
       <section className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        <OrbitPanel orbit={neo.orbital_data} />
+        {/* 궤도만 못 가져왔으면 그 칸에서만 다시 시도 ─ 상세 전체를 다시 받는다 (04 문서 5.2절 orbit_status) */}
+        <OrbitPanel orbit={neo.orbital_data} status={neo.orbit_status} onRetry={onRetry} />
         <div className="flex flex-col gap-3">
           <NeoSizePanel nasaId={neo.nasa_id} min={neo.diameter_min_m} max={neo.diameter_max_m} />
           {neo.orbital_data && <ObservationPanel orbit={neo.orbital_data} />}

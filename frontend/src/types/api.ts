@@ -104,6 +104,12 @@ export interface OrbitalData {
   orbit_class_description: string | null;
 }
 
+/**
+ * ok: 궤도 있음 / missing: NASA에도 없음 / unavailable: NASA 연결 실패 / rate_limited: 우리 쪽 NASA 호출 한도
+ * unavailable·rate_limited여도 나머지(이름·크기·접근 기록)는 DB 값으로 정상 응답한다 (04 문서 5.2절)
+ */
+export type OrbitStatus = "ok" | "missing" | "unavailable" | "rate_limited";
+
 /** GET /api/neo/{nasa_id}/ ─ 5.2절 */
 export interface NeoDetailResponse {
   nasa_id: string;
@@ -117,6 +123,7 @@ export interface NeoDetailResponse {
   jpl_url: string | null;
   is_watchlisted: boolean; // 비로그인이면 항상 false
   orbital_data: OrbitalData | null; // Lookup 404였던 소행성은 null
+  orbit_status: OrbitStatus; // 궤도 칸이 비었다면 왜 비었는지 (10-28 결정 A)
   recent_approaches: NeoApproachRow[]; // "다음 접근 5건" (미래 기준, 5.2 설계 결정 ③)
   approach_count: number; // > 5 이면 "더 보기"
 }

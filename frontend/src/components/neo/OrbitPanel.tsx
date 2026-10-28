@@ -3,13 +3,30 @@
 // 모식도는 태양을 초점에 둔 타원(소행성 궤도)과 반지름 1 AU 원(지구 궤도)을 같은 축척으로 그린 "평면 투영"이다.
 // 경사각은 생략한다(화면에 명시). 그림을 위한 위치 계산이지 도메인 값 계산이 아니다 ─ 수치는 서버가 준 그대로.
 
+import { CircleAlert, RotateCw } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import Field from "@/components/common/Field";
 import { Panel, PanelTitle } from "@/components/common/Panel";
-import type { OrbitalData } from "@/types/api";
+import type { OrbitalData, OrbitStatus } from "@/types/api";
 import { dec2, raw } from "@/utils/format";
 
-function OrbitPanel({ orbit }: { orbit: OrbitalData | null }) {
+interface OrbitPanelProps {
+  orbit: OrbitalData | null;
+  status: OrbitStatus;
+  onRetry: () => void;
+}
+
+// 궤도가 없을 때의 문구 ─ "없다"와 "못 가져왔다"는 다르다 (10-28 결정 A)
+// 못 가져온 경우만 다시 시도 버튼을 준다. NASA에 원래 없는 건 다시 눌러도 같다.
+const EMPTY_TEXT: Record<Exclude<OrbitStatus, "ok">, string> = {
+  missing: "NASA가 아직 이 소행성의 궤도를 계산하지 않았어요.",
+  unavailable: "NASA에 연결하지 못해 궤도 정보를 가져오지 못했어요. 나머지 정보는 저장된 데이터로 보여드려요.",
+  rate_limited: "요청이 많아 궤도 정보 조회를 잠시 멈췄어요. 잠시 후 다시 시도해 주세요.",
+};
+
+function OrbitPanel({ orbit, status, onRetry }: OrbitPanelProps) {
   return (
     <Panel>
       <PanelTitle
@@ -36,8 +53,16 @@ function OrbitPanel({ orbit }: { orbit: OrbitalData | null }) {
           </div>
         </>
       ) : (
-        // Lookup이 404였던 소행성 ─ 값이 없으면 없는 대로 (02 문서 1.1절)
-        <p className="py-10 text-center text-sm text-dim">NASA가 아직 이 소행성의 궤도를 계산하지 않았어요.</p>
+        // 값이 없으면 없는 대로 (02 문서 1.1절). 오류색(hazard)은 쓰지 않는다 ─ 위험 표시 전용
+        <div className="flex flex-col items-center py-10 text-center" role={status === "missing" ? undefined : "status"}>
+          {status !== "missing" && <CircleAlert className="mb-3 size-5 text-dim" aria-hidden />}
+          <p className="max-w-sm text-sm text-dim">{EMPTY_TEXT[status === "ok" ? "missing" : status]}</p>
+          {(status === "unavailable" || status === "rate_limited") && (
+            <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
+              <RotateCw /> 다시 시도
+            </Button>
+          )}
+        </div>
       )}
     </Panel>
   );
