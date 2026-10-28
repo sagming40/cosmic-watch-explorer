@@ -61,8 +61,10 @@ class SignupView(APIView):
     가입과 동시에 로그인 처리한다 ─ "저장버튼을 누르려다 여기까지 온" 사용자의
     단계를 하나 줄이기 위함 (문서 04 ─ 4.3절 각주).
     AllowAny ─ 가입은 당연히 비로그인 상태에서 한다.
+    throttle_scope ─ 같은 IP에서 시간당 10번까지 (계정 대량 생성 막기). settings.py DEFAULT_THROTTLE_RATES
     """
     permission_classes = [AllowAny]
+    throttle_scope = "auth_signup"
 
     def post(self, request):
         serializer = SignupSerializer(data=request.data)
@@ -104,8 +106,11 @@ class LoginView(APIView):
     직관적으로 401을 쓰고 싶어지는 자리이지만, 이건 "당신이 누구인지 증명되지 않음"이라는 뜻이 아니라
     "그런 조합 자체가 틀림"이라는 판단이라 400으로 분류해둔 것.
     AllowAny ─ 로그인도 비로그인 상태에서 한다.
+    throttle_scope ─ 같은 IP에서 분당 10번까지 (비밀번호 무한 대입 막기, 10-28).
+      성공·실패 구분 없이 센다 ─ "실패만 센다"고 하면 성공 응답 여부로 비밀번호를 맞혔는지가 드러날 수 있다.
     """
     permission_classes = [AllowAny]
+    throttle_scope = "auth_login"
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)

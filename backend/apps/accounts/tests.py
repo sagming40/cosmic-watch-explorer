@@ -60,6 +60,23 @@ class AuthFlowTests(BaseAPITestCase):
         self.assertEqual(self.client.post("/api/auth/logout/").status_code, 401)
 
 
+class AuthThrottleTests(BaseAPITestCase):
+    """#5 (10-28) ─ 로그인 분당 10번, 가입 시간당 10번 (같은 IP)"""
+
+    def test_login_is_limited_after_10_per_minute(self):
+        for _ in range(10):
+            self.client.post("/api/auth/login/", {"username": "ghost", "password": "nope-12345"}, format="json")
+        res = self.client.post("/api/auth/login/", {"username": "ghost", "password": "nope-12345"}, format="json")
+        self.assertEqual(res.status_code, 429)
+        self.assertEqual(res.json()["error"]["code"], "RATE_LIMITED")
+
+    def test_signup_is_limited_after_10_per_hour(self):
+        for i in range(10):
+            self.client.post("/api/auth/signup/", {"username": f"u{i}", "email": "bad"}, format="json")
+        res = self.client.post("/api/auth/signup/", {"username": "u10", "email": "bad"}, format="json")
+        self.assertEqual(res.status_code, 429)
+
+
 class DefaultLockTests(BaseAPITestCase):
     """기본 잠금(10-27) ─ 인증 API 4개 말고는 전부 로그인 필요"""
 

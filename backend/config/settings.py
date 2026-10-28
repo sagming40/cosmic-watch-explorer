@@ -95,6 +95,10 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "neo_fetch": "30/hour",
         "neo_detail_fetch": "30/hour",   # ⭐ 추가 ─ NeoDetailView 전용 계량기
+        # ⭐ 10-28 추가 ─ 비밀번호 무한 대입(무차별 대입) 막기. 비로그인 요청이라 IP 기준으로 센다.
+        # 배포(M6) 때 프록시 뒤에 서면 모든 요청 IP가 프록시 하나로 보인다 → NUM_PROXIES 설정 필요 (05 문서 M6)
+        "auth_login": "10/minute",
+        "auth_signup": "10/hour",
     },
     
     # ⭐ M2 추가 — Decimal을 문자열이 아닌 숫자로 응답 (문서 04 — 5.1절)
