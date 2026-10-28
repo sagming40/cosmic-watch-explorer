@@ -1,3 +1,5 @@
+import logging
+
 import requests
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -5,6 +7,14 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.astronomy.models import Neo, CloseApproach, OrbitalData, NeoFetchLog
+
+# ─── 기록은 print가 아니라 logging으로 (10-28 수정) ──────────────────────
+# print는 출력에 실패하면 예외를 던진다. Windows에서 서버 출력이 화면이 아니라 파이프로 갈 때
+# (백그라운드 실행·미리보기 서버·배포 시 로그 파일) 인코딩이 cp949라 "—" 같은 글자에서
+# UnicodeEncodeError가 났고, 저장은 끝났는데 뷰의 except Exception이 이걸 잡아 503(UPSTREAM_ERROR)으로 바꿨다.
+# logging은 출력에 실패해도 요청을 멈추지 않는다 ─ "택배는 배달했는데 영수증 서명 실패로 배달 실패 처리"가 다시 없게.
+# 문구도 cp949에 있는 글자만 쓴다 ("—" → "-").
+logger = logging.getLogger(__name__)
 
 NASA_FEED_URL = "https://api.nasa.gov/neo/rest/v1/feed"
 # NASA NeoWs(Near Earth Object Web Service)의 '날짜별 목록 조회' 엔드포인트
@@ -222,9 +232,9 @@ def fetch_feed(date_str):
         },
     )
 
-    print(
-        f"[fetch_feed] {date_str}: 저장 완료 — 신규 CloseApproach {saved_approach_count}건 "
-        f"(NASA element_count={element_count})"
+    logger.info(
+        "[fetch_feed] %s: 저장 완료 - 신규 CloseApproach %s건 (NASA element_count=%s)",
+        date_str, saved_approach_count, element_count,
     )            
 
     return element_count, saved_approach_count
@@ -257,7 +267,7 @@ def fetch_neo_detail(nasa_id):
         # 주의: 같은 ID가 재요청 시 정상 응답한 사례가 있어, "영구적으로 카탈로그에 없음"이라고
         # 단정할 수 없다 — NASA 서버 쪽의 일시적 응답 문제일 가능성도 있다.
         # 그래도 크래시시키기보다 "이번엔 궤도 정보 없이 넘어간다"가 더 안전한 선택이라 이렇게 처리한다.
-        print(f"[fetch_neo_detail] {nasa_id}: NASA Lookup 404 ― 궤도 정보 없이 종료")
+        logger.warning("[fetch_neo_detail] %s: NASA Lookup 404 - 궤도 정보 없이 종료", nasa_id)
         neo = Neo.objects.filter(nasa_id=nasa_id).first()
         return neo, 0, False
 
@@ -344,9 +354,9 @@ def fetch_neo_detail(nasa_id):
     # 여기서 기록을 남기면 Dashboard가 "그 날자는 이미 수집됨"으로 착각한다.
     # 상세 수집의 장부 역할은 'orbital_data 행이 존재하는가' 자체가 대신한다.
      
-    print(
-        f"[fetch_neo_detail] {nasa_id}: 신규 CloseApproach {saved_approach_count}건 "
-        f"/ 궤도 저장 {orbit_saved}"
+    logger.info(
+        "[fetch_neo_detail] %s: 신규 CloseApproach %s건 / 궤도 저장 %s",
+        nasa_id, saved_approach_count, orbit_saved,
     )
 
     return neo, saved_approach_count, orbit_saved

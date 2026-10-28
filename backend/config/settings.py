@@ -53,6 +53,16 @@ INSTALLED_APPS = [
 # settings,py는 Django가 가장 먼저 읽는 파일이라, 여기서 실제 함수를 import 해버리면
 # 아직 준비되지 않은 App을 끌어오다 순환 참조가 나기 쉽다.
 # 따라서, "주소만 적어두고, 필요해질 때 그 주소로 찾아가는" 방식을 사용한다.
+# ─── 로그 (10-28 추가) ─ services의 logger.info가 runserver 화면에 보이도록 ──────────
+# 설정이 없으면 파이썬 기본값(WARNING 이상만)이라 "저장 완료" 같은 info 기록이 안 보인다.
+# 예전엔 print로 찍었지만, print는 출력 실패 시 예외를 던져 요청을 깨뜨렸다 (nasa_neo.py 맨 위 주석).
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {"apps": {"handlers": ["console"], "level": "INFO"}},
+}
+
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "config.exception_handler.custom_exception_handler",
     # ⭐ M2 추가 ─ 인증 방식을 세션 쿠키 하나로 못 박는다. (문서 04 ─ 1.1절)
