@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from django.utils import timezone
@@ -20,6 +21,8 @@ from .serializers import (
 from .services.nasa_neo import fetch_feed, fetch_neo_detail
 from .units import km_to_lunar_distance, parsec_to_light_year  # ⭐ parsec_to_light_year 추가
 from .filters import build_exoplanet_queryset  # ⭐ 추가
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_query_date(date_str):
@@ -200,29 +203,50 @@ class NeoDetailView(APIView):
         # → NeoDetailSerializer.get_orbital_data에서 이미 썼던 것과 똑같은 패턴을
         #   여기서도 그대로 써야 한다. (같은 문제를 두 번째로 만난 것)
         orbital = getattr(neo, "orbital_data", None)
+
+        # ③ orbit_status ─ 궤도 칸이 비어 있다면 "왜" 비었는지 (10-28 결정 A, 04 문서 5.2절)
+        #   ok           : 궤도 정보 있음
+        #   missing      : NASA에도 없다 (Lookup 404, 또는 응답에 orbital_data 없음)
+        #   unavailable  : NASA에 연결하지 못했다 ─ 지금은 못 가져왔을 뿐, 다시 시도하면 될 수 있다
+        #   rate_limited : 우리 쪽 NASA 호출 한도(30회/시간)에 걸려 이번엔 부르지 않았다
+        #
+        # 예전엔 NASA가 실패하면 상세 전체가 503이었다. 그런데 이 소행성은 이미 DB에 있다(대시보드에서 받아 둠)
+        # → 이름·크기·접근 기록은 보여줄 수 있는데 궤도 하나 때문에 화면 전체를 막을 이유가 없다.
+        # 비유: 택배 상자 하나가 늦었다고 이미 도착한 상자까지 반송하지 않는다.
+        orbit_status = "ok" if orbital is not None else "missing"
         if orbital is None:
             throttle = ScopedRateThrottle()
             if not throttle.allow_request(request, self):
-                self.throttled(request, throttle.wait())
-
-            try:
-                neo, _, _ = fetch_neo_detail(nasa_id)
-                # fetch_neo_detail이 돌려주는 neo로 통째로 교체한다.
-                # Lookup에만 있는 designation 같은 field가 이 시점에 새로 채워지기 때문에,
-                # ①에서 가져온 예전 neo를 계속 사용하면 갱신된 값을 놓친다.
-                # 
-                # 이 neo는 select_related가 걸리지 않은 '새 조회 결과'이다.
-                # 아래에서 orbital_data에 접근하면 Django가 그 시점에 query를 한 번 더 날린다.
-                # ─ 목록이 아니라 객체 하나뿐인 상세 페이지라 N+1 걱정은 없다.
-            except Exception as exc:
-                raise UpstreamError() from exc
-            # NASA Lookup이 404를 준 경우는 fetch_neo_detail 내부에서 이미 처리되어
-            # 여기까지 예외없이 내려온다. ─ orbital_data가 None인 채로 응답된다.
-            # ⭐ 값이 없으면 없는대로. 억지로 채우지 않는다.
+                # 예전: self.throttled() → 429로 화면 전체가 막혔다. 지금은 있는 것만 보여준다
+                orbit_status = "rate_limited"
+            else:
+                orbit_status = self._fetch_orbit(nasa_id)
+                neo = Neo.objects.select_related("orbital_data").get(nasa_id=nasa_id)
+                # 새로 저장됐을 수 있는 designation·궤도까지 다시 읽는다 (①의 neo는 수집 전 모습)
 
         # context에 request를 실어 보낸다. is_watchlisted가 "누가 보고 있는지"를
         # 알아야 판정할 수 있기 때문 ─ 이 한 줄이 없으면 항상 False가 나간다.
-        return Response(NeoDetailSerializer(neo, context={"request": request}).data)
+        return Response(
+            NeoDetailSerializer(neo, context={"request": request, "orbit_status": orbit_status}).data
+        )
+
+    def _fetch_orbit(self, nasa_id):
+        """NASA Lookup으로 궤도를 받아 저장하고, 그 결과를 orbit_status 값으로 돌려준다."""
+        try:
+            _, _, orbit_saved = fetch_neo_detail(nasa_id)
+            # 돌려받은 neo는 쓰지 않는다 ─ 호출한 쪽(get)이 DB에서 다시 읽는다.
+            # Lookup에만 있는 designation 같은 field가 이 시점에 새로 채워지기 때문에,
+            # ①에서 가져온 예전 neo를 계속 사용하면 갱신된 값을 놓친다.
+        except Exception as exc:
+            # 실패 원인은 로그에 남기고(화면엔 안 보임), 응답은 DB에 있는 것으로 계속한다.
+            # ⚠️ exc_info(트레이스백)·str(exc)는 남기지 않는다 ─ requests 오류 문구에 요청 URL이 통째로 들어가서
+            #    "?api_key=진짜키"가 로그에 찍힌다 (10-28 가짜 키 실험에서 발견). 종류·상태 코드만 남긴다.
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            logger.warning("[NeoDetailView] %s: NASA Lookup 실패(%s %s) - 저장된 데이터로 응답", nasa_id, type(exc).__name__, status or "")
+            return "unavailable"
+        # NASA Lookup이 404를 준 경우는 fetch_neo_detail 내부에서 이미 처리되어
+        # 여기까지 예외없이 내려온다(orbit_saved=False). ⭐ 값이 없으면 없는대로. 억지로 채우지 않는다.
+        return "ok" if orbit_saved else "missing"
 
 
 class NeoApproachListView(generics.ListAPIView):

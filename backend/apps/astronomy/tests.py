@@ -119,6 +119,46 @@ class NeoDetailTests(BaseAPITestCase):
             res = self.client.get("/api/neo/23/")
         self.assertEqual(res.status_code, 200)
         self.assertIsNone(res.json()["orbital_data"])
+        self.assertEqual(res.json()["orbit_status"], "missing")
+
+    # ─── 결정 A (10-28): NASA가 실패해도 DB에 있는 것은 보여준다 ───
+    def test_nasa_down_still_returns_stored_detail(self):
+        neo = make_neo("25", name="(2026 DOWN)")
+        make_approach(neo, "2030-05-05")
+        with patch(NASA_GET, side_effect=requests.ConnectionError("down")):
+            res = self.client.get("/api/neo/25/")
+        body = res.json()
+        self.assertEqual(res.status_code, 200)  # 예전엔 503으로 화면 전체가 막혔다
+        self.assertEqual(body["orbit_status"], "unavailable")
+        self.assertEqual(body["name"], "(2026 DOWN)")
+        self.assertEqual(body["approach_count"], 1)
+        self.assertIsNone(body["orbital_data"])
+
+    def test_failure_log_never_contains_api_key(self):
+        # requests 오류 문구엔 요청 URL이 통째로 들어간다 → 로그에 키가 새면 안 된다 (10-28 발견)
+        make_neo("29")
+        leaky = requests.HTTPError("403 Client Error: Forbidden for url: https://api.nasa.gov/neo/rest/v1/neo/29?api_key=SECRET123")
+        with patch(NASA_GET, side_effect=leaky), self.assertLogs("apps.astronomy", level="WARNING") as logs:
+            self.client.get("/api/neo/29/")
+        joined = " ".join(logs.output)
+        self.assertNotIn("SECRET123", joined)
+        self.assertIn("HTTPError", joined)
+
+    def test_rate_limited_returns_stored_detail_without_calling_nasa(self):
+        make_neo("26")
+        with patch("apps.astronomy.views.ScopedRateThrottle.allow_request", return_value=False), patch(NASA_GET) as nasa:
+            res = self.client.get("/api/neo/26/")
+        nasa.assert_not_called()
+        self.assertEqual(res.status_code, 200)  # 예전엔 429
+        self.assertEqual(res.json()["orbit_status"], "rate_limited")
+
+    def test_orbit_status_ok(self):
+        neo = make_neo("27")
+        make_orbit(neo)
+        self.assertEqual(self.client.get("/api/neo/27/").json()["orbit_status"], "ok")
+        make_neo("28")
+        with patch(NASA_GET, return_value=FakeResponse(200, nasa_lookup("28"))):
+            self.assertEqual(self.client.get("/api/neo/28/").json()["orbit_status"], "ok")
 
     def test_approaches_are_paginated(self):
         neo = make_neo("24")

@@ -100,6 +100,7 @@ class NeoDetailSerializer(serializers.Serializer):
 
     is_watchlisted = serializers.SerializerMethodField()
     orbital_data = serializers.SerializerMethodField()
+    orbit_status = serializers.SerializerMethodField()  # ⭐ 10-28 결정 A ─ 궤도 칸이 비었다면 왜 비었는지
     recent_approaches = serializers.SerializerMethodField()
     approach_count = serializers.SerializerMethodField()
 
@@ -124,6 +125,14 @@ class NeoDetailSerializer(serializers.Serializer):
         # apps/watchlist가 이미 apps/astronomy를 import하고 있어서(모델 FK),
         # 여기서 반대 방향 import를 추가하면 두 app이 서로를 참조하는 구조가 된다.
         return request.user.neo_watchlist.filter(neo=obj).exists()
+
+    def get_orbit_status(self, obj):
+        # view가 판정해서 context로 넘긴다(NASA를 불렀는지·실패했는지는 view만 안다).
+        # context 없이 쓰는 곳(shell 등)에선 "지금 DB에 있나"로만 판정한다.
+        status = self.context.get("orbit_status")
+        if status:
+            return status
+        return "ok" if getattr(obj, "orbital_data", None) is not None else "missing"
 
     def get_orbital_data(self, obj):
         """
