@@ -106,6 +106,7 @@ REST_FRAMEWORK = {
         # 배포(M6) 때 프록시 뒤에 서면 모든 요청 IP가 프록시 하나로 보인다 → NUM_PROXIES 설정 필요 (05 문서 M6)
         "auth_login": "10/minute",
         "auth_signup": "10/hour",
+        "account_sensitive": "10/hour",  # 마이페이지에서 비밀번호를 다시 받는 곳(이메일·비밀번호 변경, 탈퇴) ─ 10-28
     },
     
     # ⭐ M2 추가 — Decimal을 문자열이 아닌 숫자로 응답 (문서 04 — 5.1절)

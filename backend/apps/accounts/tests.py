@@ -6,7 +6,8 @@ python manage.py test apps.accounts
 
 from django.contrib.auth.models import User
 
-from config.test_utils import PASSWORD, BaseAPITestCase, make_user
+from apps.accounts.models import UserPreference
+from config.test_utils import PASSWORD, BaseAPITestCase, make_neo, make_user
 
 
 class AuthFlowTests(BaseAPITestCase):
@@ -106,3 +107,106 @@ class DefaultLockTests(BaseAPITestCase):
                 res = self.client.get(url)
                 self.assertEqual(res.status_code, 401)
                 self.assertEqual(res.json()["error"]["code"], "AUTH_REQUIRED")
+
+
+class AccountTests(BaseAPITestCase):
+    """마이페이지 API (10-28) ─ 문서 04, 4.6절"""
+
+    def setUp(self):
+        super().setUp()
+        self.user = make_user("mine")
+        self.login_as(self.user)
+
+    def test_me_includes_date_joined_and_default_preferences(self):
+        user = self.client.get("/api/auth/me/").json()["user"]
+        self.assertIn("date_joined", user)
+        # 설정 행이 없어도 기본값 ─ 읽기만으로 행을 만들지 않는다
+        self.assertEqual(user["preferences"], {"distance_unit": "km", "dashboard_sort": "distance", "hazard_only": False})
+        self.assertFalse(UserPreference.objects.filter(user=self.user).exists())
+
+    def test_account_summary_counts_watchlist(self):
+        from apps.watchlist.models import NeoWatchlist
+
+        NeoWatchlist.objects.create(user=self.user, neo=make_neo("71"))
+        body = self.client.get("/api/account/").json()
+        self.assertEqual(body["watchlist_counts"], {"neo": 1, "exoplanet": 0})
+        self.assertEqual(body["user"]["username"], "mine")
+
+    def test_patch_preferences_partially(self):
+        res = self.client.patch("/api/account/preferences/", {"distance_unit": "au"}, format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {"distance_unit": "au", "dashboard_sort": "distance", "hazard_only": False})
+        self.client.patch("/api/account/preferences/", {"hazard_only": True}, format="json")
+        # 앞에서 바꾼 au는 그대로 ─ 안 보낸 칸은 안 건드린다. /me/에도 바로 반영
+        self.assertEqual(self.client.get("/api/auth/me/").json()["user"]["preferences"], {"distance_unit": "au", "dashboard_sort": "distance", "hazard_only": True})
+
+    def test_invalid_preference_value_is_field_error(self):
+        err = self.client.patch("/api/account/preferences/", {"dashboard_sort": "random"}, format="json").json()["error"]
+        self.assertEqual(err["code"], "VALIDATION_ERROR")
+        self.assertIn("dashboard_sort", err["fields"])
+
+    def test_change_email_requires_password_and_unique(self):
+        make_user("other", email="taken@example.com")
+        wrong = self.client.patch("/api/account/email/", {"email": "new@example.com", "password": "wrong-pass-1"}, format="json")
+        self.assertIn("password", wrong.json()["error"]["fields"])
+        dup = self.client.patch("/api/account/email/", {"email": "taken@example.com", "password": PASSWORD}, format="json")
+        self.assertIn("email", dup.json()["error"]["fields"])
+        ok = self.client.patch("/api/account/email/", {"email": "new@example.com", "password": PASSWORD}, format="json")
+        self.assertEqual(ok.status_code, 200)
+        self.assertEqual(ok.json()["user"]["email"], "new@example.com")
+
+    def test_change_password_keeps_this_session_and_ends_others(self):
+        from rest_framework.test import APIClient
+
+        other_device = APIClient()
+        other_device.force_login(self.user)
+        new = "Nebula-test-5678"
+        res = self.client.post(
+            "/api/account/password/",
+            {"current_password": PASSWORD, "new_password": new, "new_password_confirm": new},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 204)
+        self.assertTrue(self.client.get("/api/auth/me/").json()["is_authenticated"])  # 이 기기는 유지
+        self.assertFalse(other_device.get("/api/auth/me/").json()["is_authenticated"])  # 다른 기기는 로그아웃
+        self.client.logout()
+        self.assertEqual(self.client.post("/api/auth/login/", {"username": "mine", "password": new}, format="json").status_code, 200)
+
+    def test_change_password_errors(self):
+        cases = [
+            ({"current_password": "wrong-pass-1", "new_password": "Nebula-test-5678", "new_password_confirm": "Nebula-test-5678"}, "current_password"),
+            ({"current_password": PASSWORD, "new_password": "Nebula-test-5678", "new_password_confirm": "other-5678"}, "new_password_confirm"),
+            ({"current_password": PASSWORD, "new_password": "12345678", "new_password_confirm": "12345678"}, "new_password"),  # 숫자만·흔함
+            ({"current_password": PASSWORD, "new_password": PASSWORD, "new_password_confirm": PASSWORD}, "new_password"),  # 지금과 같음
+        ]
+        for body, field in cases:
+            with self.subTest(field=field):
+                err = self.client.post("/api/account/password/", body, format="json").json()["error"]
+                self.assertIn(field, err["fields"])
+
+    def test_delete_account_cascades_and_logs_out(self):
+        from apps.watchlist.models import NeoWatchlist
+
+        NeoWatchlist.objects.create(user=self.user, neo=make_neo("72"))
+        self.client.patch("/api/account/preferences/", {"distance_unit": "au"}, format="json")
+        wrong = self.client.delete("/api/account/", {"password": "wrong-pass-1"}, format="json")
+        self.assertEqual(wrong.status_code, 400)
+        self.assertTrue(User.objects.filter(username="mine").exists())
+        res = self.client.delete("/api/account/", {"password": PASSWORD}, format="json")
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(User.objects.filter(username="mine").exists())
+        self.assertFalse(NeoWatchlist.objects.exists())
+        self.assertFalse(UserPreference.objects.exists())
+        self.assertFalse(self.client.get("/api/auth/me/").json()["is_authenticated"])
+
+    def test_password_guessing_is_limited(self):
+        for _ in range(10):
+            self.client.delete("/api/account/", {"password": "wrong-pass-1"}, format="json")
+        self.assertEqual(self.client.delete("/api/account/", {"password": "wrong-pass-1"}, format="json").status_code, 429)
+        self.assertEqual(self.client.get("/api/account/").status_code, 200)  # 조회는 안 센다
+
+    def test_account_api_requires_login(self):
+        self.client.logout()
+        for method, url in [("get", "/api/account/"), ("patch", "/api/account/preferences/"), ("post", "/api/account/password/")]:
+            with self.subTest(url=url):
+                self.assertEqual(getattr(self.client, method)(url, {}, format="json").status_code, 401)

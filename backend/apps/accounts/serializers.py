@@ -14,6 +14,8 @@ from django.core.validators import RegexValidator
 
 from rest_framework import serializers
 
+from .models import UserPreference
+
 
 # Django User.username 자체 검증기(UnicodeUsernameValidator)는 한글도 통과시킨다.
 # 명세(04 ─ 4.3절) "영문/숫자/_"보다 느슨하므로, 직접 좁혀야 한다.
@@ -23,14 +25,41 @@ USERNAME_VALIDATOR = RegexValidator(
     message='아이디는 영문, 숫자, _만 사용해 3~30자 이내로 입력해 주세요.',
 )
 
+class PreferenceSerializer(serializers.Serializer):
+    """
+    표시 설정 3칸 ─ 응답(읽기)과 PATCH(일부만 바꾸기) 둘 다 이 모양. 문서 04 ─ 4.6절 (10-28)
+    ChoiceField라 정해진 값 말고는 400 + 칸 오류.
+    """
+    distance_unit = serializers.ChoiceField(choices=UserPreference.DISTANCE_UNITS)
+    dashboard_sort = serializers.ChoiceField(choices=UserPreference.DASHBOARD_SORTS)
+    hazard_only = serializers.BooleanField()
+
+
+def preferences_of(user):
+    """설정 행이 아직 없으면 기본값 ─ GET에서 행을 만들지 않는다(읽기는 읽기만)."""
+    pref = getattr(user, "preference", None)  # 역방향 OneToOne은 행이 없으면 예외 → getattr (CLAUDE.md 3.6)
+    if pref is None:
+        return dict(UserPreference.DEFAULTS)
+    return PreferenceSerializer(pref).data
+
+
 class UserBriefSerializer(serializers.Serializer):
     """
-    응답 안에 반복해서 등장하는 user 블록 {id, username, email}.
+    응답 안에 반복해서 등장하는 user 블록 {id, username, email, date_joined, preferences}.
     signup/login/me 세 곳이 전부 이 모양을 그대로 사용한다 ─ 한 번만 정의해 재사용.
+
+    date_joined·preferences는 10-28 마이페이지 때 추가.
+    preferences를 여기 넣는 이유: 앱이 뜰 때 /me/를 이미 부른다 → 대시보드가 그려지기 전에 설정이 손에 들어와서
+    "기본값(거리순)으로 그렸다가 내 설정으로 바뀌는" 깜빡임이 없다.
     """
     id = serializers.IntegerField()
     username = serializers.CharField()
     email = serializers.EmailField()
+    date_joined = serializers.DateTimeField()
+    preferences = serializers.SerializerMethodField()
+
+    def get_preferences(self, obj):
+        return preferences_of(obj)
 
 
 class SignupSerializer(serializers.Serializer):
@@ -94,6 +123,42 @@ class SignupSerializer(serializers.Serializer):
             email=validated_data["email"],
             password=validated_data["password"],
         )    
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    """POST /api/account/password/ ─ 현재 비밀번호 확인은 view가 한다(누구의 비밀번호인지 view만 안다)"""
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    new_password_confirm = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["new_password_confirm"]:
+            raise serializers.ValidationError({"new_password_confirm": ["비밀번호가 일치하지 않습니다."]})
+        # 가입 때와 같은 규칙(settings AUTH_PASSWORD_VALIDATORS 4종). user를 넘겨야 "아이디와 비슷한 비밀번호"도 걸린다
+        try:
+            validate_password(attrs["new_password"], self.context.get("user"))
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"new_password": list(exc.messages)})
+        if attrs["new_password"] == attrs["current_password"]:
+            raise serializers.ValidationError({"new_password": ["지금 비밀번호와 다른 비밀번호를 입력해 주세요."]})
+        return attrs
+
+
+class EmailChangeSerializer(serializers.Serializer):
+    """PATCH /api/account/email/ ─ 이메일을 바꾸려면 비밀번호도 같이 받는다 (세션만 훔친 사람이 계정을 못 가져가게)"""
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate_email(self, value):
+        user = self.context.get("user")
+        if User.objects.filter(email=value).exclude(pk=getattr(user, "pk", None)).exists():
+            raise serializers.ValidationError("이미 사용 중인 이메일입니다.")
+        return value
+
+
+class PasswordOnlySerializer(serializers.Serializer):
+    """DELETE /api/account/ ─ 탈퇴 확인용 비밀번호"""
+    password = serializers.CharField(write_only=True)
 
 
 class LoginSerializer(serializers.Serializer):

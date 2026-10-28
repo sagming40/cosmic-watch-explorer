@@ -21,6 +21,7 @@ from django.urls import path, include
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include("apps.accounts.urls")),        # ⭐ 추가
+    path("api/account/", include("apps.accounts.account_urls")),  # ⭐ 10-28 마이페이지
     path("api/watchlist/", include("apps.watchlist.urls")),  # ⭐ 추가
     path("api/", include("apps.astronomy.urls")),
 ]

@@ -7,7 +7,7 @@ Django 기본 제공 메서드들을 그대로 횔용한다. ─ request.user / 
 """
 
 from django.db import IntegrityError
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.middleware.csrf import get_token
 
 from rest_framework import status
@@ -19,7 +19,11 @@ from rest_framework.exceptions import ValidationError
 from config.exception_handler import InvalidCredentials
 from config.permissions import IsAuthenticatedOr401
 
-from .serializers import LoginSerializer, SignupSerializer, UserBriefSerializer
+from .models import UserPreference
+from .serializers import (
+    EmailChangeSerializer, LoginSerializer, PasswordChangeSerializer, PasswordOnlySerializer,
+    PreferenceSerializer, SignupSerializer, UserBriefSerializer,
+)
 
 class CsrfView(APIView):
     """
@@ -146,4 +150,99 @@ class LogoutView(APIView):
 
     def post(self, request):
         logout(request)  # 세션 자체를 서버에서 지운다.
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 마이페이지 API ─ /api/account/ (문서 04, 4.6절 · 10-28 추가)
+# 전부 로그인 필요 ─ 전역 기본값(IsAuthenticatedOr401)을 그대로 쓰므로 permission_classes를 안 붙인다.
+#
+# 비밀번호를 다시 받는 곳(이메일 변경·비밀번호 변경·탈퇴)은 횟수 제한 account_sensitive(시간당 10번).
+# "현재 비밀번호" 칸도 로그인 칸처럼 무한 대입 통로가 될 수 있어서다.
+# 비유: 은행 앱이 로그인돼 있어도 송금할 땐 비밀번호를 한 번 더 묻는 것 ─ 세션만 훔친 사람이 계정을 통째로 못 가져가게.
+# ═══════════════════════════════════════════════════════════════════
+def _check_password_or_400(user, raw, field):
+    if not user.check_password(raw):
+        raise ValidationError({field: ["비밀번호가 올바르지 않습니다."]})
+
+
+class AccountView(APIView):
+    """
+    GET    /api/account/ ─ 마이페이지 "내 정보" (user 블록 + 관심 천체 개수)
+    DELETE /api/account/ ─ 탈퇴. 본문 {password}. 관심 천체·설정은 CASCADE로 같이 지워진다
+    """
+    throttle_scope = "account_sensitive"
+
+    def get_throttles(self):
+        # 조회(GET)는 세지 않는다 ─ 비밀번호를 받는 DELETE만 계량기를 단다
+        return [] if self.request.method == "GET" else super().get_throttles()
+
+    def get(self, request):
+        user = request.user
+        return Response({
+            "user": UserBriefSerializer(user).data,
+            "watchlist_counts": {
+                # related_name은 watchlist/models.py에서 정한 이름 (neo_watchlist / exoplanet_watchlist)
+                "neo": user.neo_watchlist.count(),
+                "exoplanet": user.exoplanet_watchlist.count(),
+            },
+        })
+
+    def delete(self, request):
+        serializer = PasswordOnlySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        _check_password_or_400(user, serializer.validated_data["password"], "password")
+        logout(request)   # 세션부터 끊고
+        user.delete()     # 계정 삭제 ─ NeoWatchlist·ExoplanetWatchlist·UserPreference가 CASCADE로 같이
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PreferenceView(APIView):
+    """PATCH /api/account/preferences/ ─ 표시 설정 일부만 바꾸기. 응답은 바뀐 뒤의 설정 3칸 전부"""
+
+    def patch(self, request):
+        serializer = PreferenceSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        # 처음 바꾸는 사람은 이때 행이 생긴다(update_or_create). 안 보낸 칸은 그대로
+        pref, _ = UserPreference.objects.update_or_create(user=request.user, defaults=serializer.validated_data)
+        return Response(PreferenceSerializer(pref).data)
+
+
+class EmailChangeView(APIView):
+    """PATCH /api/account/email/ ─ 본문 {email, password}. 응답은 user 블록"""
+    throttle_scope = "account_sensitive"
+
+    def patch(self, request):
+        user = request.user
+        serializer = EmailChangeSerializer(data=request.data, context={"user": user})
+        serializer.is_valid(raise_exception=True)
+        _check_password_or_400(user, serializer.validated_data["password"], "password")
+        user.email = serializer.validated_data["email"]
+        try:
+            user.save(update_fields=["email"])
+        except IntegrityError:
+            # auth_user.email은 DB UNIQUE(accounts 0001 마이그레이션) ─ 동시에 같은 이메일로 바꾼 경우의 마지막 방어선
+            raise ValidationError({"email": ["이미 사용 중인 이메일입니다."]})
+        return Response({"user": UserBriefSerializer(user).data})
+
+
+class PasswordChangeView(APIView):
+    """
+    POST /api/account/password/ ─ 본문 {current_password, new_password, new_password_confirm}. 응답 204
+
+    ⚠️ Django는 비밀번호가 바뀌면 그 사용자의 세션을 전부 무효로 본다(세션에 비밀번호 해시 일부가 들어 있다).
+    update_session_auth_hash로 "지금 이 기기" 세션만 새 비밀번호로 다시 묶는다 → 지금 기기는 로그인 유지,
+    다른 기기(예: 집 PC)는 로그아웃된다. 비밀번호를 바꾸는 이유가 보통 "남이 알게 됐을까 봐"라서 이게 맞다.
+    """
+    throttle_scope = "account_sensitive"
+
+    def post(self, request):
+        user = request.user
+        serializer = PasswordChangeSerializer(data=request.data, context={"user": user})
+        serializer.is_valid(raise_exception=True)
+        _check_password_or_400(user, serializer.validated_data["current_password"], "current_password")
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        update_session_auth_hash(request, user)
         return Response(status=status.HTTP_204_NO_CONTENT)
