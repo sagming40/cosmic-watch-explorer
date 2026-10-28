@@ -1,11 +1,20 @@
-// DateNavigator.tsx ─ 날짜 이동 알약: ◀ [달력 2026-10-26 (월)] ▶ | 오늘
+// DateNavigator.tsx ─ 날짜 이동 알약: ◀ [📅 2026-10-26 (월)] ▶ | 오늘
 // 이 컴포넌트는 날짜 상태를 직접 갖지 않는다 ─ "지금 몇 일인지"는 부모가 URL(?date=)에 들고 있고,
 // 여기서는 "바뀌었다"는 사실만 위로 알려준다. (리모컨이 채널 값을 갖지 않고 "다음 채널"만 요청하는 것)
+//
+// 가운데 날짜 칸 = 달력 버튼 (10-28 M5 ─ CLAUDE.md "커스텀 달력(M5)" 확정 항목)
+// 예전엔 브라우저 기본 <input type="date">였다:
+//   ① 달력이 오른쪽 끝 작은 아이콘을 눌러야만 열려서 "날짜 칸을 눌러도 달력이 안 뜬다"로 보였고 (사용자 제보)
+//   ② 기본 달력은 월 이동 화살표만 눌러도 날짜가 바뀐 것으로 처리돼, 달을 넘길 때마다 대시보드가 그 날짜를 불러왔다
+//      (처음 보는 날짜면 NASA 호출까지). → 이제는 "날짜를 골라야만" 이동한다.
 
-import type { ChangeEvent } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { ko } from "react-day-picker/locale";
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { addDays, formatDate, parseDateString } from "@/utils/date";
 
 interface DateNavigatorProps {
@@ -15,7 +24,12 @@ interface DateNavigatorProps {
 
 const weekdayFmt = new Intl.DateTimeFormat("ko-KR", { weekday: "short" });
 
+// 고를 수 있는 범위 = 서버가 받는 범위(NASA/JPL 예측 범위, 04 문서 5.1절). 연·월 드롭다운도 이 안에서만
+const FIRST_MONTH = new Date(1900, 0, 1);
+const LAST_MONTH = new Date(2200, 11, 1);
+
 function DateNavigator({ date, onChange }: DateNavigatorProps) {
+  const [open, setOpen] = useState(false);
   const parsed = parseDateString(date);
   const valid = !Number.isNaN(parsed.getTime()) && formatDate(parsed) === date; // 2026-13-99 같은 값 걸러내기
   const today = formatDate(new Date());
@@ -25,10 +39,10 @@ function DateNavigator({ date, onChange }: DateNavigatorProps) {
     onChange(formatDate(addDays(valid ? parsed : new Date(), delta)));
   }
 
-  // <input type="date">는 브라우저 기본 달력. 값을 고르면 그대로 위로 전달한다.
-  // ⚠️ 알려진 동작: 달력 팝업에서 월 이동 화살표만 눌러도 onChange가 생긴다 (DEVLOG 10-27, M5에서 판단)
-  function handlePick(e: ChangeEvent<HTMLInputElement>) {
-    if (e.target.value) onChange(e.target.value);
+  function pick(day: Date | undefined) {
+    // 이미 고른 날짜를 다시 누르면 react-day-picker가 undefined(선택 해제)를 준다 → 그냥 닫기만
+    if (day) onChange(formatDate(day)); // formatDate = 로컬 날짜 그대로 (toISOString 금지 ─ UTC라 하루 밀린다)
+    setOpen(false);
   }
 
   return (
@@ -36,13 +50,40 @@ function DateNavigator({ date, onChange }: DateNavigatorProps) {
       <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label="이전 날짜" onClick={() => moveByDays(-1)}>
         <ChevronLeft />
       </Button>
-      {/* focus-within ─ 안쪽 날짜 입력은 outline-none이라, 키보드 초점이 들어오면 바깥 label에 링을 그린다 (10-28 M5) */}
-      <label className="flex items-center gap-2 rounded-full px-2 py-1 font-mono text-sm hover:bg-line/60 focus-within:ring-[3px] focus-within:ring-ring/50">
-        <span className="sr-only">조회 날짜</span>
-        {/* min/max ─ 서버가 받는 범위(NASA/JPL 예측 범위)와 같게. 범위 밖을 고르면 서버가 INVALID_DATE (10-28) */}
-        <input type="date" min="1900-01-01" max="2200-12-31" value={valid ? date : ""} onChange={handlePick} className="bg-transparent outline-none" />
-        {valid && <span className="text-dim">({weekdayFmt.format(parsed)})</span>}
-      </label>
+
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-full px-3 font-mono"
+            aria-label={valid ? `조회 날짜 ${date}, 눌러서 달력 열기` : "조회 날짜 선택"}
+          >
+            <CalendarDays className="text-dim" />
+            {valid ? (
+              <>
+                {date} <span className="text-dim">({weekdayFmt.format(parsed)})</span>
+              </>
+            ) : (
+              <span className="font-sans">날짜 선택</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="center">
+          <Calendar
+            mode="single"
+            locale={ko}
+            selected={valid ? parsed : undefined}
+            defaultMonth={valid ? parsed : new Date()}
+            onSelect={pick}
+            captionLayout="dropdown"
+            startMonth={FIRST_MONTH}
+            endMonth={LAST_MONTH}
+            autoFocus // 열리면 고른 날짜에 초점 ─ 화살표로 이동, Enter로 선택, Esc로 닫기
+          />
+        </PopoverContent>
+      </Popover>
+
       <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label="다음 날짜" onClick={() => moveByDays(1)}>
         <ChevronRight />
       </Button>
