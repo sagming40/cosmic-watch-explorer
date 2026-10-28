@@ -29,7 +29,7 @@ test("오늘 화면: 남은 시간이 1초마다 줄고, 1 LD 안쪽은 글자�
   await page.goto("/");
   const box = page.getByRole("region", { name: "다음 근접 접근 카운트다운" });
   const timer = box.getByRole("timer");
-  await expect(timer).toHaveText(/^02일 0[23]시간 \d\d분 \d\d초$/);
+  await expect(timer).toHaveText(/^02일0[23]시간\d\d분\d\d초$/); // 숫자·단위가 따로 span이라 textContent엔 띄어쓰기가 없다
   const first = await timer.textContent();
   await expect(timer).not.toHaveText(first ?? ""); // 손목시계가 돈다
   await expect(box.getByText("달보다 가까이", { exact: true })).toBeVisible();

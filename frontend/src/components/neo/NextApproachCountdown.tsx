@@ -103,7 +103,11 @@ function Upcoming({ next, remainingMs }: { next: NextApproach; remainingMs: numb
     <div className="mt-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
       {/* role="timer"는 기본이 aria-live="off" ─ 화면 낭독기가 1초마다 읽지 않는다 (필요할 때 직접 읽으러 오면 지금 값) */}
       <div role="timer" className="font-mono text-3xl font-medium tabular-nums md:text-4xl">
-        {remainingMs > 0 ? countdownText(remainingMs) : <span className="text-2xl">지금 지나는 중 · 다음 예보 불러오는 중</span>}
+        {remainingMs > 0 ? (
+          <Countdown ms={remainingMs} />
+        ) : (
+          <span className="font-sans text-2xl">지금 지나는 중 · 다음 예보 불러오는 중</span>
+        )}
       </div>
 
       <div className="text-right">
@@ -144,14 +148,28 @@ function Upcoming({ next, remainingMs }: { next: NextApproach; remainingMs: numb
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** 남은 ms → "02일 14시간 22분 08초" (하루 안쪽이면 일 생략) */
-function countdownText(ms: number): string {
+/** 남은 ms → 02일 14시간 22분 08초 (하루 안쪽이면 일 생략)
+ *  숫자는 크게(font-mono, 자릿수 고정), 단위는 작게(font-sans = Pretendard) ─ 요약 카드의 "11.03 LD"와 같은 모양.
+ *  (10-28: 단위까지 큰 mono로 쓰니 한글만 덩그러니 커 보였다) */
+function Countdown({ ms }: { ms: number }) {
   const total = Math.floor(ms / 1000);
-  const d = Math.floor(total / 86400);
-  const h = Math.floor((total % 86400) / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return `${d > 0 ? `${pad(d)}일 ` : ""}${pad(h)}시간 ${pad(m)}분 ${pad(s)}초`;
+  const parts: [number, string][] = [
+    [Math.floor(total / 86400), "일"],
+    [Math.floor((total % 86400) / 3600), "시간"],
+    [Math.floor((total % 3600) / 60), "분"],
+    [total % 60, "초"],
+  ];
+  const shown = parts[0][0] > 0 ? parts : parts.slice(1);
+  return (
+    <span className="flex flex-wrap items-baseline gap-x-3">
+      {shown.map(([value, unit]) => (
+        <span key={unit}>
+          {pad(value)}
+          <span className="ml-1 font-sans text-base font-normal text-dim">{unit}</span>
+        </span>
+      ))}
+    </span>
+  );
 }
 
 /** 오차(분) → "1분 미만" / "±37분" / "±5시간 41분" / "±2일 19시간" */

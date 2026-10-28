@@ -32,10 +32,15 @@ Tailwind CSS v4 + shadcn/ui
   --signal: #C3F53C;  /* 주요 강조색 ─ 관측 신호(라임). 10-27 이전 이름은 --sodium(호박색) */
   --hazard: #F43F5E;  /* 위험 소행성 전용 ─ 이외의 용도로는 사용하지 않는다 */
   
-  /* 서체 ─ 역할별로 분리 (2.2절) */
-  --font-display: "IBM Plex Sans Condensed", sans-serif;
-  --font-body: "Pretendard Variable", Pretendard, "IBM Plex Sans", sans-serif;  /* 한글 글리프가 있는 Pretendard를 앞에 */
-  --font-mono: "IBM Plex Mono", monospace;
+  /* 서체 ─ 역할별로 분리 (2.2절)
+     한글은 어디서든 Pretendard 하나로 (10-28 사용자 요청 ─ "한글 글씨체가 다 제각각")
+     IBM Plex(제목·숫자)에는 한글 글자가 없다. 그래서 예전엔 제목·수치 자리의 한글을 브라우저가
+     아무 시스템 글꼴(맑은 고딕, monospace면 굴림체·돋움체)로 채워 한 화면에 한글 서체가 3개였다.
+     → Plex 바로 뒤에 Pretendard를 둔다. 영문·숫자는 Plex, Plex에 없는 한글만 Pretendard가 받는다.
+     비유: 영어 선생님이 못 읽는 한글 문장은 항상 같은 국어 선생님에게 넘기기 (아무 지나가는 사람 말고) */
+  --font-display: "IBM Plex Sans Condensed", "Pretendard Variable", Pretendard, sans-serif;
+  --font-body: "Pretendard Variable", Pretendard, "IBM Plex Sans", sans-serif;  /* 본문은 Pretendard가 맨 앞 */
+  --font-mono: "IBM Plex Mono", "Pretendard Variable", Pretendard, monospace;
 
   /* Type Scale ─ 크기/굵기 쌍 (2.3절) */
   --text-display-size: 40px;
@@ -125,8 +130,8 @@ inline = 클래스가 var(--토큰)을 그대로 참조 → :root 값만 바꾸�
 
   /* 서체 (2.2절) ─ font-sans가 본문, font-display가 제목, font-mono가 수치 */
   --font-sans: "Pretendard Variable", Pretendard, "IBM Plex Sans", sans-serif;
-  --font-display: "IBM Plex Sans Condensed", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --font-display: "IBM Plex Sans Condensed", "Pretendard Variable", Pretendard, sans-serif;  /* :root와 같은 값 ─ 한글은 Pretendard */
+  --font-mono: "IBM Plex Mono", "Pretendard Variable", Pretendard, monospace;
 
   /* 타입 스케일 (2.3절) ─ text-display / text-h1 / text-h2 / text-body / text-label */
   --text-display: 40px;
