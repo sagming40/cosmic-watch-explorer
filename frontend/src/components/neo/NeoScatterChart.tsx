@@ -60,7 +60,8 @@ function NeoScatterChart({ results, hoveredId, onHover }: NeoScatterChartProps) 
               const active = payload.id === hoveredId;
               const r = active ? base + 2 : base;
               const color = payload.pha ? "var(--hazard)" : "var(--signal)";
-              const fillOpacity = active ? 0.9 : 0.45;
+              // 범위 밖(0.05 LD 미만·500 LD 초과)이라 끝에 붙여 그린 점은 속을 비운다 ─ 스케일 바·범례 "범위 밖 (끝에 표시)"와 같은 약속 (10-28 M5)
+              const fillOpacity = payload.clamped ? 0 : active ? 0.9 : 0.45;
               return (
                 <g onMouseEnter={() => onHover(payload.id)} onMouseLeave={() => onHover(null)}>
                   {/* 1 LD 안쪽 = 고리 (PHA 여부와 상관없이). 위험 표시라 hazard 색 */}
