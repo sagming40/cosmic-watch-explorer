@@ -212,6 +212,7 @@ export interface AuthUser {
   email: string;
   date_joined: string; // ISO 8601 UTC ─ 화면에선 KST 날짜로
   preferences: Preferences; // 설정을 한 번도 안 바꿨으면 서버 기본값
+  avatar_url: string | null; // 프로필 사진 주소(?v=로 캐시 갱신). 없으면 null → 머리글자 (10-28)
 }
 
 /** GET /api/account/ ─ 마이페이지 "내 정보" */

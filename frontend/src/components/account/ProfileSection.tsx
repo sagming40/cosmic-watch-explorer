@@ -7,6 +7,7 @@ import { ArrowRight, Check, LogOut } from "lucide-react";
 
 import { api, type AppError } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
+import AvatarEditor from "@/components/account/AvatarEditor";
 import { FormAlert, PasswordField, TextField } from "@/components/auth/AuthFields";
 import { Panel, PanelTitle } from "@/components/common/Panel";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ function ProfileSection({ user, counts }: ProfileSectionProps) {
           </Button>
         }
       />
+      <AvatarEditor user={user} />
       <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-3">
         <Item label="아이디" value={user.username} />
         <Item label="가입일" value={kstDate(user.date_joined)} mono />

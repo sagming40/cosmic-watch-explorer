@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from "react-router";
-import { LogOut, Orbit, Star } from "lucide-react";
+import { Orbit, Star } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
+import ProfileMenu from "@/components/layout/ProfileMenu";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -68,9 +69,9 @@ function Header() {
 }
 
 // ─── 오른쪽 끝: 로그인 상태에 따라 (04 문서 4.2절 /me/) ─────────────────
-// 확인 중: 빈자리(버튼이 "로그인"→"이름"으로 깜빡이지 않게) / 비로그인: 로그인 / 로그인: 내 관심 천체·이름·로그아웃
+// 확인 중: 빈자리(버튼이 "로그인"→"이름"으로 깜빡이지 않게) / 비로그인: 로그인 / 로그인: 내 관심 천체·프로필 메뉴(10-28)
 function AuthArea() {
-  const { status, user, logout } = useAuth();
+  const { status, user } = useAuth();
   const { pathname, search } = useLocation();
   // 로그아웃 뒤 이동은 따로 안 한다 ─ 로그인 상태가 지워지면 ProtectedRoute가 /login?next=지금 주소 로 보낸다
   // (같은 사람이 다시 로그인하면 보던 화면으로. 여기서 navigate("/login")을 해도 문지기의 이동이 나중에 덮어썼다)
@@ -99,21 +100,9 @@ function AuthArea() {
           <span className="hidden lg:inline">내 관심 천체</span>
         </NavLink>
       </Button>
-      {/* 머리글자 원 = 마이페이지 입구 (10-28). 휴대폰 폭에선 공간이 모자라(375px에서 8px 넘침) 이 원 대신 로그아웃 아이콘을 숨긴다
-          ─ 로그아웃은 마이페이지 안에도 있다 */}
-      <NavLink
-        to="/account"
-        className={({ isActive }) =>
-          cn("grid size-8 place-items-center rounded-full text-sm font-semibold text-bone uppercase transition-colors", isActive ? "bg-signal text-ink" : "bg-line hover:bg-dim/40")
-        }
-        title="내 계정"
-        aria-label={`내 계정 (${user.username})`}
-      >
-        {user.username[0]}
-      </NavLink>
-      <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex" onClick={logout} aria-label="로그아웃" title="로그아웃">
-        <LogOut />
-      </Button>
+      {/* 프로필 원(사진 또는 머리글자) → 누르면 미니 메뉴(내 계정·내 관심 천체·로그아웃) (10-28)
+          로그아웃이 메뉴 안으로 들어가 헤더의 로그아웃 아이콘은 없앴다 ─ 휴대폰 폭 공간 문제도 같이 풀림 */}
+      <ProfileMenu user={user} />
     </div>
   );
 }
