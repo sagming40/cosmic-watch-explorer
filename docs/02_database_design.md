@@ -6,7 +6,7 @@
 | 문서명 | DB 설계서 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.1 |
+| 버전 | v1.2 |
 | 최종 수정일 | 2026-08-31 |
 | DBMS | MariaDB (InnoDB / utf8mb4) |
 | 상태 | 확정 |
@@ -17,6 +17,7 @@
 |---|---|---|
 | v1.0 | 2026-08-21 | 최초 작성 |
 | v1.1 | 2026-08-31 | 7장 Django 모델 코드블록을 `apps/astronomy/models.py` / `apps/watchlist/models.py` 두 개로 분리 (구현 시 앱 2개로 나눈 실제 구조와 일치시킴, 원래는 코드블록 하나에 전부 포함돼 있었음) |
+| v1.2 | 2026-10-28 | neo_fetch_log.fetched_at = 마지막 수집 시각(미래 날짜 재수집 시 갱신). close_approach 저장은 update_or_create로(재수집 시 NASA가 고친 값 반영) |
 
 
 ---
@@ -313,7 +314,7 @@ UNIQUE (user_id, exoplanet_id)
 |---|---|---|---|
 | `id` | BIGINT | PK, AUTO_INCREMENT | |
 | `fetch_date` | DATE | UNIQUE, NOT NULL | 수집 대상 날짜 |
-| `fetched_at` | DATETIME | NOT NULL | 실제 수집 시각 |
+| `fetched_at` | DATETIME | NOT NULL | 실제 수집 시각 ─ **마지막으로 받은 시각**. 오늘 이후 날짜는 24시간 지나면 다시 받고 이 값도 새로 찍는다(10-28, 04 문서 5.1절). Django 모델은 `auto_now_add`라 재수집 때 서비스가 직접 갱신 |
 | `element_count` | INT | NOT NULL, DEFAULT 0 | 해당 날짜의 NEO 개수 |
 | `is_success` | BOOLEAN | NOT NULL, DEFAULT TRUE | 수집 성공 여부 |
  

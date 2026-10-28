@@ -137,6 +137,9 @@ npm run dev                         # http://localhost:5173
 Claude가 화면을 확인할 때는 `.claude/launch.json`의 `frontend`/`backend` 설정으로 띄워서 브라우저 패널로 본다(5173이 사용 중이면 5174 등으로 자동 이동).
 Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필요 없다. 백엔드가 꺼져 있으면 프론트에는 `NETWORK_ERROR`가 아니라 `UNKNOWN_ERROR`(Vite가 만든 502)가 뜬다 — 정상.
 
+**백엔드 테스트** (10-28~): `backend`에서 `python manage.py test` (46개, 약 20초). NASA는 가짜(mock)라 키·네트워크와 무관하다. 테스트 DB(`test_cosmic_watch`)를 자동으로 만들었다 지우므로 그 기기의 DB 계정에 CREATE 권한이 있어야 한다. 백엔드를 고치면 커밋 전에 반드시 돌린다.
+**NASA 장애 실험**: `.env`는 건드리지 않고 서버를 띄울 때만 환경변수로 가짜 키를 준다(`load_dotenv()`는 이미 있는 환경변수를 덮어쓰지 않는다) → `NASA_API_KEY=INVALID_TEST_KEY python manage.py runserver`. NASA가 403을 준다.
+
 ### 2.4 세션 종료 시
 - 작업 단위가 끝나면 커밋 + **push까지** 한다. push 안 하면 다른 기기에서 이어갈 수 없다(9/16 Recharts 작업이 이렇게 유실됐다).
 - DEVLOG 맨 위 "현재 상태"와 최신 블록의 "다음에 할 일"을 다음 세션이 바로 시작할 수 있게 갱신한다.
@@ -182,8 +185,10 @@ backend/
                      pagination.py(CommonPagination), permissions.py(IsAuthenticatedOr401)
   apps/astronomy/    models(Neo, CloseApproach, OrbitalData, HostStar, Exoplanet, NeoFetchLog),
                      views, serializers, filters.py(외계행성 다중 조건 검색), units.py(LD·광년 환산 — 384400은 여기만),
-                     services/(nasa_neo.py, exoplanet_archive.py — 외부 API 격리), management/commands/fetch_exoplanets.py
-  apps/accounts/     인증 API 5종 (세션 쿠키 + CSRF)
+                     services/(nasa_neo.py ─ NasaUnavailable·재시도 Session·_save_atomic, exoplanet_archive.py — 외부 API 격리),
+                     management/commands/fetch_exoplanets.py
+  config/test_utils.py 테스트 공용(BaseAPITestCase·데이터 생성·가짜 NASA 응답). 각 앱 tests.py가 쓴다
+  apps/accounts/     인증 API 5종 (세션 쿠키 + CSRF), 로그인 10/분·가입 10/시간 제한
   apps/watchlist/    NeoWatchlist, ExoplanetWatchlist + API 4종
 frontend/src/
   api/client.ts      axios 인스턴스 (withCredentials, CSRF, 오류 봉투 → AppError {code, message, fields, status})
@@ -219,6 +224,10 @@ frontend/src/
 - **기본 잠금 (10-27~)**: 백엔드는 `DEFAULT_PERMISSION_CLASSES = [IsAuthenticatedOr401]`, 공개는 인증 API 4개(csrf·me·signup·login)만 `AllowAny`로 명시. 프론트는 `/login`·`/signup` 말고 전부 `ProtectedRoute` 아래. 새 API·화면은 따로 안 붙여도 잠긴다 ─ 공개가 필요하면 그때 명시적으로 연다.
 - 401(세션 만료)은 화면마다 처리하지 않는다 ─ `AuthProvider`의 응답 감시가 로그인 상태를 지우면 `ProtectedRoute`가 `/login?next=지금 주소`로 보낸다.
 - 스로틀은 NASA를 실제로 부르는 지점(캐시 미스)에서만 직접 검사한다(`get_throttles()`가 `[]` 반환).
+- **NASA 실패 처리 (10-28~)**: 서비스가 통신 실패만 `NasaUnavailable`로 바꾸고, 뷰는 그것만 잡는다(`except Exception` 금지 ─ 우리 버그가 "NASA 장애"로 둔갑한다). DB에 보여줄 데이터가 있으면 실패해도 200(대시보드 갱신 실패·상세 `orbit_status`), 없을 때만 503.
+- **로그에 NASA 키 금지**: 키가 URL(`?api_key=`)에 실려서 requests 오류 문구·트레이스백에 그대로 나온다 → NASA 오류는 `exc_info`·`str(원래 예외)`를 남기지 않고 `NasaUnavailable`의 종류 문구만. 요청 처리 중 `print` 금지(`logging`만 ─ 10-28 cp949 503 사례).
+- NASA 데이터 저장은 `_save_atomic`(transaction + 충돌 1회 재시도) 안에서. 네트워크 호출은 그 밖에서.
+- 백엔드 기능을 바꾸면 테스트도 같이 추가한다(`apps/*/tests.py`).
 - `--hazard` 색(#D64545)은 위험 표시 전용. 버튼·링크에 쓰지 않는다.
 - 범위 관리: 새 기능이 떠오르면 구현하지 않고 `01` 문서 3.2절(MVP 제외 범위)에 적는다. 확정된 "나중에" 항목: error boundary·커스텀 달력(M5).
 
@@ -254,4 +263,5 @@ frontend/src/
 - `django.test.Client`는 Host가 `testserver` → `ALLOWED_HOSTS`에 없으면 `DisallowedHost`.
 - 프론트 날짜: `toISOString()`·`new Date("YYYY-MM-DD")`는 UTC 기준이라 하루 어긋난다 → `utils/date.ts`만 사용.
 - **로그인 후 쓰기(POST/DELETE)는 브라우저로 확인.** curl·`django.test.Client`는 Origin을 안 보내서 CSRF Origin 검사를 못 잡는다. Vite 프록시는 `changeOrigin: false`여야 한다(true면 Host=8000 ≠ Origin=5173 → 403). DRF는 비로그인 요청엔 CSRF를 안 봐서 로그인·가입만 되고 그 뒤가 막히는 식으로 나타난다.
+- `auto_now_add` 필드는 `update_or_create`로 갱신되지 않는다(처음 만들 때만 찍힌다) → 갱신이 필요하면 defaults에 직접 넣는다(`NeoFetchLog.fetched_at` 사례).
 - 반복 오타 주의 필드: `observations_used`, `data_arc_days`.
