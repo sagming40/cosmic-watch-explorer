@@ -176,7 +176,7 @@ Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필
 | 문서 | 내용 | 갱신 빈도 |
 |---|---|---|
 | `DEVLOG.md` | 현재 상태, 날짜별 작업·트러블슈팅 기록 | Tier 1 (매 세션) |
-| `05_milestones.md` | M0~M6 작업 목록·완료 기준 | Tier 1 (매 세션) |
+| `05_milestones.md` | M0~M8 작업 목록·완료 기준 (M7 확장·M8 데스크톱 앱은 10-28 계획) | Tier 1 (매 세션) |
 | `02_database_design.md` | ERD, 테이블 10개(+ Django auth_user), DDL | Tier 2 (구현과 어긋날 때) |
 | `04_api_specification.md` | 엔드포인트 25개(마이페이지 8개 포함), 오류 봉투, 페이징 | Tier 2 |
 | `01_requirements_and_features.md` | 요구사항, MVP 범위, 우선순위 | Tier 3 (드물게) |
