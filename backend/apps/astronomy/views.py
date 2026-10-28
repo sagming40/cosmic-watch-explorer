@@ -25,6 +25,13 @@ from .filters import build_exoplanet_queryset  # ⭐ 추가
 logger = logging.getLogger(__name__)
 
 
+# 조회할 수 있는 날짜 범위 (10-28 #10) ─ NASA/JPL 근접 접근 예측 범위.
+# NASA는 범위 밖 날짜(예: 3000년)도 오류 없이 200 + 0건을 준다(10-28 실측: 2201-01-01·3000-01-01 → 0건).
+# 그대로 두면 의미 없는 날짜마다 NASA 호출 1번을 쓰고 "0건"이 장부에 영구히 남는다 → 서버가 먼저 거절한다.
+MIN_QUERY_DATE = datetime(1900, 1, 1).date()
+MAX_QUERY_DATE = datetime(2200, 12, 31).date()
+
+
 def _parse_query_date(date_str):
     """
     querystring date parameter를 검증하고 date 객체로 바꾼다.
@@ -37,9 +44,12 @@ def _parse_query_date(date_str):
     if not date_str:
         return timezone.localdate()
     try:
-        return datetime.strptime(date_str, "%Y-%m-%d").date()
+        parsed = datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
-        raise InvalidDate() 
+        raise InvalidDate()
+    if not MIN_QUERY_DATE <= parsed <= MAX_QUERY_DATE:
+        raise InvalidDate(f"{MIN_QUERY_DATE} ~ {MAX_QUERY_DATE} 사이의 날짜만 조회할 수 있습니다.")
+    return parsed
 
 # 오늘 이후 날짜의 수집 결과 유효기간 (10-28). NASA 미래 예측은 관측이 쌓이면 바뀐다(거리·시각).
 # 지난 날짜는 이미 일어난 일이라 한 번 받은 것으로 충분하다 ─ 다시 받지 않는다.

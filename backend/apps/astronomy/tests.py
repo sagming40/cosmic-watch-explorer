@@ -113,6 +113,19 @@ class NeoDashboardTests(BaseAPITestCase):
         self.assertFalse(Neo.objects.filter(nasa_id="43").exists())
         self.assertFalse(NeoFetchLog.objects.filter(fetch_date=DAY).exists())
 
+    def test_out_of_range_date_is_rejected_without_calling_nasa(self):
+        for d in ("1899-12-31", "2201-01-01", "3000-01-01"):
+            with self.subTest(d=d), patch(NASA_GET) as nasa:
+                res = self.client.get(f"/api/neo/?date={d}")
+                nasa.assert_not_called()
+                self.assertEqual(res.status_code, 400)
+                self.assertEqual(res.json()["error"]["code"], "INVALID_DATE")
+                self.assertIn("1900-01-01 ~ 2200-12-31", res.json()["error"]["message"])
+        # 경계값은 허용
+        for d in ("1900-01-01", "2200-12-31"):
+            NeoFetchLog.objects.create(fetch_date=d, element_count=0)
+            self.assertEqual(self.client.get(f"/api/neo/?date={d}").status_code, 200)
+
     def test_invalid_date_format(self):
         res = self.client.get("/api/neo/?date=2026-13-99")
         self.assertEqual(res.status_code, 400)
