@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router";
 import { Orbit, Star } from "lucide-react";
 
+import { loginPath, safeNext } from "@/auth/next";
 import { useAuth } from "@/auth/useAuth";
 import ProfileMenu from "@/components/layout/ProfileMenu";
 
@@ -82,9 +83,13 @@ function AuthArea() {
     // 비로그인이면 로그인·회원가입 화면에만 있을 수 있다(나머지는 ProtectedRoute가 보냄)
     // → 지금 화면의 반대쪽을 보여준다. ?next=는 그대로 들고 간다
     const toSignup = pathname === "/login";
+    // ?next=는 검사를 통과한 앱 안쪽 주소만 넘긴다 (10-28 E2E에서 발견 ─ 예전엔 주소창 값을 그대로 붙여 //evil.com도 따라갔다.
+    // 가입·로그인 화면이 다시 safeNext로 거르니 실제로 밖으로 나가진 않았지만, 넘기는 쪽에서도 거른다)
+    const next = safeNext(new URLSearchParams(search).get("next"));
+    const page = toSignup ? "/signup" : "/login";
     return (
       <Button variant="outline" size="sm" className="ml-auto" asChild>
-        <NavLink to={(toSignup ? "/signup" : "/login") + search} className="text-bone">
+        <NavLink to={next === "/" ? page : loginPath(next, page)} className="text-bone">
           {toSignup ? "회원가입" : "로그인"}
         </NavLink>
       </Button>
