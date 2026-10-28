@@ -371,6 +371,7 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 - [x] 동시 첫 저장 충돌(IntegrityError) 한 번 재시도
 - [x] NASA 일시 장애(5xx·연결 실패) 한 번 재시도, 시간 초과 (5초, 8초). 외계행성 수집 명령에 없던 timeout 추가
 - [x] 대시보드 조회 날짜 1900-01-01 ~ 2200-12-31 (범위 밖은 NASA를 부르지 않고 INVALID_DATE)
+- [x] 브라우저를 닫으면 로그아웃 (`SESSION_EXPIRE_AT_BROWSER_CLOSE`) ─ 사용자 요청. 실측: 로그인 응답 `Set-Cookie: sessionid=…; HttpOnly; Path=/; SameSite=Lax`(Expires 없음), 예전엔 2주 뒤 만료일
 
 ### 완료 기준
 
