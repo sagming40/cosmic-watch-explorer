@@ -1,6 +1,8 @@
 import logging
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from django.conf import settings
@@ -54,13 +56,34 @@ def _save_atomic(save, *args):
             return save(*args)
 
 
+# ─── NASA 전용 연결 (10-28 #9) ─ 일시 장애면 한 번만 다시 ─────────────────────
+# Session = 같은 서버(api.nasa.gov)로 여러 번 갈 때 연결을 재사용하는 "단골 통로".
+# Retry: 5xx(서버 쪽 일시 장애)·연결 실패·응답 시간 초과면 0.5초 쉬고 1번 더. 4xx(키 틀림 403, 없음 404)는 다시 해도 같아서 안 한다.
+#   429(NASA 한도 초과)도 다시 안 한다 ─ 바로 다시 두드리면 한도만 더 깎인다.
+# 한 번만인 이유: 기다리는 시간 = (연결 5초 + 응답 8초) × 시도 횟수. 2번이면 최악 약 26초, 3번이면 40초 가까이 된다.
+NASA_TIMEOUT = (5, 8)  # (연결, 응답) 초 ─ 예전엔 10초 한 번
+_http = requests.Session()
+_http.mount(
+    "https://",
+    HTTPAdapter(
+        max_retries=Retry(
+            total=1,
+            backoff_factor=0.5,
+            status_forcelist=(500, 502, 503, 504),
+            allowed_methods=frozenset({"GET"}),
+            raise_on_status=False,  # 다시 해도 5xx면 예외 대신 응답을 돌려준다 → 아래에서 NasaUnavailable("HTTP 503")로
+        )
+    ),
+)
+
+
 def _request_json(url, params, *, missing_ok=False):
     """
     NASA에 GET 한 번. 성공하면 JSON(dict), missing_ok인데 404면 None, 그 밖의 실패는 NasaUnavailable.
     네트워크는 여기서만 탄다 ─ 아래 DB 저장(transaction)과 섞지 않는다 (10초 기다리는 동안 DB를 잡고 있지 않게).
     """
     try:
-        response = requests.get(url, params=params, timeout=10)
+        response = _http.get(url, params=params, timeout=NASA_TIMEOUT)
     except requests.RequestException as exc:
         raise NasaUnavailable(type(exc).__name__) from None
     if missing_ok and response.status_code == 404:
@@ -227,7 +250,7 @@ def fetch_feed(date_str):
     # 특수문자 인코딩 같은 것도 requests 라이브러리가 알아서 처리해준다.
 
     data = _request_json(NASA_FEED_URL, params)
-    # timeout=10(_request_json 안): "10초 안에 응답이 없을 경우 포기할 것" → 안전장치
+    # timeout(_request_json 안, NASA_TIMEOUT): "정해진 시간 안에 응답이 없을 경우 포기할 것" → 안전장치
     # 상태 코드가 4xx/5xx면(예: API 키가 틀리면 403) NasaUnavailable ─ 성공으로 착각하고 parsing하지 않는다.
 
     element_count = data.get("element_count", 0)

@@ -39,7 +39,8 @@ def fetch_exoplanets():
         "format": "json",
     }
 
-    response = requests.get(TAP_URL, params=params)
+    response = requests.get(TAP_URL, params=params, timeout=(10, 120))
+    # timeout (10-28 추가): 없으면 NASA가 응답을 안 줄 때 수집 명령이 끝없이 멈춘다. 6,000여 행이라 응답은 넉넉히 120초
     response.raise_for_status()  # NeoWs에서 사용했던 것과 동일 — 4xx/5xx면 여기서 예외를 발생시켜 멈춤
 
     rows = response.json()

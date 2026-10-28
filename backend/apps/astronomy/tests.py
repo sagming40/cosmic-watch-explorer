@@ -27,7 +27,7 @@ from config.test_utils import (
     nasa_neo_item,
 )
 
-NASA_GET = "apps.astronomy.services.nasa_neo.requests.get"
+NASA_GET = "apps.astronomy.services.nasa_neo._http.get"  # NASA 전용 Session (10-28 #9)
 
 
 class _NotJson(FakeResponse):
@@ -117,6 +117,20 @@ class NeoDashboardTests(BaseAPITestCase):
         res = self.client.get("/api/neo/?date=2026-13-99")
         self.assertEqual(res.status_code, 400)
         self.assertEqual(res.json()["error"]["code"], "INVALID_DATE")
+
+
+class NasaRetryConfigTests(BaseAPITestCase):
+    """#9 (10-28) ─ 재시도 설정이 의도대로인지 (실제 네트워크 재시도는 테스트에서 NASA를 안 부르므로 설정으로 확인)"""
+
+    def test_retry_once_on_5xx_only_for_get(self):
+        from apps.astronomy.services.nasa_neo import NASA_TIMEOUT, _http
+
+        retry = _http.get_adapter("https://api.nasa.gov/").max_retries
+        self.assertEqual(retry.total, 1)
+        self.assertEqual(set(retry.status_forcelist), {500, 502, 503, 504})  # 4xx·429는 다시 안 함
+        self.assertEqual(set(retry.allowed_methods), {"GET"})
+        self.assertFalse(retry.raise_on_status)
+        self.assertEqual(NASA_TIMEOUT, (5, 8))
 
 
 class ConcurrentFirstSaveTests(BaseAPITestCase):
