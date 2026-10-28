@@ -164,6 +164,9 @@ Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필
 - **2.5절 주소는 전부 로그인해야 열린다(10-27~).** 테스트 계정은 화면에서 가입해 쓰고(비밀번호는 대화에 남기지 않는다), 확인 뒤 `manage.py shell`에서 지운다.
 - NEO 상세는 처음 열 때 NASA Lookup을 부른다 → 스로틀 `neo_detail_fetch` 30회/시간. 반복 확인은 같은 ID로.
 - Claude가 브라우저 패널로 확인할 때, 창이 가려져 있으면 **스크린샷이 예전 화면으로 찍힐 수 있다** → 색·개수 같은 판정은 `javascript_tool`로 계산값(`getComputedStyle`, DOM 개수)을 읽어서 한다.
+  - 가려진 창에선 **전환 애니메이션이 시작점에서 멈춘다** → 색 판정 전에 `*{transition:none!important}` 스타일을 넣고 읽는다.
+  - 패널의 Tab 키·스크립트 `focus()`는 `:focus-visible`을 켜지 않는다 → **초점 링이 보이는지는 판정 불가**(이동 순서·Enter는 확인 가능). 초점 링은 사용자에게 실제 브라우저 확인을 부탁한다.
+  - 실제 데이터에 없는 상태(0건 날짜 등)는 DB에 가짜 행을 넣지 말고, 개발 서버에서 `const { api } = await import('/src/api/client.ts')` 후 그 요청에만 `cfg.adapter`로 가짜 응답을 끼운다. 확인 뒤 `eject`.
 
 ---
 
@@ -231,7 +234,8 @@ frontend/src/
 - **로그에 NASA 키 금지**: 키가 URL(`?api_key=`)에 실려서 requests 오류 문구·트레이스백에 그대로 나온다 → NASA 오류는 `exc_info`·`str(원래 예외)`를 남기지 않고 `NasaUnavailable`의 종류 문구만. 요청 처리 중 `print` 금지(`logging`만 ─ 10-28 cp949 503 사례).
 - NASA 데이터 저장은 `_save_atomic`(transaction + 충돌 1회 재시도) 안에서. 네트워크 호출은 그 밖에서.
 - 백엔드 기능을 바꾸면 테스트도 같이 추가한다(`apps/*/tests.py`).
-- `--hazard` 색(#D64545)은 위험 표시 전용. 버튼·링크에 쓰지 않는다.
+- `--hazard` 색(#F43F5E)은 위험 표시 전용. 버튼·링크에 쓰지 않는다.
+- 접근성(10-28 M5): 입력칸·버튼 테두리는 shadcn `--input`(= `--dim`, 대비 5.59). `--line`은 장식 테두리 전용(1.23). `outline-none`을 새로 쓰면 감싼 요소에 `focus-within` 링을 준다. 전역 `:focus-visible` 링·reduced-motion 규칙은 `index.css` `@layer base`.
 - 범위 관리: 새 기능이 떠오르면 구현하지 않고 `01` 문서 3.2절(MVP 제외 범위)에 적는다. 확정된 "나중에" 항목: error boundary·커스텀 달력(M5).
 
 ### 3.4 스타일 규칙 (Tailwind CSS v4 + shadcn/ui, 2026-10-27 도입)
