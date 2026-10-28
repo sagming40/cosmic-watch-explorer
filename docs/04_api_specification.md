@@ -6,7 +6,7 @@
 | 문서명 | API 명세서 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.9 |
+| 버전 | v1.10 |
 | 최종 수정일 | 2026-09-10 |
 | 프레임워크 | Django REST Framework |
 | 상태 | 확정 |
@@ -25,6 +25,7 @@
 | v1.7 | 2026-10-28 | 4.4 로그인·가입 횟수 제한(429), 5.1 미래 날짜 24시간 유효기간·조회 범위 1900~2200, 5.2 `orbit_status`와 NASA 실패 시 200(설계 결정 ④), 재시도·로그 규칙 · 4.4 브라우저 종료 시 로그아웃(세션 쿠키) |
 | v1.8 | 2026-10-28 | 4.6절 마이페이지 API 5개 신설(18~22번, 엔드포인트 22개), 4.2 user 블록에 `date_joined`·`preferences` |
 | v1.9 | 2026-10-28 | 프로필 사진 API(23~25번 ─ 엔드포인트 25개), user 블록에 `avatar_url` |
+| v1.10 | 2026-10-28 | 5.4절 다음 근접 접근 API(26번, JPL CAD) 신설 ─ 엔드포인트 26개, 8장 대응표에 카운트다운 |
  
 ---
  
@@ -196,6 +197,7 @@ export default {
 | 23 | GET | `/api/account/avatar/` | 프로필 사진 보기 (image/webp) | 필요 (10-28) |
 | 24 | PUT | `/api/account/avatar/` | 프로필 사진 올리기 (multipart) | 필요 (10-28) |
 | 25 | DELETE | `/api/account/avatar/` | 기본(머리글자)으로 | 필요 (10-28) |
+| 26 | GET | `/api/neo/next-approach/` | NEO 대시보드 카운트다운 (오늘일 때만) | 필요 (10-28, 5.4절) |
 
 > **2026-10-27 변경 ─ 기본 잠금.** `settings.py`의 `DEFAULT_PERMISSION_CLASSES = [IsAuthenticatedOr401]`로 모든 API가 로그인 필요가 기본이고, 인증 API 1~4번만 `AllowAny`로 연다. 6~11번은 처음엔 "—"(누구나)였다. 비로그인 요청은 뷰에 들어가기 전에 401로 막혀서 NASA를 부르지도 않는다(스로틀 낭비도 없다). 새로 만드는 API는 따로 붙이지 않아도 잠긴다.
  
@@ -668,6 +670,62 @@ Neo 존재 여부를 먼저 확인한다. (5.2와 동일 원칙).
 
 ---
  
+### 5.4 `GET /api/neo/next-approach/` — 다음 근접 접근 (카운트다운, 10-28 추가)
+
+대시보드 "다음 근접 접근까지" 블록용. **지금 이후 가장 먼저 오는, 지구에서 0.05 AU(19.46 LD) 안쪽 접근 1건.**
+요청 파라미터 없음. 로그인 필요(기본 잠금).
+
+**원본: NASA/JPL Close Approach Data API** (`ssd-api.jpl.nasa.gov/cad.api`, 키 없음) ─ `services/jpl_cad.py`
+
+| 결정 | 이유 |
+|---|---|
+| 우리 DB가 아니라 JPL에 묻는다 | DB에는 누군가 조회한 날짜만 있다. 거기서 고르면 안 연 날짜의 접근이 빠지고 기기마다 답이 다르다 |
+| 기준 0.05 AU | JPL CNEOS 근접 접근 표 기본값 = PHA 판정 거리(대시보드 FAQ와 같은 숫자). 1 LD 기준은 앞으로 365일에 1건뿐(10-28 실측) |
+| DB에 저장 안 함, 서버 캐시만 | 몇 시간마다 다시 계산되는 예보. 6시간마다 앞으로 60일 중 20건을 받고, 지나간 건 버리며 쓴다 |
+| 스로틀 없음 | JPL 호출은 서버 전체에서 6시간에 1번(+ 받아 둔 게 다 지나갔을 때). 사용자가 몇 번 요청하든 늘지 않는다 |
+| 시각 = JD(TDB) − 69.184초 | JPL 시각은 TDB(UTC보다 69.184초 빠름). 화면이 초 단위로 세서 맞춘다 |
+| 상세 ID는 우리 DB에서 이름으로 | JPL(SBDB) 번호와 NeoWs 번호가 다르다(2018 GS1 = 50802451 / 3802428). 상세 API는 DB에 없는 ID면 404라 없으면 `null` |
+
+**응답 `200`** (10-28 실측값)
+
+```json
+{
+  "next_approach": {
+    "designation": "2018 GS1",
+    "name": "(2018 GS1)",
+    "nasa_id": "3802428",
+    "approach_datetime_utc": "2026-10-28T16:13:30.317312Z",
+    "approach_date": "2026-10-28",
+    "time_sigma_minutes": 341,
+    "miss_distance_au": 0.0283485189189211,
+    "miss_distance_km": 4240878.1,
+    "miss_distance_ld": 11.03,
+    "miss_distance_min_ld": 10.01,
+    "miss_distance_max_ld": 12.09,
+    "is_within_lunar_distance": false,
+    "velocity_km_s": 9.31939189106332,
+    "absolute_magnitude_h": 22.59
+  },
+  "criteria": { "max_distance_au": 0.05, "max_distance_ld": 19.46, "window_days": 60 },
+  "source": "NASA/JPL SBDB Close Approach Data API",
+  "fetched_at": "2026-10-28T05:54:09.381324Z"
+}
+```
+
+| 필드 | 설명 |
+|---|---|
+| `nasa_id` | 우리 DB에 있는 소행성이면 상세 주소용 ID, 없으면 `null` → 화면은 `approach_date` 대시보드로 안내 |
+| `approach_date` | 접근 시각의 **UTC 날짜** ─ 대시보드 `?date=`(NeoWs `approach_date`)와 같은 기준 |
+| `time_sigma_minutes` | 예측 시각 오차(±분). `0` = 1분 미만, `null` = JPL이 주지 않음 |
+| `miss_distance_min_ld` / `max_ld` | 궤도 오차를 넣은 최소·최대 거리. 궤도가 덜 정해진 천체는 0.22~1.47 LD처럼 넓다 |
+| `is_within_lunar_distance` | 1 LD 안쪽인가. 반올림한 LD가 아니라 km 원본으로 비교(`units.py`) |
+
+- 60일 안에 기준 안쪽 접근이 없으면 `"next_approach": null` (200).
+- **`503 UPSTREAM_ERROR`**: JPL에서 못 받았고 받아 둔 예보 중 남은 것도 없을 때만. 남은 게 있으면 그걸로 200. 실패하면 1분 동안은 JPL을 다시 부르지 않는다.
+- URL은 `neo/<nasa_id>/`보다 **먼저** 등록한다(뒤에 두면 `next-approach`가 소행성 ID로 잡혀 404).
+
+---
+
 ## 6. 외계행성 API
  
 ### 6.1 `GET /api/exoplanets/` — 카탈로그 검색
@@ -1021,6 +1079,7 @@ CloseApproach.objects.filter(
 | 앱 초기화 | 최초 1회 | `GET /auth/csrf/` → `GET /auth/me/` |
 | NEO 대시보드 | 진입 / 날짜 변경 | `GET /neo/?date=` |
 | NEO 대시보드 | 정렬 변경 | 재호출 없이 **클라이언트에서 정렬** |
+| NEO 대시보드 | 오늘을 볼 때 진입 | `GET /neo/next-approach/` (대시보드 요청과 따로 ─ 실패해도 목록은 그대로) |
 | NEO 상세 | 진입 | `GET /neo/{nasa_id}/` |
 | NEO 상세 | "더 보기" | `GET /neo/{nasa_id}/approaches/?page=2` |
 | NEO 상세 | 저장 클릭 | `POST` 또는 `DELETE /watchlist/neo/` |

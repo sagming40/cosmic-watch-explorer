@@ -137,8 +137,8 @@ npm run dev                         # http://localhost:5173
 Claude가 화면을 확인할 때는 `.claude/launch.json`의 `frontend`/`backend` 설정으로 띄워서 브라우저 패널로 본다(5173이 사용 중이면 5174 등으로 자동 이동).
 Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필요 없다. 백엔드가 꺼져 있으면 프론트에는 `NETWORK_ERROR`가 아니라 `UNKNOWN_ERROR`(Vite가 만든 502)가 뜬다 — 정상.
 
-**백엔드 테스트** (10-28~): `backend`에서 `python manage.py test` (65개, 약 30초). NASA는 가짜(mock)라 키·네트워크와 무관하다. 테스트 DB(`test_cosmic_watch`)를 자동으로 만들었다 지우므로 그 기기의 DB 계정에 CREATE 권한이 있어야 한다. 백엔드를 고치면 커밋 전에 반드시 돌린다.
-**프론트 E2E 테스트** (10-28~): `frontend`에서 `npm run test:e2e` (Playwright 9개, 약 30초). 알아서 E2E 전용 DB(`cosmic_watch_e2e`)를 만들고 비운 뒤 고정 데이터를 심고(`prepare_e2e`), 백엔드 8001·프론트 5175를 새로 띄워 **Windows 기본 Edge**로 돌린 뒤 끈다. 개발 서버·개발 DB와 무관, NASA 호출 0. 실패하면 `npx playwright show-trace test-results/…/trace.zip`으로 화면 기록을 본다. 화면을 바꾸면 커밋 전에 돌린다.
+**백엔드 테스트** (10-28~): `backend`에서 `python manage.py test` (76개, 약 30초). NASA·JPL은 가짜(mock)라 키·네트워크와 무관하다. 테스트 DB(`test_cosmic_watch`)를 자동으로 만들었다 지우므로 그 기기의 DB 계정에 CREATE 권한이 있어야 한다. 백엔드를 고치면 커밋 전에 반드시 돌린다.
+**프론트 E2E 테스트** (10-28~): `frontend`에서 `npm run test:e2e` (Playwright 14개, 약 45초). 알아서 E2E 전용 DB(`cosmic_watch_e2e`)를 만들고 비운 뒤 고정 데이터를 심고(`prepare_e2e`), 백엔드 8001·프론트 5175를 새로 띄워 **Windows 기본 Edge**로 돌린 뒤 끈다. 개발 서버·개발 DB와 무관, NASA 호출 0(JPL은 `JPL_API_BASE`를 닿지 않는 주소로 → 카운트다운 화면은 응답을 가짜로 끼워 확인). 실패하면 `npx playwright show-trace test-results/…/trace.zip`으로 화면 기록을 본다. 화면을 바꾸면 커밋 전에 돌린다.
 **NASA 장애 실험**: `.env`는 건드리지 않고 서버를 띄울 때만 환경변수로 가짜 키를 준다(`load_dotenv()`는 이미 있는 환경변수를 덮어쓰지 않는다) → `NASA_API_KEY=INVALID_TEST_KEY python manage.py runserver`. NASA가 403을 준다.
 
 ### 2.4 세션 종료 시
@@ -179,7 +179,7 @@ Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필
 | `DEVLOG.md` | 현재 상태, 날짜별 작업·트러블슈팅 기록 | Tier 1 (매 세션) |
 | `05_milestones.md` | M0~M8 작업 목록·완료 기준 (M7 확장·M8 데스크톱 앱은 10-28 계획) | Tier 1 (매 세션) |
 | `02_database_design.md` | ERD, 테이블 10개(+ Django auth_user), DDL | Tier 2 (구현과 어긋날 때) |
-| `04_api_specification.md` | 엔드포인트 25개(마이페이지 8개 포함), 오류 봉투, 페이징 | Tier 2 |
+| `04_api_specification.md` | 엔드포인트 26개(마이페이지 8개·카운트다운 1개 포함), 오류 봉투, 페이징 | Tier 2 |
 | `01_requirements_and_features.md` | 요구사항, MVP 범위, 우선순위 | Tier 3 (드물게) |
 | `03_user_scenarios_and_uiux.md` | 화면 설계, 디자인 토큰, 컴포넌트 목록 | Tier 3 |
 
@@ -190,7 +190,7 @@ backend/
                      pagination.py(CommonPagination), permissions.py(IsAuthenticatedOr401)
   apps/astronomy/    models(Neo, CloseApproach, OrbitalData, HostStar, Exoplanet, NeoFetchLog),
                      views, serializers, filters.py(외계행성 다중 조건 검색), units.py(LD·광년 환산 — 384400은 여기만),
-                     services/(nasa_neo.py ─ NasaUnavailable·재시도 Session·_save_atomic, exoplanet_archive.py — 외부 API 격리),
+                     services/(nasa_neo.py ─ NasaUnavailable·재시도 Session·_save_atomic, exoplanet_archive.py, jpl_cad.py ─ 카운트다운용 JPL 근접 접근 예보(DB 저장 없이 캐시) — 외부 API 격리),
                      management/commands/fetch_exoplanets.py
   config/test_utils.py 테스트 공용(BaseAPITestCase·데이터 생성·가짜 NASA 응답). 각 앱 tests.py가 쓴다
   apps/astronomy/management/commands/prepare_e2e.py  E2E 전용 DB 준비(만들기·비우기·심기) ─ DB 이름이 _e2e로 끝날 때만 동작
@@ -215,6 +215,7 @@ frontend/src/
   components/layout/ Header(알약 메뉴 + 로그인 상태), ProfileMenu(프로필 원 → 미니 메뉴), Layout(배경 + Outlet + ErrorBoundary)
   components/neo/    대시보드: DateNavigator(◀ 날짜 버튼=달력 ▶ 오늘), NeoSummary, LunarDistanceBar, NeoScatterChart, NeoListItem, NeoFaq
                      상세: OrbitPanel(궤도 모식도), NeoSizePanel, ObservationPanel, ApproachTable
+                     카운트다운: NextApproachCountdown(오늘일 때만, 1초마다 남은 시간)
                      공용: chart.ts(눈금 범위·점 변환), ChartTooltip
   components/exoplanet/ FilterPanel(9개 조건), FilterChips, ExoplanetListItem, HostStarPanel, PlanetSizePanel, SiblingPlanets
   utils/compareQuery.ts 비교 대상 ↔ 주소(?exo=&neo=), 그룹당 최대 4개, 지구 반지름 상수(6371 ─ NASA 값 환산용이 아닌 고정 기준)
@@ -276,4 +277,5 @@ frontend/src/
 - **로그인 후 쓰기(POST/DELETE)는 브라우저로 확인.** curl·`django.test.Client`는 Origin을 안 보내서 CSRF Origin 검사를 못 잡는다. Vite 프록시는 `changeOrigin: false`여야 한다(true면 Host=8000 ≠ Origin=5173 → 403). DRF는 비로그인 요청엔 CSRF를 안 봐서 로그인·가입만 되고 그 뒤가 막히는 식으로 나타난다.
 - `auto_now_add` 필드는 `update_or_create`로 갱신되지 않는다(처음 만들 때만 찍힌다) → 갱신이 필요하면 defaults에 직접 넣는다(`NeoFetchLog.fetched_at` 사례).
 - 자식 프로세스에 환경변수를 통째로 넘기면 이름 충돌이 난다: `DEBUG=pw:webserver`(Playwright 로그)가 Django `DEBUG`로 내려가 배포 모드로 켜졌다 → `playwright.config.ts` 백엔드 env에 `DEBUG: "True"` 고정 (10-28).
+- **JPL 번호 ≠ NeoWs 번호**: 같은 소행성이 SBDB SPK-ID 50802451, NeoWs `nasa_id` 3802428(2018 GS1). 상세 API는 DB에 없는 ID면 404 → JPL 쪽 소행성은 이름(fullname = NeoWs name)으로 우리 DB에서 찾는다 (10-28).
 - 반복 오타 주의 필드: `observations_used`, `data_arc_days`.
