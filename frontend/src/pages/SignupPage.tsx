@@ -61,6 +61,7 @@ function SignupPage() {
       const e2 = err as AppError;
       if (e2.code === "VALIDATION_ERROR" && e2.fields) setFieldErrors(e2.fields);
       else if (e2.code === "VALIDATION_ERROR") setFormError(e2.message); // 예: 동시에 같은 아이디로 가입 (IntegrityError)
+      else if (e2.code === "RATE_LIMITED") setFormError("가입 요청이 너무 많아요. 잠시 후 다시 시도해 주세요."); // 시간당 10번 (10-28)
       else setFormError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.");
       setBusy(false);
     }

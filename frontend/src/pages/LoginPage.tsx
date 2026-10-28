@@ -42,6 +42,8 @@ function LoginPage() {
       // 아이디·비밀번호 중 무엇이 틀렸는지 구분하지 않는다 (04 문서 4.4절 ─ 계정 열거 방지)
       if (e2.code === "INVALID_CREDENTIALS") setFormError(e2.message);
       else if (e2.code === "VALIDATION_ERROR") setFieldErrors(e2.fields);
+      // 같은 곳에서 분당 10번 넘게 시도하면 서버가 막는다 (비밀번호 무한 대입 방지, 10-28)
+      else if (e2.code === "RATE_LIMITED") setFormError("로그인 시도가 너무 많아요. 1분 뒤에 다시 시도해 주세요.");
       else setFormError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.");
       setBusy(false);
     }
