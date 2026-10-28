@@ -210,3 +210,95 @@ class AccountTests(BaseAPITestCase):
         for method, url in [("get", "/api/account/"), ("patch", "/api/account/preferences/"), ("post", "/api/account/password/")]:
             with self.subTest(url=url):
                 self.assertEqual(getattr(self.client, method)(url, {}, format="json").status_code, 401)
+
+
+class AvatarTests(BaseAPITestCase):
+    """프로필 사진 (10-28) ─ 문서 04, 4.6절. 이미지는 테스트 안에서 Pillow로 만든다"""
+
+    URL = "/api/account/avatar/"
+
+    def setUp(self):
+        super().setUp()
+        self.user = make_user("pic")
+        self.login_as(self.user)
+
+    @staticmethod
+    def _image(fmt="PNG", size=(400, 300), name=None, exif=None):
+        from io import BytesIO
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+
+        buf = BytesIO()
+        img = Image.new("RGB", size, (200, 80, 40))
+        img.save(buf, format=fmt, **({"exif": exif} if exif is not None else {}))
+        return SimpleUploadedFile(name or f"me.{fmt.lower()}", buf.getvalue(), content_type=f"image/{fmt.lower()}")
+
+    def _put(self, file):
+        return self.client.put(self.URL, {"avatar": file}, format="multipart")
+
+    def test_upload_makes_256_webp_and_url(self):
+        from io import BytesIO
+
+        from PIL import Image
+
+        self.assertIsNone(self.client.get("/api/auth/me/").json()["user"]["avatar_url"])
+        res = self._put(self._image(size=(400, 300)))  # 가로로 긴 사진 → 가운데 정사각형
+        self.assertEqual(res.status_code, 200)
+        url = res.json()["user"]["avatar_url"]
+        self.assertTrue(url.startswith(self.URL + "?v="))
+        self.assertEqual(self.client.get("/api/auth/me/").json()["user"]["avatar_url"], url)
+        got = self.client.get(self.URL)
+        self.assertEqual(got["Content-Type"], "image/webp")
+        img = Image.open(BytesIO(got.content))
+        self.assertEqual((img.format, img.size), ("WEBP", (256, 256)))
+
+    def test_metadata_like_camera_info_is_removed(self):
+        from io import BytesIO
+
+        from PIL import Image
+
+        exif = Image.Exif()
+        exif[0x0110] = "SecretPhone 15"  # Model ─ 폰 사진의 GPS 같은 메타데이터 대신 쓰는 표본
+        self._put(self._image(fmt="JPEG", exif=exif.tobytes()))
+        saved = Image.open(BytesIO(self.client.get(self.URL).content))
+        self.assertEqual(len(saved.getexif()), 0)
+        self.assertNotIn(b"SecretPhone", self.client.get(self.URL).content)
+
+    def test_rejects_non_image_and_too_big_and_missing(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        fake = SimpleUploadedFile("evil.png", b"<script>alert(1)</script>", content_type="image/png")  # 이름표만 PNG
+        self.assertIn("avatar", self._put(fake).json()["error"]["fields"])
+        big = SimpleUploadedFile("big.png", b"0" * (2 * 1024 * 1024 + 1), content_type="image/png")
+        self.assertIn("2MB", self._put(big).json()["error"]["fields"]["avatar"][0])
+        self.assertIn("avatar", self.client.put(self.URL, {}, format="multipart").json()["error"]["fields"])
+        self.assertIsNone(self.client.get("/api/auth/me/").json()["user"]["avatar_url"])  # 아무것도 저장 안 됨
+
+    def test_rejects_decompression_bomb(self):
+        # 단색이라 파일은 작지만 풀면 4,800만 픽셀 ─ 열기 전에 크기로 거절해야 한다
+        res = self._put(self._image(size=(8000, 6000)))
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("해상도", res.json()["error"]["fields"]["avatar"][0])
+
+    def test_delete_back_to_initial(self):
+        self._put(self._image())
+        res = self.client.delete(self.URL)
+        self.assertIsNone(res.json()["user"]["avatar_url"])
+        self.assertEqual(self.client.get(self.URL).status_code, 404)
+
+    def test_only_own_photo_and_login_required(self):
+        from rest_framework.test import APIClient
+
+        self._put(self._image())
+        other = APIClient()
+        other.force_login(make_user("someone"))
+        self.assertEqual(other.get(self.URL).status_code, 404)  # 남의 사진은 꺼낼 방법이 없다(주소에 id가 없음)
+        self.assertEqual(APIClient().get(self.URL).status_code, 401)
+
+    def test_account_delete_removes_photo(self):
+        from apps.accounts.models import UserAvatar
+
+        self._put(self._image())
+        self.client.delete("/api/account/", {"password": PASSWORD}, format="json")
+        self.assertFalse(UserAvatar.objects.exists())

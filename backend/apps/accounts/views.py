@@ -8,6 +8,7 @@ Django 기본 제공 메서드들을 그대로 횔용한다. ─ request.user / 
 
 from django.db import IntegrityError
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.http import HttpResponse
 from django.middleware.csrf import get_token
 
 from rest_framework import status
@@ -16,10 +17,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 
-from config.exception_handler import InvalidCredentials
+from config.exception_handler import InvalidCredentials, ResourceNotFound
 from config.permissions import IsAuthenticatedOr401
 
-from .models import UserPreference
+from .avatar import AvatarError, process_avatar
+from .models import UserAvatar, UserPreference
 from .serializers import (
     EmailChangeSerializer, LoginSerializer, PasswordChangeSerializer, PasswordOnlySerializer,
     PreferenceSerializer, SignupSerializer, UserBriefSerializer,
@@ -246,3 +248,44 @@ class PasswordChangeView(APIView):
         user.save(update_fields=["password"])
         update_session_auth_hash(request, user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+class AvatarView(APIView):
+    """
+    /api/account/avatar/ ─ 프로필 사진 (문서 04, 4.6절 · 10-28 추가)
+      GET    → 내 사진(image/webp). 없으면 404
+      PUT    → multipart "avatar" 파일 1개. 서버가 이미지로 열어 보고 256×256 WebP로 새로 만들어 저장 → user 블록
+      DELETE → 기본(머리글자)으로 → user 블록
+
+    로그인 필요(전역 기본값). 주소에 사용자 id가 없다 ─ 항상 "내" 사진만 다룬다(남의 사진을 주소로 꺼낼 수 없게).
+    """
+    throttle_scope = "account_avatar"
+
+    def get_throttles(self):
+        # 보기(GET)는 헤더가 그릴 때마다 부르므로 세지 않는다. 올리기·지우기만 시간당 30번
+        return [] if self.request.method == "GET" else super().get_throttles()
+
+    def get(self, request):
+        row = UserAvatar.objects.filter(user=request.user).only("image").first()
+        if row is None:
+            raise ResourceNotFound("프로필 사진이 없습니다.")
+        response = HttpResponse(bytes(row.image), content_type="image/webp")
+        # 주소의 ?v=가 바뀌면 다른 주소라, 같은 주소는 오래 캐시해도 된다. private ─ 공용 캐시(프록시)엔 저장 금지
+        response["Cache-Control"] = "private, max-age=31536000, immutable"
+        return response
+
+    def put(self, request):
+        uploaded = request.FILES.get("avatar")
+        if uploaded is None:
+            raise ValidationError({"avatar": ["사진 파일을 골라 주세요."]})
+        try:
+            data = process_avatar(uploaded)
+        except AvatarError as exc:
+            raise ValidationError({"avatar": [str(exc)]})
+        UserAvatar.objects.update_or_create(user=request.user, defaults={"image": data})
+        return Response({"user": UserBriefSerializer(request.user).data})
+
+    def delete(self, request):
+        UserAvatar.objects.filter(user=request.user).delete()
+        return Response({"user": UserBriefSerializer(request.user).data})

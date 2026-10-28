@@ -36,3 +36,27 @@ class UserPreference(models.Model):
 
     def __str__(self):
         return f"{self.user_id} 설정"
+
+
+class UserAvatar(models.Model):
+    """
+    프로필 사진 ─ 256×256 WebP로 줄인 바이트를 DB에 그대로 넣는다 (10-28, 문서 02 3.9절).
+
+    파일(MEDIA 폴더)이 아니라 DB에 두는 이유:
+    무료 배포 서비스(Render·Railway 등)는 서버를 다시 켜면 디스크에 쓴 파일이 사라진다 → 사진이 날아간다.
+    256px WebP는 약 10~30KB라 DB에 넣어도 부담이 없고, 별도 저장소(S3 등)·설정이 필요 없다.
+    사진이 커지거나 여러 장이 되면 그때 외부 저장소로 옮긴다.
+
+    UserPreference와 테이블을 나눈 이유: /me/는 요청마다 설정을 읽는데, 그때마다 사진 바이트까지 끌고 오지 않게.
+    """
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="avatar")
+    image = models.BinaryField()  # 서버가 다시 만든 WebP 바이트 (원본은 저장하지 않는다 ─ 위치 정보 등 메타데이터 제거)
+    updated_at = models.DateTimeField(auto_now=True)
+    # ⬆️ 주소 끝에 ?v=시각을 붙여 브라우저 캐시를 깬다 ─ 사진을 바꿨는데 예전 사진이 보이지 않게
+
+    class Meta:
+        db_table = "user_avatar"
+
+    def __str__(self):
+        return f"{self.user_id} 프로필 사진"

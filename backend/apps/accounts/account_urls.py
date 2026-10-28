@@ -5,11 +5,12 @@
 
 from django.urls import path
 
-from .views import AccountView, EmailChangeView, PasswordChangeView, PreferenceView
+from .views import AccountView, AvatarView, EmailChangeView, PasswordChangeView, PreferenceView
 
 urlpatterns = [
     path("", AccountView.as_view(), name="account"),
     path("preferences/", PreferenceView.as_view(), name="account-preferences"),
     path("email/", EmailChangeView.as_view(), name="account-email"),
     path("password/", PasswordChangeView.as_view(), name="account-password"),
+    path("avatar/", AvatarView.as_view(), name="account-avatar"),  # 10-28 프로필 사진
 ]

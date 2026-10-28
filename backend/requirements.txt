@@ -4,3 +4,4 @@ mysqlclient==2.3.0
 python-dotenv==1.2.4
 requests==2.34.2
 django-filter==26.2
+Pillow==13.0.0

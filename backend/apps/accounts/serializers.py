@@ -14,7 +14,7 @@ from django.core.validators import RegexValidator
 
 from rest_framework import serializers
 
-from .models import UserPreference
+from .models import UserAvatar, UserPreference
 
 
 # Django User.username 자체 검증기(UnicodeUsernameValidator)는 한글도 통과시킨다.
@@ -57,9 +57,18 @@ class UserBriefSerializer(serializers.Serializer):
     email = serializers.EmailField()
     date_joined = serializers.DateTimeField()
     preferences = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()  # ⭐ 10-28 프로필 사진. 없으면 null → 화면은 머리글자
 
     def get_preferences(self, obj):
         return preferences_of(obj)
+
+    def get_avatar_url(self, obj):
+        # 사진 바이트는 끌고 오지 않고 "언제 바꿨는지"만 묻는다 (obj.avatar로 접근하면 바이트까지 읽힌다)
+        updated = UserAvatar.objects.filter(user=obj).values_list("updated_at", flat=True).first()
+        if updated is None:
+            return None
+        # ?v= ─ 사진을 바꾸면 주소가 바뀌어 브라우저가 새로 받는다. 사용자 id도 넣어 같은 브라우저의 다른 계정과 안 섞이게
+        return f"/api/account/avatar/?v={obj.pk}-{int(updated.timestamp())}"
 
 
 class SignupSerializer(serializers.Serializer):
