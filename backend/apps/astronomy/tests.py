@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import requests
 
-from apps.astronomy.models import CloseApproach, NeoFetchLog, OrbitalData
+from apps.astronomy.models import CloseApproach, Neo, NeoFetchLog, OrbitalData
 from config.test_utils import (
     BaseAPITestCase,
     FakeResponse,
@@ -26,6 +26,13 @@ from config.test_utils import (
 )
 
 NASA_GET = "apps.astronomy.services.nasa_neo.requests.get"
+
+
+class _NotJson(FakeResponse):
+    """200인데 본문이 JSON이 아닌 응답 (NASA 앞단의 점검 페이지 같은 것)"""
+
+    def json(self):
+        raise ValueError("not json")
 DAY = "2026-11-12"
 
 
@@ -77,6 +84,32 @@ class NeoDashboardTests(BaseAPITestCase):
         self.assertEqual(res.status_code, 503)
         self.assertEqual(res.json()["error"]["code"], "UPSTREAM_ERROR")
         self.assertFalse(NeoFetchLog.objects.filter(fetch_date=DAY).exists())  # 실패한 날은 장부에 안 적는다
+
+    # ─── #3 예외 좁히기 / #4 묶음 저장 (10-28) ───
+    def test_nasa_5xx_and_non_json_are_503(self):
+        for fake in (FakeResponse(500), _NotJson()):
+            with self.subTest(fake=type(fake).__name__), patch(NASA_GET, return_value=fake):
+                res = self.client.get(f"/api/neo/?date={DAY}")
+                self.assertEqual(res.status_code, 503)
+
+    def test_unexpected_nasa_shape_is_not_disguised_as_503(self):
+        # 응답 모양이 바뀐 건 "NASA 연결 실패"가 아니다 → 숨기지 않고 진짜 오류로 (테스트 클라이언트는 예외를 그대로 올린다)
+        broken = nasa_neo_item("42", DAY)
+        del broken["estimated_diameter"]
+        with patch(NASA_GET, return_value=FakeResponse(200, nasa_feed(DAY, [broken]))):
+            with self.assertRaises(KeyError):
+                self.client.get(f"/api/neo/?date={DAY}")
+
+    def test_failure_midway_saves_nothing(self):
+        # 첫 소행성은 멀쩡, 두 번째에서 터진다 → 첫 번째도 저장되면 안 된다 (반쯤 저장 방지)
+        broken = nasa_neo_item("44", DAY)
+        del broken["estimated_diameter"]
+        feed = nasa_feed(DAY, [nasa_neo_item("43", DAY), broken])
+        with patch(NASA_GET, return_value=FakeResponse(200, feed)):
+            with self.assertRaises(KeyError):
+                self.client.get(f"/api/neo/?date={DAY}")
+        self.assertFalse(Neo.objects.filter(nasa_id="43").exists())
+        self.assertFalse(NeoFetchLog.objects.filter(fetch_date=DAY).exists())
 
     def test_invalid_date_format(self):
         res = self.client.get("/api/neo/?date=2026-13-99")

@@ -4,6 +4,7 @@ import requests
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 
 from apps.astronomy.models import Neo, CloseApproach, OrbitalData, NeoFetchLog
@@ -15,6 +16,42 @@ from apps.astronomy.models import Neo, CloseApproach, OrbitalData, NeoFetchLog
 # logging은 출력에 실패해도 요청을 멈추지 않는다 ─ "택배는 배달했는데 영수증 서명 실패로 배달 실패 처리"가 다시 없게.
 # 문구도 cp949에 있는 글자만 쓴다 ("—" → "-").
 logger = logging.getLogger(__name__)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# NASA 통신 ─ "NASA 탓"인 실패만 NasaUnavailable로 (10-28)
+# ═══════════════════════════════════════════════════════════════════
+class NasaUnavailable(Exception):
+    """
+    NASA와 통신하지 못했다 ─ 연결 실패·시간 초과·4xx/5xx 응답·JSON이 아닌 응답.
+    뷰는 이것만 잡아서 503(UPSTREAM_ERROR)으로 바꾼다.
+
+    예전엔 뷰가 except Exception으로 전부 잡았다 → 오늘(10-28) print 인코딩 오류 같은 "우리 코드 버그"까지
+    "NASA 연결 실패"로 둔갑했다. 이제 응답 모양이 바뀌어 KeyError가 나면 숨기지 않고 500으로 드러난다.
+
+    메시지에는 "HTTP 403", "ConnectTimeout"처럼 종류만 담는다.
+    ⚠️ requests 오류 문구에는 요청 URL(= ?api_key=진짜키)이 그대로 들어 있어서, 원래 예외를 그대로 이어 붙이면
+       (raise ... from exc) 로그·오류 화면에 키가 샌다 → from None으로 끊는다.
+    """
+
+
+def _request_json(url, params, *, missing_ok=False):
+    """
+    NASA에 GET 한 번. 성공하면 JSON(dict), missing_ok인데 404면 None, 그 밖의 실패는 NasaUnavailable.
+    네트워크는 여기서만 탄다 ─ 아래 DB 저장(transaction)과 섞지 않는다 (10초 기다리는 동안 DB를 잡고 있지 않게).
+    """
+    try:
+        response = requests.get(url, params=params, timeout=10)
+    except requests.RequestException as exc:
+        raise NasaUnavailable(type(exc).__name__) from None
+    if missing_ok and response.status_code == 404:
+        return None
+    if response.status_code >= 400:
+        raise NasaUnavailable(f"HTTP {response.status_code}")
+    try:
+        return response.json()
+    except ValueError:
+        raise NasaUnavailable("JSON이 아닌 응답") from None
 
 NASA_FEED_URL = "https://api.nasa.gov/neo/rest/v1/feed"
 # NASA NeoWs(Near Earth Object Web Service)의 '날짜별 목록 조회' 엔드포인트
@@ -168,18 +205,9 @@ def fetch_feed(date_str):
     # "...feed?start_date=2026-08-21&end_date=2026-08-21&api_key=..." ← ❌
     # 특수문자 인코딩 같은 것도 requests 라이브러리가 알아서 처리해준다.
 
-    response = requests.get(NASA_FEED_URL, params=params, timeout=10)
-    # timeout=10: "10초 안에 응답이 없을 경우 포기할 것" → 안전장치
-    # timeout을 지정해주지 않으면 NASA가 응답을 주지 않을 경우 프로그램이 무한정 멈춰버림
-    # 비유: 전화를 걸었는데 상대방이 받지 않으면 언젠간 전화를 끊는 것과 같음.
-
-    response.raise_for_status()
-    # 응답 상태 코드가 200번대(성공)가 아니면 예외(에러)를 던져서 함수를 중단 시키는 역할
-    # 예: API 키가 틀린 경우 403, 요청 형식이 잘못 된 경우 400이 오는데, 이 함수가 없으면
-    # 성공으로 착각하고 잘못된 응답을 계속 parsing 하려다 훨씬 더 이해하기 어려운 에러를 만나게 됨.
-
-    data = response.json()
-    # NASA에서 제공받은 응답 본문(텍스트)을 Python Dictionary로 변환
+    data = _request_json(NASA_FEED_URL, params)
+    # timeout=10(_request_json 안): "10초 안에 응답이 없을 경우 포기할 것" → 안전장치
+    # 상태 코드가 4xx/5xx면(예: API 키가 틀리면 403) NasaUnavailable ─ 성공으로 착각하고 parsing하지 않는다.
 
     element_count = data.get("element_count", 0)
     neo_list = data.get("near_earth_objects", {}).get(date_str, [])
@@ -189,6 +217,23 @@ def fetch_feed(date_str):
     # "near_earth_objects" 밑에 날짜를 '키(key)'로 한 번더 감싸서 주는 구조다.
     # 요청한 그 날짜(date_str)로 한 번더 꺼내야 실제 list가 나온다.
 
+    # ─── 저장은 한 묶음(transaction)으로 (10-28) ───
+    # 소행성 10개를 저장하다 6번째에서 터지면, 예전엔 5개만 반쯤 저장된 채로 남았다(장부 NeoFetchLog는 안 적힘).
+    # 묶어 두면 "전부 저장 + 장부 기록" 아니면 "아무것도 안 됨" 둘 중 하나다.
+    # 비유: 택배 한 상자를 반만 받는 일은 없다 ─ 받으면 통째로, 아니면 반송.
+    with transaction.atomic():
+        saved_approach_count = _save_feed(date_str, element_count, neo_list)
+
+    logger.info(
+        "[fetch_feed] %s: 저장 완료 - 신규 CloseApproach %s건 (NASA element_count=%s)",
+        date_str, saved_approach_count, element_count,
+    )
+
+    return element_count, saved_approach_count
+
+
+def _save_feed(date_str, element_count, neo_list):
+    """Feed 응답을 DB에 저장한다(transaction 안에서 불린다). 새로 저장된 접근 기록 수를 반환."""
     saved_approach_count = 0
 
     for neo_data in neo_list:
@@ -223,7 +268,7 @@ def fetch_feed(date_str):
             neo, neo_data.get("close_approach_data", [])
         )
 
-    # ③ 발주 장부에 "해당 날짜 수집 완료"라고 기록
+    # ③ 발주 장부에 "해당 날짜 수집 완료"라고 기록 ─ 같은 묶음 안이라, 위 저장이 하나라도 실패하면 장부도 안 적힌다
     NeoFetchLog.objects.update_or_create(
         fetch_date=date_str,
         defaults={
@@ -232,12 +277,7 @@ def fetch_feed(date_str):
         },
     )
 
-    logger.info(
-        "[fetch_feed] %s: 저장 완료 - 신규 CloseApproach %s건 (NASA element_count=%s)",
-        date_str, saved_approach_count, element_count,
-    )            
-
-    return element_count, saved_approach_count
+    return saved_approach_count
 
 
 def fetch_neo_detail(nasa_id):
@@ -255,9 +295,9 @@ def fetch_neo_detail(nasa_id):
     params = {"api_key": settings.NASA_API_KEY}
     url = NASA_LOOKUP_URL.format(asteroid_id=nasa_id)
 
-    response = requests.get(url, params=params, timeout=10)
+    data = _request_json(url, params, missing_ok=True)
 
-    if response.status_code == 404:
+    if data is None:
         # Feed 목록엔 이름이 있었지만 Lookup 카탈로그엔 상세 카드가 없는 ID. (서버 장애 아님)
         # "상세 데이터가 없는 소행성"은 UpstreamError로 취급하지 않고 조용히 "궤도 정보 없음"으로 종료한다.
         # NASA 원본에 값이 없으면 null로 남긴다는 원칙 ― units.py의 None 처리와 같은 결이다.
@@ -271,13 +311,22 @@ def fetch_neo_detail(nasa_id):
         neo = Neo.objects.filter(nasa_id=nasa_id).first()
         return neo, 0, False
 
-    response.raise_for_status()
-    # 응답 상태 코드가 200번대(성공)가 아니면 예외(에러)를 던져서 함수를 중단시키는 역할
-    #
-    # 404 상태 코드가 아닌 4xx/5xx 상태 코드는 여기서 그대로 예외로 올라간다. 
-    # ― 진짜 서버 장애, API 키 문제 등
-    data = response.json()
+    # 404가 아닌 4xx/5xx(진짜 서버 장애, API 키 문제 등)는 _request_json이 이미 NasaUnavailable로 올렸다.
 
+    # 저장은 Feed와 같은 이유로 한 묶음 ─ 본체·접근 기록·궤도가 반쯤만 저장되지 않게
+    with transaction.atomic():
+        neo, saved_approach_count, orbit_saved = _save_lookup(data)
+
+    logger.info(
+        "[fetch_neo_detail] %s: 신규 CloseApproach %s건 / 궤도 저장 %s",
+        nasa_id, saved_approach_count, orbit_saved,
+    )
+
+    return neo, saved_approach_count, orbit_saved
+
+
+def _save_lookup(data):
+    """Lookup 응답을 DB에 저장한다(transaction 안에서 불린다)."""
     # ① Neo 본체 ― Feed와 달리 designation까지 채운다
     #    Feed 응답엔 designation이 없어서 M1에선 비워둘 수 밖에 없었다.
     neo, _ = Neo.objects.update_or_create(
@@ -353,10 +402,4 @@ def fetch_neo_detail(nasa_id):
     # # 그 장부는 "어느 '날짜'를 Feed롤 수집했나"를 기록하는 것이라 단위가 다르다.
     # 여기서 기록을 남기면 Dashboard가 "그 날자는 이미 수집됨"으로 착각한다.
     # 상세 수집의 장부 역할은 'orbital_data 행이 존재하는가' 자체가 대신한다.
-     
-    logger.info(
-        "[fetch_neo_detail] %s: 신규 CloseApproach %s건 / 궤도 저장 %s",
-        nasa_id, saved_approach_count, orbit_saved,
-    )
-
     return neo, saved_approach_count, orbit_saved

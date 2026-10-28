@@ -18,7 +18,7 @@ from .serializers import (
     NeoApproachSerializer, NeoDetailSerializer, ApproachRowSerializer,  # ⭐ ApproachRowSerializer 추가
     ExoplanetRowSerializer, ExoplanetDetailSerializer, # ⭐ 추가
 )  
-from .services.nasa_neo import fetch_feed, fetch_neo_detail
+from .services.nasa_neo import NasaUnavailable, fetch_feed, fetch_neo_detail
 from .units import km_to_lunar_distance, parsec_to_light_year  # ⭐ parsec_to_light_year 추가
 from .filters import build_exoplanet_queryset  # ⭐ 추가
 
@@ -88,7 +88,9 @@ class NeoDashboardView(APIView):
             
             try:
                 fetch_feed(target_date.strftime("%Y-%m-%d"))
-            except Exception as exc:
+            except NasaUnavailable as exc:
+                # NASA 탓인 실패만 503. 우리 코드 버그(KeyError 등)는 잡지 않는다 → 500으로 드러난다 (10-28)
+                logger.warning("[NeoDashboardView] %s: NASA Feed 실패(%s)", target_date, exc)
                 raise UpstreamError() from exc
             
             is_cached = False
@@ -237,12 +239,11 @@ class NeoDetailView(APIView):
             # 돌려받은 neo는 쓰지 않는다 ─ 호출한 쪽(get)이 DB에서 다시 읽는다.
             # Lookup에만 있는 designation 같은 field가 이 시점에 새로 채워지기 때문에,
             # ①에서 가져온 예전 neo를 계속 사용하면 갱신된 값을 놓친다.
-        except Exception as exc:
+        except NasaUnavailable as exc:
             # 실패 원인은 로그에 남기고(화면엔 안 보임), 응답은 DB에 있는 것으로 계속한다.
-            # ⚠️ exc_info(트레이스백)·str(exc)는 남기지 않는다 ─ requests 오류 문구에 요청 URL이 통째로 들어가서
-            #    "?api_key=진짜키"가 로그에 찍힌다 (10-28 가짜 키 실험에서 발견). 종류·상태 코드만 남긴다.
-            status = getattr(getattr(exc, "response", None), "status_code", None)
-            logger.warning("[NeoDetailView] %s: NASA Lookup 실패(%s %s) - 저장된 데이터로 응답", nasa_id, type(exc).__name__, status or "")
+            # exc의 문구는 "HTTP 403"처럼 종류뿐이다 ─ 키가 든 URL은 서비스가 이미 떼어냈다(NasaUnavailable 주석).
+            # NASA 탓이 아닌 오류(응답 모양이 바뀐 KeyError 등)는 잡지 않는다 → 500으로 드러난다.
+            logger.warning("[NeoDetailView] %s: NASA Lookup 실패(%s) - 저장된 데이터로 응답", nasa_id, exc)
             return "unavailable"
         # NASA Lookup이 404를 준 경우는 fetch_neo_detail 내부에서 이미 처리되어
         # 여기까지 예외없이 내려온다(orbit_saved=False). ⭐ 값이 없으면 없는대로. 억지로 채우지 않는다.
