@@ -4,7 +4,7 @@ import requests
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.astronomy.models import Neo, CloseApproach, OrbitalData, NeoFetchLog
@@ -33,6 +33,25 @@ class NasaUnavailable(Exception):
     ⚠️ requests 오류 문구에는 요청 URL(= ?api_key=진짜키)이 그대로 들어 있어서, 원래 예외를 그대로 이어 붙이면
        (raise ... from exc) 로그·오류 화면에 키가 샌다 → from None으로 끊는다.
     """
+
+
+def _save_atomic(save, *args):
+    """
+    저장 함수를 한 묶음(transaction)으로 실행한다. UNIQUE 충돌(IntegrityError)이면 딱 한 번만 다시. (10-28 #8)
+
+    언제 충돌하나: 처음 보는 날짜(소행성)를 요청 2개가 동시에 열면 둘 다 "없음"을 보고 NASA를 부른 뒤
+    같은 nasa_id·접근 기록을 동시에 INSERT 한다 → 늦은 쪽이 UNIQUE에 걸린다 (개발 모드 React는 요청을 2번 보낸다).
+    묶음이라 늦은 쪽 저장은 통째로 취소된 상태 → 다시 실행하면 이번엔 update_or_create가 "이미 있음" 쪽으로 간다.
+    두 번째도 충돌이면 진짜 문제라 그대로 올린다.
+    ⚠️ NASA 호출이 두 번 나가는 건 막지 않는다 ─ 처음 보는 대상에서만 생기는 일이라 한 번 더 쓰는 쪽을 택했다.
+    """
+    try:
+        with transaction.atomic():
+            return save(*args)
+    except IntegrityError:
+        logger.info("[nasa_neo] 동시 저장 충돌 - 한 번 다시 저장 (%s)", getattr(save, "__name__", "save"))
+        with transaction.atomic():
+            return save(*args)
 
 
 def _request_json(url, params, *, missing_ok=False):
@@ -223,8 +242,7 @@ def fetch_feed(date_str):
     # 소행성 10개를 저장하다 6번째에서 터지면, 예전엔 5개만 반쯤 저장된 채로 남았다(장부 NeoFetchLog는 안 적힘).
     # 묶어 두면 "전부 저장 + 장부 기록" 아니면 "아무것도 안 됨" 둘 중 하나다.
     # 비유: 택배 한 상자를 반만 받는 일은 없다 ─ 받으면 통째로, 아니면 반송.
-    with transaction.atomic():
-        saved_approach_count = _save_feed(date_str, element_count, neo_list)
+    saved_approach_count = _save_atomic(_save_feed, date_str, element_count, neo_list)
 
     logger.info(
         "[fetch_feed] %s: 저장 완료 - 신규 CloseApproach %s건 (NASA element_count=%s)",
@@ -325,8 +343,7 @@ def fetch_neo_detail(nasa_id):
     # 404가 아닌 4xx/5xx(진짜 서버 장애, API 키 문제 등)는 _request_json이 이미 NasaUnavailable로 올렸다.
 
     # 저장은 Feed와 같은 이유로 한 묶음 ─ 본체·접근 기록·궤도가 반쯤만 저장되지 않게
-    with transaction.atomic():
-        neo, saved_approach_count, orbit_saved = _save_lookup(data)
+    neo, saved_approach_count, orbit_saved = _save_atomic(_save_lookup, data)
 
     logger.info(
         "[fetch_neo_detail] %s: 신규 CloseApproach %s건 / 궤도 저장 %s",

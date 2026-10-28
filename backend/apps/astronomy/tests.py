@@ -119,6 +119,36 @@ class NeoDashboardTests(BaseAPITestCase):
         self.assertEqual(res.json()["error"]["code"], "INVALID_DATE")
 
 
+class ConcurrentFirstSaveTests(BaseAPITestCase):
+    """#8 (10-28) ─ 같은 날짜를 동시에 처음 열어 저장이 충돌하면 한 번 다시 저장"""
+
+    def setUp(self):
+        super().setUp()
+        self.login_as(make_user())
+
+    def test_integrity_error_is_retried_once(self):
+        from django.db import IntegrityError
+
+        from apps.astronomy.services import nasa_neo
+
+        real = nasa_neo._save_feed
+        calls = []
+
+        def collide_first(*args):
+            calls.append(1)
+            if len(calls) == 1:
+                real(*args)  # 저장까지 한 뒤 충돌 → 묶음째 취소돼야 한다
+                raise IntegrityError("Duplicate entry")
+            return real(*args)
+
+        feed = nasa_feed(DAY, [nasa_neo_item("61", DAY)])
+        with patch.object(nasa_neo, "_save_feed", side_effect=collide_first), patch(NASA_GET, return_value=FakeResponse(200, feed)):
+            res = self.client.get(f"/api/neo/?date={DAY}")
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(CloseApproach.objects.filter(neo__nasa_id="61").count(), 1)  # 첫 시도분은 취소돼 중복 없음
+
+
 class NeoFeedRefreshTests(BaseAPITestCase):
     """#7 (10-28) ─ 오늘 이후 날짜는 받은 지 24시간이 지나면 다시 받는다"""
 
