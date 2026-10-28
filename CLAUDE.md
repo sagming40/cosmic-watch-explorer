@@ -251,7 +251,7 @@ frontend/src/
 - 위험은 색만으로 표시하지 않는다: 색 + 모양(고리·띠) + 아이콘·글자 (라임/빨강은 적록색약에서 헷갈림).
 - 링크(`<a>`)는 `@layer base`에서 `--signal` 색이 기본이라, 이름·제목 링크에는 `text-bone`을 직접 붙인다.
 - 화면에 보이는 날짜·시각은 전부 한국 시각(KST)으로 바꿔서 표시한다(NASA `approach_date`는 UTC 날짜라 하루 어긋날 수 있다).
-- 그림자 없음(`--shadow-*` 제거됨). 모서리: 버튼·입력 `rounded-md`(8px) / 내부 박스 `rounded-lg`(12px) / 카드 `rounded-xl`(16px) / 메뉴·칩 `rounded-full`. 한글은 Pretendard(index.html에서 로드).
+- 그림자 없음(`--shadow-*` 제거됨). 모서리: 버튼·입력 `rounded-md`(8px) / 내부 박스 `rounded-lg`(12px) / 카드 `rounded-xl`(16px) / 메뉴·칩 `rounded-full`. 한글은 Pretendard(index.html에서 로드). **`--font-display`·`--font-mono`에도 Plex 바로 뒤에 Pretendard가 있어야 한다** ─ Plex에는 한글이 없어서 빠지면 그 자리 한글이 시스템 글꼴로 바뀐다(10-28 "글씨체가 제각각"). 새 서체를 넣을 때도 같은 규칙.
 - `index.css`에 직접 CSS를 쓸 때는 반드시 `@layer base`(요소 선택자) 또는 `@layer components`(클래스) 안에. 레이어 밖 CSS는 유틸리티를 이겨서 클래스가 무시된다.
 - 기존 컴포넌트의 클래스(`.neo-list-item` 등)는 화면을 손볼 때 Tailwind로 옮긴다(일괄 전환 안 함).
 - **shadcn 컴포넌트 추가 절차** (`frontend` 폴더에서):
