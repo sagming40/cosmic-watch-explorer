@@ -262,3 +262,28 @@ export interface ExoplanetWatchlistCreated {
   exoplanet_id: number;
   saved_at: string;
 }
+
+/** GET /api/neo/next-approach/ ─ 04 문서 5.4절 (10-28 카운트다운). 원본 NASA/JPL CAD, 환산은 서버(units.py) */
+export interface NextApproach {
+  designation: string; // "2025 UK9"
+  name: string; // "(2025 UK9)" ─ NeoWs 이름과 같은 모양
+  nasa_id: string | null; // 우리 DB에 있으면 상세 주소 /neo/:id. 없으면 null → 그날 대시보드(?date=approach_date)로
+  approach_datetime_utc: string;
+  approach_date: string; // UTC 날짜 "YYYY-MM-DD" ─ 대시보드 ?date= 와 같은 기준
+  time_sigma_minutes: number | null; // 예측 시각 오차 ±분 (0 = 1분 미만)
+  miss_distance_au: number;
+  miss_distance_km: number;
+  miss_distance_ld: number;
+  miss_distance_min_ld: number | null; // 궤도 오차를 넣은 범위
+  miss_distance_max_ld: number | null;
+  is_within_lunar_distance: boolean;
+  velocity_km_s: number | null;
+  absolute_magnitude_h: number | null;
+}
+
+export interface NextApproachResponse {
+  next_approach: NextApproach | null; // 기준 안에 예측이 없으면 null
+  criteria: { max_distance_au: number; max_distance_ld: number; window_days: number };
+  source: string;
+  fetched_at: string;
+}

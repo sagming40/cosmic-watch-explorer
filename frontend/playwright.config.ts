@@ -5,6 +5,7 @@
 // 개발용 서버(8000·5173)·개발 DB(cosmic_watch)는 건드리지 않는다 ─ 포트도 DB도 따로.
 //
 // NASA는 부르지 않는다: 화면이 볼 날짜의 데이터를 전부 prepare_e2e가 심어 두고, 키도 가짜(E2E_NO_NASA)로 준다.
+// 카운트다운의 JPL(키 없는 공개 API)은 닿지 않는 주소(127.0.0.1:9)로 ─ 서버는 503, 화면 확인은 next-approach.spec.ts가 응답을 가짜로 끼워서.
 
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -45,7 +46,7 @@ export default defineConfig({
       url: `http://localhost:${BACKEND_PORT}/api/auth/csrf/`,
       // DEBUG를 직접 정한다 ─ Playwright 로그를 보려고 DEBUG=pw:webserver로 실행하면 그 값이 그대로 내려와
       // Django가 DEBUG=False(배포 모드)로 켜지고 ALLOWED_HOSTS 오류로 죽었다 (10-28, 같은 이름의 환경변수 충돌)
-      env: { ...process.env, DEBUG: "True", DB_NAME: "cosmic_watch_e2e", NASA_API_KEY: "E2E_NO_NASA", PYTHONUNBUFFERED: "1" },
+      env: { ...process.env, DEBUG: "True", DB_NAME: "cosmic_watch_e2e", NASA_API_KEY: "E2E_NO_NASA", JPL_API_BASE: "http://127.0.0.1:9", PYTHONUNBUFFERED: "1" },
       reuseExistingServer: false, // 매번 새로 ─ 횟수 제한 계량기(메모리 캐시)도 비워진 채로 시작
       timeout: 120_000,
     },

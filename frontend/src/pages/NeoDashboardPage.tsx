@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
 // NeoDashboardPage.tsx ─ Path = '/' (03 문서 6.1절, 04 문서 5.1절)
-// 10-27 /mockup 디자인으로 다시 씀. "다음 접근까지" 카운트다운은 이 값을 주는 API가 아직 없어 뺐다.
+// 10-27 /mockup 디자인으로 다시 씀. "다음 근접 접근까지" 카운트다운은 10-28 M6에 API(/neo/next-approach/, JPL CAD)와 함께 붙임.
 // ═══════════════════════════════════════════════════════════════════
 
 import { useEffect, useMemo, useState } from "react";
@@ -17,6 +17,7 @@ import NeoFaq from "@/components/neo/NeoFaq";
 import NeoListItem, { type SubUnit } from "@/components/neo/NeoListItem";
 import NeoScatterChart from "@/components/neo/NeoScatterChart";
 import NeoSummary from "@/components/neo/NeoSummary";
+import NextApproachCountdown from "@/components/neo/NextApproachCountdown";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -116,6 +117,13 @@ function NeoDashboardPage() {
           <DateNavigator date={date} onChange={goTo} />
         </div>
       </section>
+
+      {/* 오늘을 볼 때만 (03 문서 6.1절) ─ 자기 데이터를 따로 받아서, 대시보드 로딩·오류와 상관없이 보인다 */}
+      {isToday && (
+        <section aria-label="다음 근접 접근 카운트다운" className="mb-3">
+          <NextApproachCountdown />
+        </section>
+      )}
 
       {isLoading && <LoadingState slow={slowKey === key} blocks={["h-32", "h-44", "h-96"]} />}
       {error && (
