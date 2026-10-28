@@ -36,7 +36,8 @@ function DateNavigator({ date, onChange }: DateNavigatorProps) {
       <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label="이전 날짜" onClick={() => moveByDays(-1)}>
         <ChevronLeft />
       </Button>
-      <label className="flex items-center gap-2 rounded-full px-2 py-1 font-mono text-sm hover:bg-line/60">
+      {/* focus-within ─ 안쪽 날짜 입력은 outline-none이라, 키보드 초점이 들어오면 바깥 label에 링을 그린다 (10-28 M5) */}
+      <label className="flex items-center gap-2 rounded-full px-2 py-1 font-mono text-sm hover:bg-line/60 focus-within:ring-[3px] focus-within:ring-ring/50">
         <span className="sr-only">조회 날짜</span>
         {/* min/max ─ 서버가 받는 범위(NASA/JPL 예측 범위)와 같게. 범위 밖을 고르면 서버가 INVALID_DATE (10-28) */}
         <input type="date" min="1900-01-01" max="2200-12-31" value={valid ? date : ""} onChange={handlePick} className="bg-transparent outline-none" />

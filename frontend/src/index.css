@@ -80,7 +80,9 @@ Tailwind CSS v4 + shadcn/ui
      위험 표시는 항상 text-hazard / bg-hazard 로 "직접" 쓴다. variant="destructive" 버튼은 여전히 금지. */
   --destructive: var(--bone);
   --border: var(--line);
-  --input: var(--line);
+  /* 입력칸·외곽선 버튼·토글 테두리 (10-28 M5) ─ line(#26262B)은 배경 대비 1.23이라 칸이 어디 있는지 잘 안 보였다.
+     WCAG 1.4.11 "UI 부품 경계 3:1" → dim(대비 5.59). 카드·구분선(border-line)은 장식이라 그대로 */
+  --input: var(--dim);
   --ring: var(--signal);
 }
 
@@ -152,6 +154,25 @@ Browser마다 h1, p, ul 등에 기본 여백을 제각각 넣어두는데, 값�
 =============================================================================
 */
 @layer base {
+  /* prefers-reduced-motion (10-28 M5) ─ OS에서 "동작 줄이기"를 켠 사람에겐 애니메이션·전환을 사실상 없앤다.
+     부품마다 motion-safe를 붙이면 빠뜨리는 곳(대화창 열림, 화살표 회전 등)이 생겨서 한 곳에서 막는다 */
+  /* 키보드 초점 링 (10-28 M5) ─ 직접 만든 링크·버튼(목록 한 줄, 칩 빼기 버튼 등)은 브라우저 기본 링에 맡겨 왔는데,
+     기본 링은 브라우저마다 색·두께가 달라 어두운 배경에서 잘 안 보일 수 있다 → 신호색 2px로 통일.
+     shadcn 부품은 자체 링(focus-visible:ring)이 있고 outline-none 유틸리티가 이 규칙보다 우선이라 겹치지 않는다 */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
