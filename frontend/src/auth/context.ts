@@ -6,8 +6,9 @@ import { createContext } from "react";
 import type { AuthUser } from "@/types/api";
 
 export interface AuthContextValue {
-  /** "loading" = 앱이 막 떠서 /api/auth/me/ 응답을 기다리는 중. 이때는 로그인 여부를 단정하지 않는다 */
-  status: "loading" | "ready";
+  /** "loading" = 앱이 막 떠서 /api/auth/me/ 응답을 기다리는 중. 이때는 로그인 여부를 단정하지 않는다
+   *  "offline" = 서버에 닿지 못했다(꺼짐·네트워크). 비로그인과 다르다 ─ 로그인 화면이 아니라 오류 화면 + 다시 시도 (10-28 M5) */
+  status: "loading" | "ready" | "offline";
   user: AuthUser | null;
   login: (username: string, password: string) => Promise<void>;
   signup: (input: { username: string; email: string; password: string; password_confirm: string }) => Promise<void>;

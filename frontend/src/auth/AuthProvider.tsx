@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { api, ensureCsrf, type AppError } from "@/api/client";
+import { ErrorState } from "@/components/common/StateViews";
 import type { AuthStatus, AuthUser } from "@/types/api";
 
 import { AuthContext, type AuthContextValue } from "./context";
@@ -23,6 +24,8 @@ import { AuthContext, type AuthContextValue } from "./context";
 function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthContextValue["status"]>("loading");
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [offlineError, setOfflineError] = useState<AppError | null>(null);
+  const [attempt, setAttempt] = useState(0); // "다시 시도"를 누를 때마다 +1 → 아래 확인을 다시 돌린다
 
   useEffect(() => {
     let ignore = false;
@@ -30,18 +33,25 @@ function AuthProvider({ children }: { children: ReactNode }) {
     ensureCsrf()
       .then(() => api.get<AuthStatus>("/auth/me/"))
       .then((res) => {
-        if (!ignore) setUser(res.data.user);
+        if (ignore) return;
+        setUser(res.data.user);
+        setStatus("ready");
       })
-      .catch(() => {
-        // 서버가 꺼져 있으면 "비로그인"으로 본다 ─ 로그인 화면으로 가고, 로그인 시도에서 "서버 연결 불가"가 뜬다
-        if (!ignore) setUser(null);
-      })
-      .finally(() => {
-        if (!ignore) setStatus("ready");
+      .catch((err: AppError) => {
+        // /me/는 비로그인이어도 200이다 → 여기 온 건 "서버에 닿지 못함"(꺼짐·네트워크·Vite 502)
+        // 예전엔 비로그인으로 봐서 로그인 화면이 떴다 → 로그인을 눌러야 "서버 연결 불가"를 알 수 있었다 (10-28 M5)
+        if (ignore) return;
+        setOfflineError(err);
+        setStatus("offline");
       });
     return () => {
       ignore = true;
     };
+  }, [attempt]);
+
+  const retry = useCallback(() => {
+    setStatus("loading");
+    setAttempt((n) => n + 1);
   }, []);
 
   // ─── 세션 만료 감시 ─ client.ts의 감시자(오류 봉투 → AppError)가 먼저 등록돼 있어서 여기엔 AppError가 온다 ───
@@ -78,7 +88,23 @@ function AuthProvider({ children }: { children: ReactNode }) {
   const updateUser = setUser;
 
   const value = useMemo(() => ({ status, user, login, signup, logout, updateUser }), [status, user, login, signup, logout, updateUser]);
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {status === "offline" && offlineError ? <OfflineScreen error={offlineError} onRetry={retry} /> : children}
+    </AuthContext.Provider>
+  );
+}
+
+// 서버에 닿지 못했을 때 ─ 로그인 화면 대신. 헤더가 없는 이유: 메뉴를 눌러도 어차피 같은 상태라서
+// (M5 완료 기준 "Django 서버를 끈 상태로 접속하면 오류 화면 + 재시도 버튼", 05 문서 8장)
+function OfflineScreen({ error, onRetry }: { error: AppError; onRetry: () => void }) {
+  return (
+    <div className="app-backdrop min-h-screen px-4 pt-24 text-bone">
+      <div className="mx-auto max-w-lg">
+        <ErrorState error={error} onRetry={onRetry} />
+      </div>
+    </div>
+  );
 }
 
 export default AuthProvider;
