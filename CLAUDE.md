@@ -177,8 +177,8 @@ Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필
 |---|---|---|
 | `DEVLOG.md` | 현재 상태, 날짜별 작업·트러블슈팅 기록 | Tier 1 (매 세션) |
 | `05_milestones.md` | M0~M6 작업 목록·완료 기준 | Tier 1 (매 세션) |
-| `02_database_design.md` | ERD, 테이블 9개(+ Django auth_user), DDL | Tier 2 (구현과 어긋날 때) |
-| `04_api_specification.md` | 엔드포인트 22개(마이페이지 5개 포함), 오류 봉투, 페이징 | Tier 2 |
+| `02_database_design.md` | ERD, 테이블 10개(+ Django auth_user), DDL | Tier 2 (구현과 어긋날 때) |
+| `04_api_specification.md` | 엔드포인트 25개(마이페이지 8개 포함), 오류 봉투, 페이징 | Tier 2 |
 | `01_requirements_and_features.md` | 요구사항, MVP 범위, 우선순위 | Tier 3 (드물게) |
 | `03_user_scenarios_and_uiux.md` | 화면 설계, 디자인 토큰, 컴포넌트 목록 | Tier 3 |
 
@@ -193,7 +193,8 @@ backend/
                      management/commands/fetch_exoplanets.py
   config/test_utils.py 테스트 공용(BaseAPITestCase·데이터 생성·가짜 NASA 응답). 각 앱 tests.py가 쓴다
   apps/accounts/     인증 API 5종 (세션 쿠키 + CSRF), 로그인 10/분·가입 10/시간 제한,
-                     마이페이지 API 5종(account_urls.py ─ /api/account/), UserPreference(표시 설정, 사용자 1:1)
+                     마이페이지 API(account_urls.py ─ /api/account/), UserPreference(표시 설정), UserAvatar(프로필 사진 ─ DB에 WebP),
+                     avatar.py(올라온 사진 검사·256px WebP 재인코딩 ─ Pillow)
   apps/watchlist/    NeoWatchlist, ExoplanetWatchlist + API 4종
 frontend/src/
   api/client.ts      axios 인스턴스 (withCredentials, CSRF, 오류 봉투 → AppError {code, message, fields, status})
@@ -202,14 +203,14 @@ frontend/src/
   types/api.ts       백엔드 응답 타입 전부 (04 문서 + serializers.py 기준) — API 호출은 api.get<타입>()으로
   components/ui/     shadcn/ui가 생성한 원본 부품 (Button …) — 직접 고치지 말고 감싸서 쓴다
   lib/utils.ts       cn() — className 합치기 (shadcn 공용)
-  components/common/ Panel·PanelTitle(카드 틀), StatCard(요약 칸), Field(라벨+수치), HazardBadge(위험 3중 표시),
+  components/common/ UserAvatar(사진 또는 머리글자), ErrorBoundary, Panel·PanelTitle(카드 틀), StatCard(요약 칸), Field(라벨+수치), HazardBadge(위험 3중 표시),
                      StateViews(로딩 스켈레톤·오류 화면), WatchlistButton(저장/해제, 401이면 /login?next=), Pagination
   components/compare/ SizeGroups(행성·소행성 그림, 그룹마다 실제 비율), LogScaleStrip(한 자 로그 눈금), AddTargetPanel(외계행성 검색·오늘의 소행성),
                      TargetChip(지구 = 자물쇠), CompareTable, types.ts
   components/watchlist/ NeoWatchItem·ExoWatchItem(관심 천체 한 줄), RemoveButton, UndoToast(실행 취소 5초), WatchlistEmpty
-  components/account/ ProfileSection·PreferencesSection·PasswordSection·DeleteAccountSection (마이페이지 4칸)
+  components/account/ ProfileSection(+AvatarEditor)·PreferencesSection·PasswordSection·DeleteAccountSection (마이페이지 4칸)
   components/auth/   AuthLayout(로그인·가입 틀 + next 안내), AuthFields(입력칸·비밀번호 보기·FormAlert), ProtectedRoute(로그인·가입 외 전체 화면의 문지기)
-  components/layout/ Header(알약 메뉴 + 로그인 상태), Layout(배경 + Outlet)
+  components/layout/ Header(알약 메뉴 + 로그인 상태), ProfileMenu(프로필 원 → 미니 메뉴), Layout(배경 + Outlet + ErrorBoundary)
   components/neo/    대시보드: DateNavigator(◀ 날짜 버튼=달력 ▶ 오늘), NeoSummary, LunarDistanceBar, NeoScatterChart, NeoListItem, NeoFaq
                      상세: OrbitPanel(궤도 모식도), NeoSizePanel, ObservationPanel, ApproachTable
                      공용: chart.ts(눈금 범위·점 변환), ChartTooltip

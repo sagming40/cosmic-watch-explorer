@@ -4,7 +4,7 @@ NASA 공개 데이터를 활용한 지구 근접 소행성(NEO) 모니터링 및
 
 접근하는 소행성이 얼마나 가까운지, 외계행성이 지구와 얼마나 비슷한지를 **숫자가 아니라 감각으로** 확인할 수 있게 만드는 것이 목표다.
 
-> **개발 진행 중** — v1.0 기능 완성(M4, 10-28: MVP 완료 기준 19개 충족). 백엔드 API 22개 + 자동 테스트 57개, 화면 10개(마이페이지 포함). M5(완성도) 진행 중 → M6(배포).
+> **개발 진행 중** — v1.0 기능 완성(M4, 10-28: MVP 완료 기준 19개 충족). 백엔드 API 25개 + 자동 테스트 64개, 화면 10개(마이페이지·프로필 사진 포함). M5(완성도) ✅ → M6(배포) 준비.
 
 ---
 
@@ -65,9 +65,9 @@ NASA API는 소행성의 접근 거리를 `4,821,033 km` 같은 숫자로 준다
 | 문서 | 내용 |
 |---|---|
 | [`01_requirements_and_features.md`](docs/01_requirements_and_features.md) | 요구사항, 기능 명세, MVP 범위, 우선순위 |
-| [`02_database_design.md`](docs/02_database_design.md) | ERD, 테이블 9개(+ Django auth_user) 정의, DDL, 인덱스 전략, NASA 필드 매핑 |
+| [`02_database_design.md`](docs/02_database_design.md) | ERD, 테이블 10개(+ Django auth_user) 정의, DDL, 인덱스 전략, NASA 필드 매핑 |
 | [`03_user_scenarios_and_uiux.md`](docs/03_user_scenarios_and_uiux.md) | 사용자 시나리오, 화면 설계, 디자인 토큰, 컴포넌트 목록 |
-| [`04_api_specification.md`](docs/04_api_specification.md) | 엔드포인트 22개, 요청/응답 형식, 오류 규약 |
+| [`04_api_specification.md`](docs/04_api_specification.md) | 엔드포인트 25개, 요청/응답 형식, 오류 규약 |
 | [`DEVLOG.md`](docs/DEVLOG.md) | 개발 기록 |
 
 > **UI 목업**: [Figma — `1. Cosmic Watch UI MockUp`](https://www.figma.com/design/vGgPqDdYg7LPX4vG8eSx95/cosmic-watch-explorer?node-id=3-2) — 화면 7개(NEO 대시보드·상세, 외계행성 카탈로그, 크기 비교, 로그인·회원가입, Watchlist), 디자인 토큰을 Figma 변수로 연결

@@ -6,7 +6,7 @@
 | 문서명 | API 명세서 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.8 |
+| 버전 | v1.9 |
 | 최종 수정일 | 2026-09-10 |
 | 프레임워크 | Django REST Framework |
 | 상태 | 확정 |
@@ -24,6 +24,7 @@
 | v1.6 | 2026-10-27 | 3장 6~11번 조회 API 인증 "—" → "필요" (기본 잠금), 2장 Vite 프록시 예시에 `changeOrigin: false` 반영 |
 | v1.7 | 2026-10-28 | 4.4 로그인·가입 횟수 제한(429), 5.1 미래 날짜 24시간 유효기간·조회 범위 1900~2200, 5.2 `orbit_status`와 NASA 실패 시 200(설계 결정 ④), 재시도·로그 규칙 · 4.4 브라우저 종료 시 로그아웃(세션 쿠키) |
 | v1.8 | 2026-10-28 | 4.6절 마이페이지 API 5개 신설(18~22번, 엔드포인트 22개), 4.2 user 블록에 `date_joined`·`preferences` |
+| v1.9 | 2026-10-28 | 프로필 사진 API(23~25번 ─ 엔드포인트 25개), user 블록에 `avatar_url` |
  
 ---
  
@@ -192,6 +193,9 @@ export default {
 | 20 | PATCH | `/api/account/preferences/` | 표시 설정 | 필요 (10-28) |
 | 21 | PATCH | `/api/account/email/` | 이메일 변경 | 필요 (10-28) |
 | 22 | POST | `/api/account/password/` | 비밀번호 변경 | 필요 (10-28) |
+| 23 | GET | `/api/account/avatar/` | 프로필 사진 보기 (image/webp) | 필요 (10-28) |
+| 24 | PUT | `/api/account/avatar/` | 프로필 사진 올리기 (multipart) | 필요 (10-28) |
+| 25 | DELETE | `/api/account/avatar/` | 기본(머리글자)으로 | 필요 (10-28) |
 
 > **2026-10-27 변경 ─ 기본 잠금.** `settings.py`의 `DEFAULT_PERMISSION_CLASSES = [IsAuthenticatedOr401]`로 모든 API가 로그인 필요가 기본이고, 인증 API 1~4번만 `AllowAny`로 연다. 6~11번은 처음엔 "—"(누구나)였다. 비로그인 요청은 뷰에 들어가기 전에 401로 막혀서 NASA를 부르지도 않는다(스로틀 낭비도 없다). 새로 만드는 API는 따로 붙이지 않아도 잠긴다.
  
@@ -359,6 +363,19 @@ CSRF 토큰 쿠키를 발급한다. 앱이 처음 로드될 때 한 번 호출�
 | `DELETE /api/account/` | `{ "password" }` | `204` · 관심 천체·설정 CASCADE 삭제, 로그아웃 |
 
 **`preferences` 값** ─ `distance_unit`: `km`·`au` (대시보드 목록의 보조 거리 단위) / `dashboard_sort`: `distance`·`velocity`·`size` / `hazard_only`: 위험 분류만 보기로 시작. 정해진 값 밖이면 `fields` 오류. 한 번도 안 바꾼 사용자는 기본값(km·distance·false) ─ 조회만으로는 행을 만들지 않는다.
+
+#### 프로필 사진 `/api/account/avatar/` (10-28 추가)
+
+| API | 요청 | 응답 |
+|---|---|---|
+| `GET` | ─ | `image/webp` 바이트(256×256). 없으면 `404`. `Cache-Control: private, max-age=31536000, immutable` |
+| `PUT` | `multipart/form-data`, 파일 칸 `avatar` 1개 | `{ "user": {…} }` ─ `avatar_url` 갱신 |
+| `DELETE` | ─ | `{ "user": {…} }` ─ `avatar_url: null` |
+
+- **user 블록에 `avatar_url`** (`/api/account/avatar/?v=사용자id-시각` 또는 `null`). 바꾸면 주소가 바뀌어 캐시가 갱신된다. 주소에 사용자 id 경로가 없어 **항상 내 사진만** 다룬다.
+- **검사**: 확장자·Content-Type을 믿지 않고 Pillow로 연다(JPG·PNG·WebP·GIF만). 2MB 이하, 4천만 픽셀 이하(압축 폭탄). 실패는 `400 VALIDATION_ERROR` + `fields.avatar`.
+- **다시 만들기**: EXIF 방향대로 돌림 → 가운데 정사각형 256px → WebP로 새로 저장. 원본을 저장하지 않으므로 사진 속 위치(GPS)·기기 정보가 남지 않는다.
+- 올리기·지우기는 `account_avatar` 시간당 30번(보기 GET은 안 셈).
 
 #### 설계 결정
 - **설정은 서버(DB)에** ─ 사용자가 여러 기기에서 쓴다. 브라우저 저장소면 기기마다 따로 맞춰야 한다.

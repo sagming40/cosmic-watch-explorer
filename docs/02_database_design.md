@@ -6,7 +6,7 @@
 | 문서명 | DB 설계서 |
 | 프로젝트명 | Cosmic Watch & Explorer |
 | 작성자 | 사공민규 |
-| 버전 | v1.3 |
+| 버전 | v1.4 |
 | 최종 수정일 | 2026-08-31 |
 | DBMS | MariaDB (InnoDB / utf8mb4) |
 | 상태 | 확정 |
@@ -19,6 +19,7 @@
 | v1.1 | 2026-08-31 | 7장 Django 모델 코드블록을 `apps/astronomy/models.py` / `apps/watchlist/models.py` 두 개로 분리 (구현 시 앱 2개로 나눈 실제 구조와 일치시킴, 원래는 코드블록 하나에 전부 포함돼 있었음) |
 | v1.2 | 2026-10-28 | neo_fetch_log.fetched_at = 마지막 수집 시각(미래 날짜 재수집 시 갱신). close_approach 저장은 update_or_create로(재수집 시 NASA가 고친 값 반영) |
 | v1.3 | 2026-10-28 | user_preference 테이블 추가(마이페이지 표시 설정, 사용자 1:1, CASCADE) |
+| v1.4 | 2026-10-28 | 3.9 user_avatar 테이블 추가(프로필 사진, DB에 WebP 바이트) ─ 프로젝트 테이블 10개 |
 
 
 ---
@@ -28,7 +29,7 @@
 01번 요구사항 문서에서 확정한 기능을 저장 구조로 옮긴 문서다. 다음을 포함한다.
  
 - 전체 ERD
-- 테이블 9개의 상세 정의 (DDL 포함) ─ 프로젝트 테이블 9개(10-28 user_preference 포함) + Django 기본 auth_user
+- 테이블 10개의 상세 정의 (DDL 포함) ─ 프로젝트 테이블 10개(10-28 user_preference·user_avatar 포함) + Django 기본 auth_user
 - NASA API 응답 필드 ↔ DB 컬럼 매핑
 - 인덱스 전략
 - NULL 처리 정책
@@ -367,6 +368,18 @@ close_approach     NASA API 호출
 | `updated_at` | DATETIME | NOT NULL | |
 
 > 행은 사용자가 설정을 처음 바꿀 때 만든다. 없으면 기본값과 같다고 본다 ─ 기존 사용자용 데이터 마이그레이션이 필요 없다. 모델은 `apps/accounts/models.py` `UserPreference`, 마이그레이션 `accounts 0002_userpreference`.
+
+### 3.9 `user_avatar` — 프로필 사진 (10-28 추가)
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| `id` | BIGINT | PK | |
+| `user_id` | INT | FK → auth_user, UNIQUE, ON DELETE CASCADE | 사용자 1명당 1장. 탈퇴하면 같이 삭제 |
+| `image` | LONGBLOB | NOT NULL | 서버가 다시 만든 256×256 WebP 바이트(약 2~30KB). 원본은 저장하지 않는다 |
+| `updated_at` | DATETIME | NOT NULL | 바꾼 시각 ─ 주소 `?v=`에 넣어 브라우저 캐시를 깬다 |
+
+> **파일(MEDIA)이 아니라 DB에 두는 이유**: 무료 배포 서비스는 서버를 다시 켜면 디스크에 쓴 파일이 사라진다. 작은 사진 한 장이라 DB가 더 단순하고 배포에도 안전하다. 사진이 커지거나 여러 장이 되면 외부 저장소(S3 등)로 옮긴다.
+> **user_preference와 나눈 이유**: `/me/`가 요청마다 설정을 읽는데, 그때마다 사진 바이트까지 끌고 오지 않게. 모델 `UserAvatar`, 마이그레이션 `accounts 0003_useravatar`.
 
 ## 4. 인덱스 전략
  
