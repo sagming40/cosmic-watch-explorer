@@ -17,7 +17,8 @@ export default defineConfig({
       // changeOrigin: false ─ Host를 브라우저가 보낸 그대로(localhost:5173) 넘긴다.
       // 문자열로만 쓰면 Host가 localhost:8000으로 바뀌어, Django CSRF가 "Origin(5173) ≠ Host(8000)"로
       // 로그인 후의 POST/DELETE(저장·해제·로그아웃)를 전부 403으로 막는다 (로그인·가입은 비로그인 요청이라 통과).
-      '/api': { target: 'http://localhost:8000', changeOrigin: false },
+      // target ─ 기본은 개발 백엔드 8000. E2E 테스트는 VITE_API_TARGET으로 8001(E2E 전용 DB 서버)을 가리킨다 (playwright.config.ts)
+      '/api': { target: process.env.VITE_API_TARGET ?? 'http://localhost:8000', changeOrigin: false },
     },
   },
 })

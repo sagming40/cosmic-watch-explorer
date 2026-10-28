@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright (E2E) ─ 실행 결과·로그인 상태 파일
+test-results/
+playwright-report/
+e2e/.auth/
