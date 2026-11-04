@@ -1,12 +1,12 @@
 """
 Exoplanet 다중 조건 검색 logic
 
-문서 04 ─ 6.1절 qurey parameter 15개를 실제 ORM 조건으로 바꾸는 역할
+옛 API 명세 6.1절 qurey parameter 15개를 실제 ORM 조건으로 바꾸는 역할
 view는 "filtering된 결과를 달라고만 하고 조건을 어떤 식으로 조립하는지는
 filters.py가 맡는다. 
 
 services/ 디렉터리를 따로 둔 것과 같은 분리원칙 
-─ 문서 04, 9.1절 "홀 직원은 주문만 받고 재료 조달은 주방이 한다."
+─ ARCHITECTURE 1장 "홀 직원은 주문만 받고 재료 조달은 주방이 한다."
 """
 
 from rest_framework import serializers
@@ -27,7 +27,7 @@ class ExoplanetSearchParams(serializers.Serializer):
     ⚠️ Exoplanet을 저장하거나 응답으로 내보내는 serializer가 아니다.
     입력값이 통과해야 하는 검문소 역할을 수행한다.
     
-    문서 04 ─ 6.1절 오류 예시("검색 조건을 확인해주세요." + fields)가
+    옛 API 명세 6.1절 오류 예시("검색 조건을 확인해주세요." + fields)가
     바로 이 class가 실패했을 때 나오는 응답이다.
     is_valid(raise_exception=True) 한 줄이면 exception_handler.py의
     dict 처리 분기가 알아서 fields로 포장해준다.
@@ -112,7 +112,7 @@ def build_exoplanet_queryset(query_params):
     querystring으로 Exoplanet queryset을 조립한다.
     
     return: (queryset, applied_filters)
-    applied_filters는 문서 04 ─ 6.1 설계 설정 ②용. 실제로 적용된 조건만 담아 되돌려준다. 
+    applied_filters는 옛 API 명세 6.1 설계 설정 ②용. 실제로 적용된 조건만 담아 되돌려준다. 
     ─ filter chip을 그리는 재료. sort는 검색 조건이 아니므로 담지 않는다.
     
     ⚠️ 검증 실패 시 이 함수는 ValidationError를 그대로 throw한다.
@@ -139,7 +139,7 @@ def build_exoplanet_queryset(query_params):
         
     method = data.get("method")
     if method:
-        # 요구사항 4.3 ─ 발견 방법은 "정확히 일치". name/host의 icontains와 다름.
+        # REQUIREMENTS 4.3절 ─ 발견 방법은 "정확히 일치". name/host의 icontains와 다름.
         qs = qs.filter(discovery_method=method)
         applied["method"] = method
         

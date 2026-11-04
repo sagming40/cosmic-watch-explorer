@@ -1,6 +1,6 @@
 """
 계정 앱 모델 ─ 사용자 계정 자체는 Django 기본 User를 그대로 쓴다. 여기엔 "사용자별 표시 설정"만 둔다.
-문서 02 ─ user_preference (10-28 추가)
+DATA_MODEL ─ user_preference (10-28 추가)
 """
 
 from django.conf import settings
@@ -40,7 +40,7 @@ class UserPreference(models.Model):
 
 class UserAvatar(models.Model):
     """
-    프로필 사진 ─ 256×256 WebP로 줄인 바이트를 DB에 그대로 넣는다 (10-28, 문서 02 3.9절).
+    프로필 사진 ─ 256×256 WebP로 줄인 바이트를 DB에 그대로 넣는다 (10-28, DATA_MODEL 3.9절).
 
     파일(MEDIA 폴더)이 아니라 DB에 두는 이유:
     무료 배포 서비스(Render·Railway 등)는 서버를 다시 켜면 디스크에 쓴 파일이 사라진다 → 사진이 날아간다.

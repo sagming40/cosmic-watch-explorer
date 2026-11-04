@@ -1,5 +1,5 @@
 """
-NEO·외계행성 API 테스트 ─ 문서 04, 5장·6장 / 01 문서 9장 MVP 기준
+NEO·외계행성 API 테스트 ─ 옛 API 명세 5장·6장 / PLAN_M0_M5 MVP 완료 기준
 
 python manage.py test apps.astronomy
 
@@ -379,7 +379,7 @@ class PrepareE2ESafetyTests(BaseAPITestCase):
 
 
 # ═══════════════════════════════════════════════════════════════════
-# 다음 근접 접근 카운트다운 ─ JPL CAD (04 문서 5.4절, 10-28 M6)
+# 다음 근접 접근 카운트다운 ─ JPL CAD (옛 API 명세 5.4절, 10-28 M6)
 # ═══════════════════════════════════════════════════════════════════
 CAD_FIELDS = ["des", "orbit_id", "jd", "cd", "dist", "dist_min", "dist_max", "v_rel", "v_inf", "t_sigma_f", "h", "fullname"]
 

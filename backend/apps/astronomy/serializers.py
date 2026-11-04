@@ -4,7 +4,7 @@ NEO / 외계행성 API 응답을 만드는 serializers.
 핵심 원칙: 이 파일의 시작점은 Neo가 아니라 CloseApproach다.
 "오늘 접근하는 소행성 목록"이라는 질문은 실제로는
 "오늘 날짜의 접근 사건들, 각각 어느 소행성 소속인지"라는 질문이기 때문.
-(02_database_design.md 8.2절 query 패턴 참조)
+(날짜로 접근 사건을 먼저 찾는 조회 패턴)
 """
 
 from rest_framework import serializers
@@ -37,12 +37,12 @@ class ApproachDetailSerializer(serializers.Serializer):
 
 class ApproachRowSerializer(ApproachDetailSerializer):
     """
-    문서 04 ― 5.3절(접근 기록 전체) 목록 한 줄. 5.2절의 recent_approaches도 이 클래스를 사용한다.
+    옛 API 명세 5.3절(접근 기록 전체) 목록 한 줄. 5.2절의 recent_approaches도 이 클래스를 사용한다.
 
     ApproachDetailSerializer를 상속받고 approach_date 하나만 더 얹는다.
     비유: 도시락 안에 반찬 한 가지를 추가한 것 ― 원래 있었던 밥과 반찬들을 그대로 물려받는다.
 
-    통일을 하는 이유: 03_user_scenarios_and_uiux.md의 ApproachTable 컴포넌트가
+    통일을 하는 이유: DESIGN의 ApproachTable 컴포넌트가
     상세 화면(5건)과 "더 보기" 화면(전체) 양 쪽에서 공유된다.
     두 응답 필드 구성이 다르면 FE 단에서 화면을 각각 다르게 처리해야 한다.
     """
@@ -53,10 +53,10 @@ class ApproachRowSerializer(ApproachDetailSerializer):
 
 class OrbitalDataSerializer(serializers.Serializer):
     """
-    궤도 정보 14개 필드. 04_api_specification.md 5.2절 orbital_data 블록 그대로.
+    궤도 정보 14개 필드. 옛 API 명세 5.2절 orbital_data 블록 그대로.
 
     전부 null 허용 필드이다. NASA가 관측이 부족한 소행성의 궤도를 전부 계산해둔 것이 아니다.
-    ― 없는 값은 없는 채로 내려보낸다. (02_database_design.md 1.1절 ― null을 임의 값으로 바꾸지 않는다.)
+    ― 없는 값은 없는 채로 내려보낸다. (DATA_MODEL 1.1절 ― null을 임의 값으로 바꾸지 않는다.)
     """ 
     orbit_id = serializers.CharField()
     orbit_determination_datetime_utc = serializers.DateTimeField()
@@ -80,12 +80,12 @@ class OrbitalDataSerializer(serializers.Serializer):
 
 class NeoDetailSerializer(serializers.Serializer):
     """
-    문서 04 ― 5.2절 상세 응답. 이 serializer만 시작점이 Neo다.
+    옛 API 명세 5.2절 상세 응답. 이 serializer만 시작점이 Neo다.
     5.1절은 CloseApproach가 시작점. ― "오늘의 접근 사건들"이 질문이었으니까.
     5.2절은 "이 소행성이 어떤 행성인가"가 질문이라 주어가 바뀐다.
     """      
     RECENT_APPROACH_LIMIT = 5
-    # '5'라는 숫자는 문서 04 ― 5.2절 설계 결정 ②에서 온 숫자이다. 코드안에 흩뜨려 놓지 않고,
+    # '5'라는 숫자는 옛 API 명세 5.2절 설계 결정 ②에서 온 숫자이다. 코드안에 흩뜨려 놓지 않고,
     # 이 곳에만 둔다. 384400(1 LD/달 거리 상수)를 units.py에만 둔 것과 같은 이유
      
     nasa_id = serializers.CharField()
@@ -112,7 +112,7 @@ class NeoDetailSerializer(serializers.Serializer):
         request = self.context.get("request")
 
         # 메모지가 없거나(shell에서 context 없이 직접 호출한 경우)
-        # 있어도 비로그인일 경우 무조건 False ─ 문서 04 5.2절 설계 결정 ①
+        # 있어도 비로그인일 경우 무조건 False ─ 옛 API 명세 5.2절 설계 결정 ①
         # AnonymousUser.is_authenticated는 항상 False라서 분기를 나눌 필요가 없다.
         if request is None or not request.user.is_authenticated:
             return False
@@ -155,10 +155,10 @@ class NeoDetailSerializer(serializers.Serializer):
         오늘 이후 가장 가까운 예정 접근 5건.
         Cosmic "watch" ― 이미 지나간 접근보다 "다음 접근은 언제인가"가
         모니터링 목적에 더 맞는다고 판단하여 미래 접근 기준으로 결정.
-        문서 04 ― 5.2절 설계 결정 ③에 이 정의를 명시해두었다.
+        옛 API 명세 5.2절 설계 결정 ③에 이 정의를 명시해두었다.
 
         미래 접근이 5건 미만이면 값이 있는 만큼만 내려준다 ― 억지로 과거로 채우지 않는다.
-        (02_database_design.md 1.1절 ― NULL 보존 원칙)
+        (DATA_MODEL 1.1절 ― NULL 보존 원칙)
         """
         rows = (
             obj.approaches
@@ -169,7 +169,7 @@ class NeoDetailSerializer(serializers.Serializer):
 
     def get_approach_count(self, obj):
         # 위 5건이 아니라 '전체' 개수. FE에서 approach_count > 5로
-        # "더보기" 버튼을 띄울지 판단한다. (문서 04 ― 5.2절 설계 결정 ②)
+        # "더보기" 버튼을 띄울지 판단한다. (옛 API 명세 5.2절 설계 결정 ②)
         # .count()는 행을 가져오지 않고 DB에 SELECT COUNT(*)만 물어본다.
         return obj.approaches.count()
 
@@ -200,7 +200,7 @@ class NeoApproachSerializer(serializers.Serializer):
 
 class HostStarBriefSerializer(serializers.Serializer):
     """
-    문서 04 ─ 6.1절 목록 안에 들어가는 항성 정보. 딱 3개 field만.
+    옛 API 명세 6.1절 목록 안에 들어가는 항성 정보. 딱 3개 field만.
     
     목록화면에는 "이 행성이 어느 별을 도는지, 얼마나 먼지"만 보이면 충분하다.
     분광형·표면중력 같은 7개 fields를 20건마다 전부 실어보내면
@@ -218,12 +218,12 @@ class HostStarBriefSerializer(serializers.Serializer):
 
 class HostStarDetailSerializer(HostStarBriefSerializer):
     """
-    문서 04 ─ 6.2절 상세용 항성 정보. Brief를 상속해 7개 fields만 더 얹는다.
+    옛 API 명세 6.2절 상세용 항성 정보. Brief를 상속해 7개 fields만 더 얹는다.
     
     ApproachRowSerializer가 ApproachDetailSerializer를 상속했던 것과 
     똑같은 패턴 ─ 도시락에 반찬 7개를 추가하는 것.
     id를 여기서 새로 추가하는 이유: 목록(Brief)에서는 항성을 클릭할 일이 없지만,
-    상세 화면에서는 host_star 자체의 식별자가 필요할 수 있다. (문서 04 예시 "id": 88로 명시되어 있음)
+    상세 화면에서는 host_star 자체의 식별자가 필요할 수 있다. (옛 API 명세 예시 "id": 88로 명시되어 있음)
     """    
     id = serializers.IntegerField()
     spectral_type = serializers.CharField(allow_null=True)
@@ -236,7 +236,7 @@ class HostStarDetailSerializer(HostStarBriefSerializer):
 
 class SiblingPlanetSerializer(serializers.Serializer):
     """
-    문서 04 ─ 6.2절 sibling_planets array 한 줄.
+    옛 API 명세 6.2절 sibling_planets array 한 줄.
     id와 이름, 반지름만 ─ "같은 별에 이런 행성도 있다"는 안내용이라 목록/상세보다도 훨씬 가벼운 fields 구성이다.
     """ 
     id = serializers.IntegerField()
@@ -248,7 +248,7 @@ class SiblingPlanetSerializer(serializers.Serializer):
 
 class ExoplanetRowSerializer(serializers.Serializer):
     """
-    문서 04 ─ 6.1절 목록 한 줄. 시작점은 Exoplanet 자신이다.
+    옛 API 명세 6.1절 목록 한 줄. 시작점은 Exoplanet 자신이다.
     (NeoApproachSerializer가 CloseApproach에서 시작해 obj.neo로 넘어갔던 것과
     반대 방향 ─ 여기는 Exoplanet에서 obj.host_star로 넘어간다.)
     """
@@ -270,7 +270,7 @@ class ExoplanetRowSerializer(serializers.Serializer):
 
 class ExoplanetDetailSerializer(ExoplanetRowSerializer):
     """
-    문서 04 ─ 6.2절 상세. Row의 8 fields + host_star를 그대로 물려받고
+    옛 API 명세 6.2절 상세. Row의 8 fields + host_star를 그대로 물려받고
     is_watchlisted / sibling_planets 2개만 새로 얹는다.
     
     ⚠️ host_star를 다시 선언해서 덮어쓴다 ─ 부모(Row)는 Brief를 사용하지만
@@ -296,7 +296,7 @@ class ExoplanetDetailSerializer(ExoplanetRowSerializer):
         
         obj.host_star.planets ─ Exoplanet.host_star의 related_name='planets'을
         그대로 사용한다. (CloseApproach.neo의 related_name='approaches'와 같은 패턴)
-        문서 04 ─ 6.2절: "DB 구조 상 host_star.planets로 이미 접근 가능하므로 추가 비용이 거의 없다."
+        옛 API 명세 6.2절: "DB 구조 상 host_star.planets로 이미 접근 가능하므로 추가 비용이 거의 없다."
         
         exclude(pk=obj.pk) ─ "자기 자신 빼고 형제만" 걸러내는 부분.
         이 과정이 없으면 자기 자신도 sibling_planets 목록에 나타나는 이상한 결과가 된다.

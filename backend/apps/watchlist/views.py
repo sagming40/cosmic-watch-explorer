@@ -1,5 +1,5 @@
 """
-Watchlist API. 문서 04 ─ 7장
+Watchlist API. 옛 API 명세 7장
 
 apps/watchlist/views가 apps/astronomy/view와 다른 점 ─ 전부 permission_classes가 걸려 있다.
 astronomy ─ 누구나 볼 수 있어야 함. (NEO·Exoplanet 조회)
@@ -25,7 +25,7 @@ from .serializers import (
 
 class NeoWatchlistView(APIView):
     """
-    GET·POST /api/watchlist/neo/ ─ 문서 04, 7.2/7.3절
+    GET·POST /api/watchlist/neo/ ─ 옛 API 명세 7.2/7.3절
 
     ListAPIView가 아닌 APIView인 이유 ─ settings.py의 DEFAULT_PAGINATION_CLASS가 전역으로 걸려있어서,
     ListAPIView를 사용하게 될 경우 CommonPagination이 자동으로 붙어 명세에는 없는 page/total_pages가
@@ -67,7 +67,7 @@ class NeoWatchlistView(APIView):
             raise ResourceNotFound("해당 소행성을 찾을 수 없습니다.")
         
         # ② 저장 시도 ─ "있는지 확인 후 저장"이 아니라 "저장을 먼저 시도해본 후 실패할 시 409".
-        #   UNIQUE(user, neo) 제약(문서 02 ─ 3.6절)이 최종 방어선
+        #   UNIQUE(user, neo) 제약(DATA_MODEL 3.6절)이 최종 방어선
         #   동시에 같은 요청이 중복으로 들어와도 여기서 하나는 반드시 막힌다.
         try:
             watchlist_item = NeoWatchlist.objects.create(user=request.user, neo=neo)
@@ -82,7 +82,7 @@ class NeoWatchlistView(APIView):
 
 class NeoWatchlistDeleteView(APIView):
     """
-    DELETE /api/watchlist/neo/{nasa_id}/ ─ 문서 04, 7.4절
+    DELETE /api/watchlist/neo/{nasa_id}/ ─ 옛 API 명세 7.4절
     """
     permission_classes = [IsAuthenticatedOr401]
     
@@ -93,7 +93,7 @@ class NeoWatchlistDeleteView(APIView):
         NeoWatchlist.objects.filter(user=request.user, neo__nasa_id=nasa_id).delete()
         
         # 저장되어 있지 않았어도 응답 코드 200 throw
-        # 문서 04, 7.4절: "결과적으로 저장되어 있지 않다"는 목적은 달성했기 때문.
+        # 옛 API 명세 7.4절: "결과적으로 저장되어 있지 않다"는 목적은 달성했기 때문.
         # exists() 확인 없이 delete()만 부르는 이유도 이 때문이다.
         # 몇 건이 지워지든 응답은 똑같아야 하므로 분기를 나눌 필요가 없다.
         return Response({"nasa_id": nasa_id, "deleted": True})
@@ -101,7 +101,7 @@ class NeoWatchlistDeleteView(APIView):
     
 class ExoplanetWatchlistView(APIView):
     """
-    GET·POST /api/watchlist/exoplanets/ ─ 문서 04, 7.5절
+    GET·POST /api/watchlist/exoplanets/ ─ 옛 API 명세 7.5절
     NeoWatchlistView와 완전한 대칭 구조.
     """
     permission_classes = [IsAuthenticatedOr401]
@@ -148,7 +148,7 @@ class ExoplanetWatchlistView(APIView):
         
 class ExoplanetWatchlistDeleteView(APIView):
     """
-    DELETE /api/watchlist/exoplanets/{exoplanet_id}/ ─ 문서 04, 7.5절
+    DELETE /api/watchlist/exoplanets/{exoplanet_id}/ ─ 옛 API 명세 7.5절
     """        
     permission_classes = [IsAuthenticatedOr401]
     

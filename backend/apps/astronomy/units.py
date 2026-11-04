@@ -2,7 +2,7 @@
 단위 환산 전담 모듈
 
 프로젝트 원칙 ─ "도메인 계산은 전부 서버에서 한다."
-(02_database_design.md 1.2절 / 04_api_specification.md 5.1절 설계 결정 ②)
+(DATA_MODEL 1.2절 / 옛 API 명세 5.1절 설계 결정 ②)
 
 FE는 계산해주는 값은 '표시만' 한다.
 따라서, 384400 같은 기준값은 이 파일 밖 어디에도 등장하면 안 된다.
@@ -32,7 +32,7 @@ def km_to_lunar_distance(km):
     LD를 사용하는 이유이다.
 
     km가 None이면 None을 그대로 반환한다.
-    ─ NASA 원본의 NULL을 임의의 값(0 등)으로 바꾸지 않는다는 원칙 (문서 02 ─ 1.1절)
+    ─ NASA 원본의 NULL을 임의의 값(0 등)으로 바꾸지 않는다는 원칙 (DATA_MODEL 1.1절)
     """
     if km is None:
         return None
@@ -81,11 +81,11 @@ def parsec_to_light_year(pc):
     비유: 그램(g)용 저울이라 손님이 알고 싶은 단위로 무게를 알려주려면
     단위를 변환하여 알려줘야 한다. 손님이 읽을 숫자라 자릿수를 정해도 된다.
     
-    문서 04 ─ 6.1절 응답 예시가 "distance_ly": 4.24 (소수 2자리)이므로
+    옛 API 명세 6.1절 응답 예시가 "distance_ly": 4.24 (소수 2자리)이므로
     km_to_lunar_distance()와 같은 자릿수·같은 반올림 방식으로 맞춘다.
     
     pc가 None이면 None을 그대로 반환한다.
-    ─ NASA에서 거리를 아직 측정하지 못한 항성이 실제로 존재한다. (문서 02 ─ 1.1절)
+    ─ NASA에서 거리를 아직 측정하지 못한 항성이 실제로 존재한다. (DATA_MODEL 1.1절)
     """
     if pc is None:
         return None

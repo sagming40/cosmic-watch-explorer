@@ -1,5 +1,5 @@
 """
-DRF가 만들어낸 오류 응답을, 문서 04 1.4절의 공통 봉투 형식으로 재포장 한다.
+DRF가 만들어낸 오류 응답을, ARCHITECTURE 3.4절의 공통 봉투 형식으로 재포장 한다.
 
 이 파일의 역할은 "변역"이 아닌 "재포장"이다.
 무엇이 잘못되었는지 판단하는 작업은 DRF가 하고, 그 결과물을 상자만 바꾼다.
@@ -11,7 +11,7 @@ from rest_framework.views import exception_handler as drf_exception_handler
 
 # 상태 코드만 보고 기본 code를 고르는 표
 # 비유: 우편번호부 — 404로 가는 건 일단 NOT_FOUND 창구로 보내라.
-# 문서 04 — 1.4절 "오류 코드 목록"을 그대로 옮긴 것
+# ARCHITECTURE 3.4절 "오류 코드 목록"을 그대로 옮긴 것
 DEFAULT_CODE_BY_STATUS = {
     400: "VALIDATION_ERROR",
     401: "AUTH_REQUIRED",
@@ -164,7 +164,7 @@ def custom_exception_handler(exc, context):
         # 반대로 DRF 기본 예외는 영어라서, 위에서 정한 한글 문구를 유지한다.
         message = str(detail) 
     
-    # ⑤ 최종 조립. 문서 04 — 1.4절과 똑같이.
+    # ⑤ 최종 조립. ARCHITECTURE 3.4절과 똑같이.
     error_body = {"code": code, "message": message}
     if fields:
         error_body["fields"] = fields   # 폼이 아닌 경우엔 키를 아예 넣지 않는다.

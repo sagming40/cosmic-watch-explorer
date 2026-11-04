@@ -1,5 +1,5 @@
 """
-Watchlist API 테스트 ─ 문서 04, 7장 / M2 완료 기준 (교차 로그인 격리·409·401)
+Watchlist API 테스트 ─ 옛 API 명세 7장 / M2 완료 기준 (교차 로그인 격리·409·401)
 
 python manage.py test apps.watchlist
 """
@@ -35,7 +35,7 @@ class NeoWatchlistTests(BaseAPITestCase):
         self.assertEqual(res.status_code, 404)
 
     def test_delete_is_idempotent(self):
-        # 저장 안 된 걸 지워도 200 ─ "결과적으로 저장돼 있지 않다"는 목적은 달성 (04 문서 7.4절)
+        # 저장 안 된 걸 지워도 200 ─ "결과적으로 저장돼 있지 않다"는 목적은 달성 (옛 API 명세 7.4절)
         self.assertEqual(self.client.delete("/api/watchlist/neo/31/").status_code, 200)
 
     def test_users_are_isolated(self):

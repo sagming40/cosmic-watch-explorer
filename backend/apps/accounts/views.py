@@ -1,5 +1,5 @@
 """
-인증 API. 문서 04 ─ 4장.
+인증 API. 옛 API 명세 4장.
 
 이 파일에서 유일하게 astronomy/watchlist와 차이점:
 DB 모델(Neo, Exoplanet과 같은)을 직접 조회하지 않는다.
@@ -29,7 +29,7 @@ from .serializers import (
 
 class CsrfView(APIView):
     """
-    GET /api/auth/csrf/ ─ 문서 04, 4.1절.
+    GET /api/auth/csrf/ ─ 옛 API 명세 4.1절.
     앱 실행 시 최초 1회만 호출하여 csrftoken 쿠키를 심는 용도
     AllowAny ─ 전역 기본값이 "로그인 필요"(settings.py)라 열어 줘야 한다. 로그인 폼을 보내려면 이 쿠키가 먼저 있어야 한다.
     """
@@ -38,15 +38,15 @@ class CsrfView(APIView):
     def get(self, request):
         # get_token()을 호출하는 그 순간, Django가 응답에 Set-Cookie 헤더를 까워넣는다.
         # 반환값(token String 자체)은 사용하지 않는다. ─ "쿠키를 심는 동작"이 목적이기 때문에,
-        # 그 값을 몸통(JSON)에 담아보내는 것이 아니다. (문서 04 ─ 4.1절: 본문엔 token을 담지 않는다.)
+        # 그 값을 몸통(JSON)에 담아보내는 것이 아니다. (옛 API 명세 4.1절: 본문엔 token을 담지 않는다.)
         get_token(request)
         return Response({"detail": "CSRF cookie set"})
 
 
 class MeView(APIView):
     """
-    GET /api/auth/me/ ─ 문서 04, 4.2절
-    비로그인도 정상적으로 200을 받아야 하는 endpoint기 때문에 (문서 04 ─ "401을 반환하지 않는다.")
+    GET /api/auth/me/ ─ 옛 API 명세 4.2절
+    비로그인도 정상적으로 200을 받아야 하는 endpoint기 때문에 (옛 API 명세 ─ "401을 반환하지 않는다.")
     LogoutView처럼 IsAuthenticatedOr401을 붙이면 안 된다.
     (10-27까지는 아무것도 안 붙이면 열려 있었지만, 전역 기본값이 "로그인 필요"로 바뀌어 AllowAny를 명시한다)
     """
@@ -63,9 +63,9 @@ class MeView(APIView):
 
 class SignupView(APIView):
     """
-    POST /api/auth/signup/ ─ 문서 04, 4.3절
+    POST /api/auth/signup/ ─ 옛 API 명세 4.3절
     가입과 동시에 로그인 처리한다 ─ "저장버튼을 누르려다 여기까지 온" 사용자의
-    단계를 하나 줄이기 위함 (문서 04 ─ 4.3절 각주).
+    단계를 하나 줄이기 위함 (옛 API 명세 4.3절 각주).
     AllowAny ─ 가입은 당연히 비로그인 상태에서 한다.
     throttle_scope ─ 같은 IP에서 시간당 10번까지 (계정 대량 생성 막기). settings.py DEFAULT_THROTTLE_RATES
     """
@@ -106,9 +106,9 @@ class SignupView(APIView):
 
 class LoginView(APIView):
     """
-    POST /api/auth/login/ ─ 문서 04, 4.4절
+    POST /api/auth/login/ ─ 옛 API 명세 4.4절
 
-    ⚠️ 실패 시 401이 아니라 400이다 (문서 1.3절 표에 명시되어 있음).
+    ⚠️ 실패 시 401이 아니라 400이다 (ARCHITECTURE 3.3절 표에 명시되어 있음).
     직관적으로 401을 쓰고 싶어지는 자리이지만, 이건 "당신이 누구인지 증명되지 않음"이라는 뜻이 아니라
     "그런 조합 자체가 틀림"이라는 판단이라 400으로 분류해둔 것.
     AllowAny ─ 로그인도 비로그인 상태에서 한다.
@@ -125,7 +125,7 @@ class LoginView(APIView):
         # authenticate()는 ID/PW가 틀리면 예외 없이 None을 준다.
         # "ID 없음" / "틀린 비밀번호"를 구분지어 알려주지 않는 이유
         # ─ 구분지어 알려줄 경우 공격자가 "이 아이디는 존재한다"는 걸 
-        # 확인하는 계정 열거 공격의 재료가 된다. (문서 04 ─ 4.4절 각주)
+        # 확인하는 계정 열거 공격의 재료가 된다. (옛 API 명세 4.4절 각주)
         user = authenticate(
             request,
             username=serializer.validated_data["username"],
@@ -143,7 +143,7 @@ class LoginView(APIView):
 
 class LogoutView(APIView):
     """
-    POST /api/auth/logout/ ─ 문서 04, 4.5절. 인증 API 중 유일하게 인증이 필요한 endpoint.
+    POST /api/auth/logout/ ─ 옛 API 명세 4.5절. 인증 API 중 유일하게 인증이 필요한 endpoint.
 
     IsAuthenticatedOr401을 사용하는 이유 ─ 이번 세션 에서 만든 class를 처음 실전에 투입하는 자리이다.
     로그아웃 되지 않은(비로그인) 상태에서 로그아웃을 재시도 하면 401 + AUTH_REQUIRED가 나가야 정상임.
@@ -156,7 +156,7 @@ class LogoutView(APIView):
 
 
 # ═══════════════════════════════════════════════════════════════════
-# 마이페이지 API ─ /api/account/ (문서 04, 4.6절 · 10-28 추가)
+# 마이페이지 API ─ /api/account/ (옛 API 명세 4.6절 · 10-28 추가)
 # 전부 로그인 필요 ─ 전역 기본값(IsAuthenticatedOr401)을 그대로 쓰므로 permission_classes를 안 붙인다.
 #
 # 비밀번호를 다시 받는 곳(이메일 변경·비밀번호 변경·탈퇴)은 횟수 제한 account_sensitive(시간당 10번).
@@ -253,7 +253,7 @@ class PasswordChangeView(APIView):
 
 class AvatarView(APIView):
     """
-    /api/account/avatar/ ─ 프로필 사진 (문서 04, 4.6절 · 10-28 추가)
+    /api/account/avatar/ ─ 프로필 사진 (옛 API 명세 4.6절 · 10-28 추가)
       GET    → 내 사진(image/webp). 없으면 404
       PUT    → multipart "avatar" 파일 1개. 서버가 이미지로 열어 보고 256×256 WebP로 새로 만들어 저장 → user 블록
       DELETE → 기본(머리글자)으로 → user 블록

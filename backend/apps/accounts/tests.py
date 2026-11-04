@@ -1,5 +1,5 @@
 """
-인증 API 테스트 ─ 문서 04, 4장 / M2 완료 기준
+인증 API 테스트 ─ 옛 API 명세 4장 / M2 완료 기준
 
 python manage.py test apps.accounts
 """
@@ -25,7 +25,7 @@ class AuthFlowTests(BaseAPITestCase):
             format="json",
         )
         self.assertEqual(res.status_code, 201)
-        # 가입 = 로그인 (04 문서 4.3절) ─ 같은 클라이언트로 /me/ 를 물으면 본인이어야 한다
+        # 가입 = 로그인 (옛 API 명세 4.3절) ─ 같은 클라이언트로 /me/ 를 물으면 본인이어야 한다
         self.assertEqual(self.client.get("/api/auth/me/").json()["user"]["username"], "new_user")
         # 비밀번호는 원문이 아니라 해시로 저장된다
         self.assertNotEqual(User.objects.get(username="new_user").password, PASSWORD)
@@ -110,7 +110,7 @@ class DefaultLockTests(BaseAPITestCase):
 
 
 class AccountTests(BaseAPITestCase):
-    """마이페이지 API (10-28) ─ 문서 04, 4.6절"""
+    """마이페이지 API (10-28) ─ 옛 API 명세 4.6절"""
 
     def setUp(self):
         super().setUp()
@@ -213,7 +213,7 @@ class AccountTests(BaseAPITestCase):
 
 
 class AvatarTests(BaseAPITestCase):
-    """프로필 사진 (10-28) ─ 문서 04, 4.6절. 이미지는 테스트 안에서 Pillow로 만든다"""
+    """프로필 사진 (10-28) ─ 옛 API 명세 4.6절. 이미지는 테스트 안에서 Pillow로 만든다"""
 
     URL = "/api/account/avatar/"
 

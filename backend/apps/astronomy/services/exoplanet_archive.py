@@ -11,7 +11,7 @@ TAP_URL = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
 
 
 # NASA Server에서 실제로 실행될 query
-# 문서 02 - 5.4절 → mapping표에 적혀있는 15개 컬럼만 딱 집어서 가져온다.
+# 저장에 쓰는 15개 컬럼만 딱 집어서 가져온다. (주의점은 DATA_MODEL 5장)
 # select * 으로 query를 날리면 300개가 넘는 컬럼이 딸려와 네크워크와 parsing 시간만 낭비된다.
 TAP_QUERY = """
     select pl_name, hostname, sy_dist,

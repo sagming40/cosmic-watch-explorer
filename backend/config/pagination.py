@@ -1,5 +1,5 @@
 """
-DRF 기본 페이지네이션의 응답 모양을, 문서 04 — 1.5절 형식으로 바꾼다.
+DRF 기본 페이지네이션의 응답 모양을, ARCHITECTURE 3.5절 형식으로 바꾼다.
 
 기본값과 다른 점 한 가지: next/previous(전체 URL 문자열) 대신
 page/total_pages(숫자)를 내려준다. Front에서 URL을 Parsing하지 않아도
@@ -11,7 +11,7 @@ from rest_framework.response import Response
 
 
 class CommonPagination(PageNumberPagination):
-    # 페이지 하나 당 몇 건씩 담을건지. 문서 04 — 1.5절(예시: page_size: 20)이 default
+    # 페이지 하나 당 몇 건씩 담을건지. ARCHITECTURE 3.5절(예시: page_size: 20)이 default
     page_size = 20
     
     # 클라이언트가 ?page_size=50 과 같은 형식으로 요청하면 그 값을 우선 사용하는 걸 허용할지에 대한 여부.

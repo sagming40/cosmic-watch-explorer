@@ -18,7 +18,7 @@ from .models import UserAvatar, UserPreference
 
 
 # Django User.username 자체 검증기(UnicodeUsernameValidator)는 한글도 통과시킨다.
-# 명세(04 ─ 4.3절) "영문/숫자/_"보다 느슨하므로, 직접 좁혀야 한다.
+# 옛 API 명세 4.3절 "영문/숫자/_"보다 느슨하므로, 직접 좁혀야 한다.
 # 비유: 정문 경비(Django 기본)는 느슨하고, 건물 규정(명세)은 훨씬 엄격하다.
 USERNAME_VALIDATOR = RegexValidator(
     regex=r'^[a-zA-Z0-9_]{3,30}$',
@@ -27,7 +27,7 @@ USERNAME_VALIDATOR = RegexValidator(
 
 class PreferenceSerializer(serializers.Serializer):
     """
-    표시 설정 3칸 ─ 응답(읽기)과 PATCH(일부만 바꾸기) 둘 다 이 모양. 문서 04 ─ 4.6절 (10-28)
+    표시 설정 3칸 ─ 응답(읽기)과 PATCH(일부만 바꾸기) 둘 다 이 모양. 옛 API 명세 4.6절 (10-28)
     ChoiceField라 정해진 값 말고는 400 + 칸 오류.
     """
     distance_unit = serializers.ChoiceField(choices=UserPreference.DISTANCE_UNITS)
@@ -73,7 +73,7 @@ class UserBriefSerializer(serializers.Serializer):
 
 class SignupSerializer(serializers.Serializer):
     """
-    문서 04 ─ 4.3절. Django의 ModelSerializer 대신 평범한 Serializer를 사용한 이유:
+    옛 API 명세 4.3절. Django의 ModelSerializer 대신 평범한 Serializer를 사용한 이유:
     password_confirm은 User 모델에 존재하지 않는 field라서(DB 저장 X),
     ModelSerializer로 만들면 이 필드 하나 때문에 제외 설정이 더 늘어난다.
     """
@@ -172,7 +172,7 @@ class PasswordOnlySerializer(serializers.Serializer):
 
 class LoginSerializer(serializers.Serializer):
     """
-    문서 04 ─ 4.4절. 여기에서는 "형식이 맞는지"만 확인한다.
+    옛 API 명세 4.4절. 여기에서는 "형식이 맞는지"만 확인한다.
     "실제로 이 ID/PW 조합이 맞는지"는 view에서 authenticate()로 확인 
     ─ 형식 검증(serializer)과 인증 판정(view)의 책임을 분리해둔다.
     """

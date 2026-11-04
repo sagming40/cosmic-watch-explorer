@@ -7,7 +7,7 @@ class Neo(models.Model):
     """
     nasa_id = models.CharField(max_length=20, unique=True)
     # ⬆️ Neo 테이블 핵심 컬럼 ─ NASA에서 가져오는 ID를 PK가 아닌 UNIQUE 컬럼으로 구분짓는 이유
-    # 비유: "외부 회사 사원번호"와 "우리 회사 사원번호"를 분리하는 것. (문서 02 ─ 1.4절)
+    # 비유: "외부 회사 사원번호"와 "우리 회사 사원번호"를 분리하는 것. (DATA_MODEL 1.4절)
     # NASA ID 체계가 바뀌어도 DB의 관계는 깨지지 않음
     
     name = models.CharField(max_length=100)
@@ -17,7 +17,7 @@ class Neo(models.Model):
         max_digits=6, decimal_places=3, null=True, blank=True
     )
     
-    # 직경을 min/max 두 개로 나눈 이유 (문서 02 ─ 3.1절)
+    # 직경을 min/max 두 개로 나눈 이유 (DATA_MODEL 3.1절)
     # NASA에서 측정한 값은 정확한 직경이 아닌 추정치이다. ─ "행성의 밝기로 범위 추정"
     # 평균을 내서 하나로 합치면 원본이 왜곡되므로 범위 그대로 저장
     diameter_min_m = models.DecimalField(
@@ -44,7 +44,7 @@ class Neo(models.Model):
     class Meta:
         db_table = 'neo'
         # ⬆️ 이렇게 지정해주지 않으면 Django가 테이블 명을 임의로 지어버림 (예: 'astronomy_neo')
-        # 문서 02번 DDL과 이름을 맟춰야 하므로 db_table로 직접 지정
+        # 설계 때 정한 테이블 이름을 그대로 쓰려고 db_table로 직접 지정
     
     def __str__(self):
         return self.name
@@ -73,7 +73,7 @@ class CloseApproach(models.Model):
     # 코드의 가독성과 효율성이 떨어짐
 
     approach_date = models.DateField(db_index=True)  
-    # ⬆️ 시간없이 날짜만. (문서 02 ─ 3.2절)
+    # ⬆️ 시간없이 날짜만. (DATA_MODEL 3.2절)
     # DATETIME 컬럼에 함수를 덧씌워 검색을 할 경우, 
     # 인덱스로 찾지 못하므로, 날짜 전용 컬럼을 따로 생성한다.
     # 예: WHERE approach_date = '2026-08-21' 처럼 입력하여 바로 검색 
@@ -116,7 +116,7 @@ class CloseApproach(models.Model):
         # "같은 날짜로 fetch_feed를 두 번 실행해도 행 수가 늘어나지 않는다"는
         # 전제를 보장해주는 핵심장치 — **M1 완료 기준**
         # Application 코드에서 "중복 체크 후 저장" 방식이 아닌, DB 자체에서 중복 저장을 
-        # 막기 위해 선언해둔다. 더 안전한 방식 (문서 02 3.6절, 동시 요청에도 뚫리지 않음)
+        # 막기 위해 선언해둔다. 더 안전한 방식 (DATA_MODEL 3.6절, 동시 요청에도 뚫리지 않음)
 
 class OrbitalData(models.Model):
     """
@@ -179,14 +179,14 @@ class OrbitalData(models.Model):
     # 아주 작은 오차에도 몇년 뒤 위치 예측에서 크게 벌어질 수 있어서, 
     # NASA에서 정밀도를 소수점 10자리 까지 제공하는 경우가 있음.
     # 이 정밀도가 DB에 그대로 적재될 수 있어야 "원본을 훼손하지 않는다"는 
-    # 원칙을 지킬수 있음 (문서 02 — 1.1절)
+    # 원칙을 지킬수 있음 (DATA_MODEL 1.1절)
 
     orbit_class_type = models.CharField(
         max_length=10, null=True, blank=True, db_index=True
     )
     orbit_class_description = models.CharField(max_length=255, null=True, blank=True)
     # ⬆️ orbit_class_type에 db_index가 붙은 이유
-    # "APO", "ATE" 같은 궤도 분류로 필터링하는 기능이 있어서 (문서 02 — 4.1절)
+    # "APO", "ATE" 같은 궤도 분류로 필터링하는 기능이 있어서 (DATA_MODEL 4.1절)
 
     class Meta:
         db_table = 'orbital_data'
@@ -201,15 +201,15 @@ class HostStar(models.Model):
     # ⬆️ unique=True: 같은 이름의 항성이 중복 저장되는 걸 막음
     # exoplanet_archive.py로 수집할 때 "이 항성이 이미 있나?" 
     # 확인 후 존재하지 않으면 새로 생성, 존재하면 기존 참조.
-    # 문서 02 — 5.4절 "수집 순서 주의" → host_star 먼저 처리
+    # DATA_MODEL 5장 "수집 순서" → host_star 먼저 처리
 
     distance_pc = models.DecimalField(
         max_digits=12, decimal_places=3, null=True, blank=True, db_index=True
     )
-    # ⬆️ 핵심 인덱스 중 하나 (문서 02 — 4.1절, 굵게 표시된 4개 중 하나)
+    # ⬆️ 핵심 인덱스 중 하나 (DATA_MODEL 4.1절, 굵게 표시된 4개 중 하나)
     # "거리 100광년 이하" 같은 검색 조건이 이 컬럼을 거쳐간다.
     # 단위가 파섹(pc)이다. 광년(ly)으로 변환하는 계산은 DB에 저장하지 않고
-    # 추후 서비스 레이어(백엔드)에서 처리 (문서 02 — 3.4절 → "저장은 pc, 표시는 ly")
+    # 추후 서비스 레이어(백엔드)에서 처리 (DATA_MODEL 3.4절 → "저장은 pc, 표시는 ly")
 
     spectral_type = models.CharField(max_length=30, null=True, blank=True)
     temperature_k = models.DecimalField(
@@ -256,7 +256,7 @@ class Exoplanet(models.Model):
     mass_earth = models.DecimalField(
         max_digits=14, decimal_places=6, null=True, blank=True, db_index=True
     )
-    # ⬆️ radius_earth, mass_earth 모두 핵심 인덱스이다. (문서 02 — 4.1절)
+    # ⬆️ radius_earth, mass_earth 모두 핵심 인덱스이다. (DATA_MODEL 4.1절)
     # "지구 대비 0.8 ~ 1.5배 크기" 같은 조건 검색이 이 컬럼들을 거친다.
 
     equilibrium_temp_k = models.DecimalField(
@@ -269,12 +269,12 @@ class Exoplanet(models.Model):
     discovery_year = models.SmallIntegerField(null=True, blank=True, db_index=True)
     # ⬆️ SmallIntegerField를 사용한 이유: 발견 연도는 1990년대 ~ 2020년대 범위이다.
     # 용량이 큰 정수 타입(IntegerField)을 사용하지 않아도 된다.
-    # 문서 02 — DDL에도 SMALLINT로 명시 되어 있다.
+    # 마이그레이션에도 SMALLINT로 들어간다.
 
     discovery_method = models.CharField(
         max_length=50, null=True, blank=True, db_index=True
     )
-    # ⬆️ 이 필드도 값이 없는 경우가 실제로 많다. (문서 02 — 3.5절 예시 JSON 참고)
+    # ⬆️ 이 필드도 값이 없는 경우가 실제로 많다. (DATA_MODEL 3.5절)
     # radius_earth, mass_earth, equilibrium_temp_k의 값이 전부 null인 행성도 흔함
     # "발견은 됐지만 아직 상세 측정은 안 된" 상태
 
@@ -289,7 +289,7 @@ class NeoFetchLog(models.Model):
     NASA API를 해당 날짜에 이미 수집했는지를 기록하는 'log' 테이블
     다른 모델들과 달리 FK가 하나도 없는 독립테이블
     
-    비유: 편의점 '발주 장부' — 문서 02 3.7절
+    비유: 편의점 '발주 장부' — DATA_MODEL 3.7절
     선반이 비어있을때 "미발주"와 "발주는 했지만 발주한 상품이 그날 입고 되지 않는다"
     를 구분해주는 장부
     """        

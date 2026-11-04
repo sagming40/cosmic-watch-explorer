@@ -1,5 +1,5 @@
 """
-Watchlist API 응답을 만드는 serializer. 문서 04 ─ 7절
+Watchlist API 응답을 만드는 serializer. 옛 API 명세 7절
 
 astronomy의 serializer들과 시작점이 다르다.
 astronomy ─ Neo/Exoplanet 자신에서 출발
@@ -22,7 +22,7 @@ from apps.astronomy.units import km_to_lunar_distance, parsec_to_light_year
 
 class NextApproachSerializer(serializers.Serializer):
     """
-    문서 04 ─ 7.2절 next_approach 블록. {datetime_utc, miss_distance_ld} 딱 2개뿐.
+    옛 API 명세 7.2절 next_approach 블록. {datetime_utc, miss_distance_ld} 딱 2개뿐.
     
     astronomy의 ApproachDetailSerializer(7개 필드짜리 상세용)를 재사용하지 않는 이유
     ─ "다음 접근이 언제인지"만 보여주면 되는 요약용이라 필드 구성 자체가 다르다.
@@ -37,7 +37,7 @@ class NextApproachSerializer(serializers.Serializer):
 
 class NeoWatchlistRowSerializer(serializers.Serializer):
     """
-    GET /api/watchlist/neo/ 목록 한 줄. 문서 04 ─ 7.2절.
+    GET /api/watchlist/neo/ 목록 한 줄. 옛 API 명세 7.2절.
     source는 NeoWatchlist 인스턴스 (Neo 자신이 아니다).
     """
     nasa_id = serializers.CharField(source="neo.nasa_id")
@@ -57,7 +57,7 @@ class NeoWatchlistRowSerializer(serializers.Serializer):
     
     def get_next_approach(self, obj):
         """
-        오늘 이후 '지구' 접근 중 가장 빠른 것. 문서 04 ─ 7.2절 구현 힌트를 그대로 따른다.
+        오늘 이후 '지구' 접근 중 가장 빠른 것. 옛 API 명세 7.2절 구현 힌트를 그대로 따른다.
         
         ⚠️ NeoDetailView.recent_approaches ─ 모든 천체를 기준으로 미래 접근 5건을 보여준다.
         → "정보 제공"용. orbiting_body와 무관하다.
@@ -95,7 +95,7 @@ class NeoWatchlistCreateSerializer(serializers.Serializer):
 
 class HostStarMiniSerializer(serializers.Serializer):
     """
-    문서 04 ─ 7.5절 host_star 요약. {name, distance_ly} 딱 2개 뿐
+    옛 API 명세 7.5절 host_star 요약. {name, distance_ly} 딱 2개 뿐
 
     astronomy.HostStarBriefSerializer ─ (3개 fields: name/distance_pc/distance_ly)를
     그대로 재사용하면 명세에는 존재하지 않는 distance_pc가 딸려 나간다.
@@ -110,7 +110,7 @@ class HostStarMiniSerializer(serializers.Serializer):
 
 class ExoplanetWatchlistRowSerializer(serializers.Serializer):
     """
-    GET /api/watchlist/exoplanets/ 목록 한 줄. 문서 04 ─ 7.5절.
+    GET /api/watchlist/exoplanets/ 목록 한 줄. 옛 API 명세 7.5절.
     NeoWatchlistRowSerializer와 완전히 대칭 구조 ─ 소스가 ExoplanetWatchlist 인스턴스인 것도 같다.
     """
     id = serializers.IntegerField(source="exoplanet.id")

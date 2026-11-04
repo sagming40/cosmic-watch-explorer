@@ -43,7 +43,7 @@ class NeoWatchlist(models.Model):
         # CloseApproach의 UniqueConstraint와 원리는 같지만 목적이 다르다.
         # CloseApproach — "중복 수집 불가" / NeoWatchlist — "중복 북마크 불가"
         # UniqueConstraint 제약 덕분에 "소행성 중복 POST 요청"을 하면 "ERROR 409 반환"이 가능해짐 
-        # (문서 02 — 3.6절 / M2 완료 기준)
+        # (DATA_MODEL 3.6절 / M2 완료 기준)
 
 class ExoplanetWatchlist(models.Model):
     """

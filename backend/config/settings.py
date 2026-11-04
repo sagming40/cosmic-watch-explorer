@@ -74,7 +74,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "config.exception_handler.custom_exception_handler",
-    # ⭐ M2 추가 ─ 인증 방식을 세션 쿠키 하나로 못 박는다. (문서 04 ─ 1.1절)
+    # ⭐ M2 추가 ─ 인증 방식을 세션 쿠키 하나로 못 박는다. (ARCHITECTURE 3.1절)
     #
     # 이 설정을 하지 않으면 DRF 기본값 [SessionAuthentication, BasicAuthentication]이 조용히 적용된다.
     # BasicAuthentication은 요청 헤더에 ID:PW를 직접 실어보내는 방식인데 이 프로젝트에서는 사용하지 않는다.
@@ -83,7 +83,7 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ],
     # ⭐ M4 추가 (10-27) ─ 기본값 = "로그인해야 들어올 수 있다".
-    # 처음 설계는 비회원도 NEO·외계행성을 조회할 수 있었지만(01 문서 2장), 화면을 로그인 뒤로 잠그기로 바꿨다.
+    # 처음 설계는 비회원도 NEO·외계행성을 조회할 수 있었지만(decisions/0004), 화면을 로그인 뒤로 잠그기로 바꿨다.
     # 화면만 잠그면 /api/neo/ 주소를 직접 치면 데이터가 다 보인다 → API도 같이 잠근다.
     # 뷰마다 하나씩 붙이지 않고 "기본 잠금"으로 둔 이유: 나중에 만든 API는 저절로 잠긴다(빠뜨려서 열리는 사고가 없다).
     # 열어야 하는 곳(인증 API 4개: csrf·me·signup·login)만 accounts/views.py에서 AllowAny로 명시한다.
@@ -105,14 +105,14 @@ REST_FRAMEWORK = {
         "neo_fetch": "30/hour",
         "neo_detail_fetch": "30/hour",   # ⭐ 추가 ─ NeoDetailView 전용 계량기
         # ⭐ 10-28 추가 ─ 비밀번호 무한 대입(무차별 대입) 막기. 비로그인 요청이라 IP 기준으로 센다.
-        # 배포(M6) 때 프록시 뒤에 서면 모든 요청 IP가 프록시 하나로 보인다 → NUM_PROXIES 설정 필요 (05 문서 M6)
+        # 배포(M6) 때 프록시 뒤에 서면 모든 요청 IP가 프록시 하나로 보인다 → NUM_PROXIES 설정 필요 (PLAN M6)
         "auth_login": "10/minute",
         "auth_signup": "10/hour",
         "account_sensitive": "10/hour",  # 마이페이지에서 비밀번호를 다시 받는 곳(이메일·비밀번호 변경, 탈퇴) ─ 10-28
         "account_avatar": "30/hour",  # 프로필 사진 올리기·지우기 (10-28)
     },
     
-    # ⭐ M2 추가 — Decimal을 문자열이 아닌 숫자로 응답 (문서 04 — 5.1절)
+    # ⭐ M2 추가 — Decimal을 문자열이 아닌 숫자로 응답 (옛 API 명세 5.1절)
     "COERCE_DECIMAL_TO_STRING": False,
 }
 

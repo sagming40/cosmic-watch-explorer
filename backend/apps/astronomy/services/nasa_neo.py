@@ -236,7 +236,7 @@ def fetch_feed(date_str):
     NASA NeoWs Feed API에서 특정 날짜의 소행성 접근 데이터를 가져와 DB에 저장한다.
 
     date_str: "2026-08-21" 형식의 문자열 (start_date와 end_date를 동일하게 "하루치만" 조회)
-    문서 01 요구사항 ─ "하루 단위 조회" 그대로.
+    REQUIREMENTS 4.1절 ─ "하루 단위 조회" 그대로.
     """ 
     params = {
         "start_date": date_str,
@@ -401,7 +401,7 @@ def _save_lookup(data):
     # ② 접근 기록 ― Step 1에서 분리해둔 공통 함수를 그대로 재사용
     #   Feed는 하루치 1건만 주지만, 수십 ~ 수백 건이 한꺼번에 온다.
     #   Earth 이외에 Venus, Mars 같은 다른 천체 접근도 섞여 있다.
-    # 문서 02 ― 5.3절의 body 필터가 여기서 의미를 갖는다.
+    # 옛 API 명세 5.3절의 body 필터가 여기서 의미를 갖는다.
     saved_approach_count, _ = _save_close_approaches(neo, data.get("close_approach_data", []))
 
     # ③ 궤도 정보 ― Lookup에만 있는 알맹이
@@ -414,7 +414,7 @@ def _save_lookup(data):
     if orbital:
         orbit_class = orbital.get("orbit_class") or {}
         # orbit_class는 orbital_data 안에 한 겹 더 들어있는 중첩 객체이다.
-        # 문서 02 ― 5.3절 mapping표의 orbit_class.orbit_class_type 부분
+        # NASA 응답의 orbit_class.orbit_class_type 부분
 
         OrbitalData.objects.update_or_create(
             neo=neo,
@@ -442,7 +442,7 @@ def _save_lookup(data):
         # get_or_create가 아니라 update_or_create인 이유
         # NASA는 새 관측이 쌓일 때마다 궤도를 다시 계산한다. '가장 최신 값'이 필요하다.
         #
-        # neo_id에 UNIQUE를 거는 이유 (문서 02 ― 3.3절)
+        # neo_id에 UNIQUE를 거는 이유 (DATA_MODEL 3.3절)
         # neo가 OneToOneField라 UNIQUE가 걸려 있으므로, 같은 소행성엔 항상 그 행을 덮어쓴다.
         # M1의 HostStar/Exoplanet에서 update_or_create를 골랐던 것과 같은 판단이다.
         orbit_saved = True

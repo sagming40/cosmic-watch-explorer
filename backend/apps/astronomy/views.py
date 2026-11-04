@@ -39,7 +39,7 @@ MAX_QUERY_DATE = datetime(2200, 12, 31).date()
 def _parse_query_date(date_str):
     """
     querystring date parameter를 검증하고 date 객체로 바꾼다.
-    값이 없으면 오늘 날짜를 기본값으로 쓴다. (04_api_specification.md 5.1절 기본값 규칙)
+    값이 없으면 오늘 날짜를 기본값으로 쓴다. (옛 API 명세 5.1절 기본값 규칙)
     
     형식이 틀리면(예: "2026/08/21") InvalidDate를 던진다.
     exception_handler.py가 이걸 받아서 자동으로
@@ -76,7 +76,7 @@ SORT_FIELD_MAP = {
 
 class NeoDashboardView(APIView):
     """
-    GET /api/neo — 문서 04, 5.1절 대시보드.
+    GET /api/neo — 옛 API 명세 5.1절 대시보드.
     """  
     throttle_scope = "neo_fetch"
     # ⚠️ throttle_classes는 여기 등록하지 않는다.
@@ -127,7 +127,7 @@ class NeoDashboardView(APIView):
                         raise UpstreamError() from exc
                     # 갱신만 실패 ─ 저장된 예전 데이터가 있는데 503으로 바꿀 이유가 없다 (결정 A와 같은 생각)
         
-        # ② 목록 조회 — 02_database_design.md 8.2절 쿼리 패턴    
+        # ② 목록 조회 — 날짜로 접근 사건을 먼저 찾는 패턴    
         order_field = SORT_FIELD_MAP.get(sort, "miss_distance_km")
         queryset = (
             CloseApproach.objects
@@ -192,10 +192,10 @@ class NeoDashboardView(APIView):
 
 class NeoDetailView(APIView):
     """
-    GET /api/neo/{nasa_id}/ ─ 문서 04, 5.2절 상세.
+    GET /api/neo/{nasa_id}/ ─ 옛 API 명세 5.2절 상세.
 
     ⚠️ 이 view도 조건부로 NASA를 호출한다.
-    04_api_specification.md 420행 ─ "이 endpoint만 NASA API를 호출한다."는 문장은
+    옛 API 명세 420행 ─ "이 endpoint만 NASA API를 호출한다."는 문장은
     5.1절만 존재했을 때의 전제이다. 문서 정리 시 갱신 필요.
     """
     throttle_scope = "neo_detail_fetch"
@@ -234,7 +234,7 @@ class NeoDetailView(APIView):
         #   여기서도 그대로 써야 한다. (같은 문제를 두 번째로 만난 것)
         orbital = getattr(neo, "orbital_data", None)
 
-        # ③ orbit_status ─ 궤도 칸이 비어 있다면 "왜" 비었는지 (10-28 결정 A, 04 문서 5.2절)
+        # ③ orbit_status ─ 궤도 칸이 비어 있다면 "왜" 비었는지 (10-28 결정 A, 옛 API 명세 5.2절)
         #   ok           : 궤도 정보 있음
         #   missing      : NASA에도 없다 (Lookup 404, 또는 응답에 orbital_data 없음)
         #   unavailable  : NASA에 연결하지 못했다 ─ 지금은 못 가져왔을 뿐, 다시 시도하면 될 수 있다
@@ -280,7 +280,7 @@ class NeoDetailView(APIView):
 
 class NeoApproachListView(generics.ListAPIView):
     """
-    GET /api/neo/{nasa_id}/approaches/ ─ 문서 04, 5.3절 접근 기록 전체
+    GET /api/neo/{nasa_id}/approaches/ ─ 옛 API 명세 5.3절 접근 기록 전체
 
     5.1/5.2와 다르게 NASA 호출을 하지 않는다. DB에 이미 저장된 CloseApproach를
     그대로 나열하고 페이지만 나누는 "순수 조회" 역할이기 때문에 Throttle도 필요없다.
@@ -304,7 +304,7 @@ class NeoApproachListView(generics.ListAPIView):
 
         queryset = CloseApproach.objects.filter(neo__nasa_id=nasa_id)
 
-        # ② body 필터 ─ 문서 5.3 기본값은 '(전체)'. 5.1의 기본값 'Earth'와 다르다.
+        # ② body 필터 ─ 옛 API 명세 5.3 기본값은 '(전체)'. 5.1의 기본값 'Earth'와 다르다.
         #   Earth를 default 값으로 걸면 지구가 아닌 접근들이 조용히 사라진다.
         #   확보한 분포가 필터 없이 그대로 정상 출력 되어야 함 
         #   ─ Earth 161 / Merc 114 / Venus 94 / Moon 3 / Mars 2
@@ -320,7 +320,7 @@ class NeoApproachListView(generics.ListAPIView):
 
 class NeoNextApproachView(APIView):
     """
-    GET /api/neo/next-approach/ ─ 대시보드 "다음 근접 접근까지" 카운트다운 (04 문서 5.4절, 10-28 M6)
+    GET /api/neo/next-approach/ ─ 대시보드 "다음 근접 접근까지" 카운트다운 (옛 API 명세 5.4절, 10-28 M6)
 
     지금 이후 가장 먼저 오는 0.05 AU(약 19.5 LD) 안쪽 지구 접근 1건. 원본은 NASA/JPL CAD (services/jpl_cad.py).
     - 우리 DB에서 고르지 않는다 ─ 누가 연 날짜만 들어 있어서 기기마다 답이 달라진다
@@ -377,7 +377,7 @@ def _next_approach_body(row):
 
 class ExoplanetListView(generics.ListAPIView):
     """
-    GET /api/exoplanets/ ─ 문서 04, 6.1절 catalog 검색.
+    GET /api/exoplanets/ ─ 옛 API 명세 6.1절 catalog 검색.
     cosmic-watch-explorer 프로젝트 Backend의 핵심 기능 ─ NASA 호출 없이 DB에 있는
     6,354건을 다중 조건으로 걸러 내는 순수 조회이므로 Throttle 대상이 아니다.
     NeoApproachListView와 같은 이유 ─ NASA를 부르는 지점에만 계량기를 단다.
@@ -414,7 +414,7 @@ class ExoplanetListView(generics.ListAPIView):
 
 class ExoplanetDetailView(APIView):
     """
-    GET /api/exoplanets/{id}/ ─ 문서 04, 6.2절 상세.
+    GET /api/exoplanets/{id}/ ─ 옛 API 명세 6.2절 상세.
     
     NASA를 호출하지 않는다 
     ─ Exoplanet 데이터는 최초 1회만 수집하면 추가 수집이 필요없는 데이터다.
@@ -440,12 +440,12 @@ class ExoplanetDetailView(APIView):
 # meta 응답을 저장해두는 cache key. 이 String이 두 번째 등장하면 안된다.
 # 상수로 한 곳에만 둔다. ─ LUNAR_DISTANCE_KM을 units.py 한 곳에만 둔 것과 같은 이유.
 EXOPLANET_META_CACHE_KEY = "exoplanet_meta"
-EXOPLANET_META_CACHE_TTL = 60 * 60  # 1시간 (문서 04 ─ 6.3절)
+EXOPLANET_META_CACHE_TTL = 60 * 60  # 1시간 (옛 API 명세 6.3절)
 
 
 class ExoplanetMetaView(APIView):
     """
-    GET /api/exoplanets/meta/ ─ 문서 04, 6.3절 필터 선택지.
+    GET /api/exoplanets/meta/ ─ 옛 API 명세 6.3절 필터 선택지.
     
     ⚠️ 명세와 다른 방법으로 변경한 이유
     
@@ -473,7 +473,7 @@ class ExoplanetMetaView(APIView):
     
     def _build_meta(self):
         # ① 발견 방법별 개수 ─ NULL(미측정)은 드롭다운에 넣을 항목이 아니므로 제외.
-        # 03_user_scenarios_and_uiux.md 필터 드롭다운용
+        # DESIGN 필터 드롭다운용
         methods = (
             Exoplanet.objects
             .exclude(discovery_method__isnull=True)

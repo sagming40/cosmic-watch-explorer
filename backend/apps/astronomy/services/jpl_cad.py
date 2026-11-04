@@ -1,5 +1,5 @@
 """
-"다음 근접 접근" 카운트다운 데이터 ─ NASA/JPL Close Approach Data(CAD) API (10-28 M6, 05 문서 M7-2에서 당김)
+"다음 근접 접근" 카운트다운 데이터 ─ NASA/JPL Close Approach Data(CAD) API (10-28 M6, PLAN M7-2에서 당김)
 
 왜 NeoWs(우리 DB)가 아니라 JPL CAD인가
 - 우리 DB에는 "누군가 조회한 날짜"의 접근만 있다. 거기서 "다음 접근"을 고르면 아무도 안 연 날짜의 접근이 빠진다
