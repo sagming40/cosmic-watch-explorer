@@ -12,6 +12,63 @@
 
 ---
 
+## 2026-11-04 (1) · 문서를 전역 문서 체계로 재정비 (회사 PC)
+
+### 한 일
+
+- `docs/`를 전역 "문서 체계" 절에 맞췄다: 01 → REQUIREMENTS, 02 → DATA_MODEL, 03 → DESIGN, 05 → PLAN, 04 → ARCHITECTURE + `archive/API_SPEC_old`. 절 번호는 유지했다. 대응표는 [archive/README](archive/README.md)
+- 끝난 단계를 archive로: DEVLOG M0 ~ M4, PLAN M0 ~ M5. DEVLOG 1,761줄 → 약 330줄
+- `decisions/` 10개, `mockups/README` 신설. 머리 표 · 변경 이력은 `archive/CHANGELOG_old_docs`로
+- 코드 주석 232줄(87개 파일)의 옛 문서 번호를 새 이름으로 치환
+
+### [설계] 목업은 지금 README만, 실제 파일은 M6 맨 끝에 (사용자 결정)
+
+이미 구현된 화면이라 지금 그려도 결정에 쓰이지 않고, 배포 뒤 화면까지 반영하려면 끝이 낫다. PLAN M6 마지막 작업과 완료 기준에 넣어서 끝나야 M7로 넘어간다. 그래서 "전역 문서 체계와 다르게"로 적을 건 없다. 자세히는 [decisions/0001](decisions/0001-docs-refactor.md).
+
+### 사전 검증에서 발견
+
+- 코드 주석이 옛 번호를 230줄 넘게 부른다 → 절 번호를 유지하고 일괄 치환, 절이 없어진 약 20줄은 손으로 고침
+- 엔드포인트의 원본이 될 Swagger가 아직 없다 → `urls.py` · `serializers.py` · `types/api.ts` · `tests.py`를 원본으로 가리키고, 옛 예시는 archive에 둔다
+- 문서가 코드와 어긋나 있던 것(옮기면서 코드 기준으로 고침): 02 관계도에 `user_preference` · `user_avatar` 없음, 03 화면 흐름 · 시나리오 3이 비회원 탐색 기준, 03 8장 스케일 바 세로 전환(코드에 없음), 2.5절 `destructive` 연결(hazard → bone), PLAN CI 항목 테스트 46개 → 76개
+- 현재 상태와 M6 "배포 플랫폼 결정"이 옛 내용이었다: 도메인은 10-30에 샀고, 위치는 크레딧 결과 대기다 → [decisions/0009](decisions/0009-deploy-platform.md)로 정리하고 체크를 풀었다
+
+### [환경] 커밋 하나에 파일 이동만 들어감
+
+**증상**: `607b3cf` 본문에는 ARCHITECTURE 신설까지 적었는데 실제로는 파일 이동만 들어갔다.
+
+**원인**: `git mv`로 이미 없어진 옛 경로를 `git add`에 같이 넘겨서 add 전체가 실패했고, 오류를 `2>$null`로 버린 채 커밋했다. 11-02에 겪은 "커밋 본문과 실제 변경이 어긋남"과 같은 모양이다.
+
+**해결**: 다음 커밋 `e2ccf18`에 나머지를 넣고 본문에 적었다(히스토리는 고치지 않음).
+
+**배운 것**: `git add` 오류를 버리지 않는다. 커밋 전에 `git diff --cached --stat`을 본다 ─ 11-02에 적어 둔 그대로다.
+
+### 검증
+
+- 옮긴 줄 대조: DEVLOG 날짜 블록 빠진 줄 0, PLAN은 그대로 없는 42줄이 전부 의도한 변경 · 13장임을 확인. 02 · 04는 빠지는 설명을 절별로 대조해 새 문서로 옮김
+- 주석 치환: 바뀐 줄의 코드 부분 비교 달라진 줄 0, `manage.py test` 76개 통과, `tsc -b` · `npm run lint` 통과
+- 문서 30개 상대 링크 깨진 것 0, 코드 · README · CLAUDE.md에 옛 번호 0건 (옛 DEVLOG 블록 · archive 제외)
+- **확인 못 한 것**: E2E는 안 돌렸다(코드 변경 없음). 03 와이어프레임(6.1 ~ 6.4)은 그대로 두었고 구현과 한 칸씩 대조하지 않았다 ─ 어긋나면 구현이 기준이다. M6 목업 때 함께 본다
+
+**이번 세션 커밋**
+- `20b6cf0` docs(M6): 문서 재정비 결정 기록, 옛 변경 이력 보관
+- `2e49b38` docs(M6): 01·02·03·05 문서를 역할 이름으로 변경 (내용 그대로)
+- `7187d41` docs(M6): DEVLOG 끝난 단계를 archive로, 현재 상태 줄이기
+- `19aa5a0` docs(M6): PLAN을 남은 단계 중심으로 줄임, M6 끝에 목업 추가
+- `856c867` docs(M6): REQUIREMENTS 줄이기
+- `19da5a1` docs(M6): DATA_MODEL 줄이기, 컬럼 · DDL · 모델은 코드를 가리킴
+- `39eac3c` docs(M6): DESIGN 줄이기, mockups README 추가
+- `607b3cf` docs(M6): 04를 ARCHITECTURE와 archive/API_SPEC_old로 나눔
+- `6bfd960` docs(M6): 흩어진 결정을 decisions 0002 ~ 0010으로 정리
+- `e2ccf18` docs(M6): ARCHITECTURE 추가, API_SPEC_old 머리말
+- `559f3c5` chore(M6): 백엔드 주석의 옛 문서 번호를 새 이름으로
+- `f1141c2` chore(M6): 프론트 주석의 옛 문서 번호를 새 이름으로
+- `099c479` docs(M6): CLAUDE.md 문서 지도 · README를 새 문서 이름으로
+- `docs(M6): CLAUDE.md 문서 지도 · README를 새 문서 이름으로` · `docs(M6): DEVLOG 재정비 기록` (이 커밋들)
+
+**다음에 할 일**: 위 "현재 상태" 그대로 ─ 배포 전 백엔드 점검 5개부터. `docs/CHAT_HISTORY.md`는 건드리지 않았다(드라이브로 옮기는 건 사용자 선택).
+
+---
+
 ## 2026-11-02 (월) — 작업 방식을 전역 설정으로 옮김 (회사 PC)
 
 ### [설계] 기본 작업 방식은 전역 설정이 줄기, 이 저장소는 가지
