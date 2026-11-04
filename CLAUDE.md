@@ -35,7 +35,7 @@ Backend: Django 6.1 + DRF + MariaDB / Frontend: React 19 + TypeScript 6.0 + Vite
 - 세션이 중간에 끊길 것 같으면 `wip:` 커밋으로 push해 둔다(다른 기기에서 이어가기 위해). 다음 세션에서 정식 커밋으로 정리할지는 사용자에게 묻는다(`main`이라 재작성은 force push가 필요하기 때문).
 
 ### 1.4 문서 갱신 규칙
-- 세션(작업 단위) 종료 시: `docs/DEVLOG.md` → `docs/05_milestones.md` → 필요 시 01~04 문서 → `docs(M{n})` 커밋 → push.
+- 세션(작업 단위) 종료 시: `docs/DEVLOG.md` → `docs/PLAN.md` → 필요 시 01~04 문서 → `docs(M{n})` 커밋 → push.
 - DEVLOG: 날짜 블록, **최신이 위**. 항목 형식은 `증상 / 원인 / 해결 / 배운 것`(막혔던 일), 블록 끝에 **`이번 세션 커밋`과 `다음에 할 일` 필수**. 맨 위 "현재 상태" 표도 갱신.
 - 05_milestones: 체크박스 갱신, 계획에 없던 작업은 `— *계획에 없던 작업*` 표시. 문서 상단 **버전 = 변경 이력 마지막 줄 버전**.
 - 완료 기준은 "속을 수 없는 형태"로만 체크한다(실측 증거가 있어야 ✅).
@@ -172,11 +172,11 @@ Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필
 | 문서 | 내용 | 갱신 빈도 |
 |---|---|---|
 | `DEVLOG.md` | 현재 상태, 날짜별 작업·트러블슈팅 기록 | Tier 1 (매 세션) |
-| `05_milestones.md` | M0~M8 작업 목록·완료 기준 (M7 확장·M8 데스크톱 앱은 10-28 계획) | Tier 1 (매 세션) |
-| `02_database_design.md` | ERD, 테이블 10개(+ Django auth_user), DDL | Tier 2 (구현과 어긋날 때) |
+| `PLAN.md` | M0~M8 작업 목록·완료 기준 (M7 확장·M8 데스크톱 앱은 10-28 계획) | Tier 1 (매 세션) |
+| `DATA_MODEL.md` | ERD, 테이블 10개(+ Django auth_user), DDL | Tier 2 (구현과 어긋날 때) |
 | `04_api_specification.md` | 엔드포인트 26개(마이페이지 8개·카운트다운 1개 포함), 오류 봉투, 페이징 | Tier 2 |
-| `01_requirements_and_features.md` | 요구사항, MVP 범위, 우선순위 | Tier 3 (드물게) |
-| `03_user_scenarios_and_uiux.md` | 화면 설계, 디자인 토큰, 컴포넌트 목록 | Tier 3 |
+| `REQUIREMENTS.md` | 요구사항, MVP 범위, 우선순위 | Tier 3 (드물게) |
+| `DESIGN.md` | 화면 설계, 디자인 토큰, 컴포넌트 목록 | Tier 3 |
 
 ### 3.2 코드 구조
 ```text

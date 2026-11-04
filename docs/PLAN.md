@@ -60,7 +60,7 @@ M0 완료 시점에 M1~M6 추정치 재조정
 
 ### 2.1 v1.0 경계
 
-**M4 종료 시점이 v1.0이다.** 이 시점에 `01_requirements_and_features.md` 9장의 MVP 완료 기준이 **전부** 충족되어야 한다.
+**M4 종료 시점이 v1.0이다.** 이 시점에 `REQUIREMENTS.md` 9장의 MVP 완료 기준이 **전부** 충족되어야 한다.
 
 M5·M6는 v1.0을 다듬고 세상에 내놓는 구간이지, 기능을 추가하는 구간이 아니다.
 
@@ -130,7 +130,7 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 ### 완료 기준
 
 - [x] HeidiSQL에서 테이블 **8개**(Django 기본 제외)가 모두 확인된다
-- [x] `sqlmigrate`로 확인한 `CREATE TABLE` 문이 `02_database_design.md` 6장 DDL과 컬럼·제약 기준으로 일치한다
+- [x] `sqlmigrate`로 확인한 `CREATE TABLE` 문이 `DATA_MODEL.md` 6장 DDL과 컬럼·제약 기준으로 일치한다
 - [x] shell에서 `fetch_feed('2026-08-21')` 실행 후, `close_approach` 행 수가 NASA 응답의 `element_count`와 **일치한다**
 - [x] 같은 날짜로 `fetch_feed`를 **두 번** 실행해도 `close_approach` 행 수가 늘어나지 않는다 (UNIQUE 제약 검증)
 - [x] `fetch_exoplanets` 실행 후 `exoplanet` 행 수가 5,000건 이상이다
@@ -207,7 +207,7 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 - [x] `src/api/client.js` — axios 인스턴스 (`withCredentials`, CSRF 헤더)
 - [x] 라우팅 설정 (React Router)
-- [x] 디자인 토큰 적용 (`03_user_scenarios_and_uiux.md` 2장 — 색·타이포·간격)
+- [x] 디자인 토큰 적용 (`DESIGN.md` 2장 — 색·타이포·간격)
 - [x] `Header` 컴포넌트
 - [x] `DataField` 공통 컴포넌트 (수치 Mono 서체 자동 적용)
 - [x] **NEO 대시보드** — `DateNavigator`, `NeoSummary`, `NeoListItem`
@@ -241,7 +241,7 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 ## 7. M4 — v1.0 완성
 
-**목표**: `01_requirements_and_features.md` 9장 MVP 완료 기준을 전부 충족한다.
+**목표**: `REQUIREMENTS.md` 9장 MVP 완료 기준을 전부 충족한다.
 
 ### 작업
 
@@ -281,7 +281,7 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 ### 완료 기준
 
-**MVP 완료 기준 대조** — `01_requirements_and_features.md` 9장의 19개 항목이 전부 체크되어야 한다. (10-28 정정: 처음에 "22개"로 적었지만 실제 항목은 19개)
+**MVP 완료 기준 대조** — `REQUIREMENTS.md` 9장의 19개 항목이 전부 체크되어야 한다. (10-28 정정: 처음에 "22개"로 적었지만 실제 항목은 19개)
 
 - [x] 반지름 `0.8~1.5` + 거리 `100광년 이하` 검색 시 결과가 나오고, 필터 칩 2개가 표시된다
       - 10-27 실측: 53건, 칩 `반지름 0.8 ~ 1.5` · `거리 ≤ 100광년` 2개 (처음엔 최소·최대가 따로 칩 3개였던 것을 기준에 맞춰 합침)
@@ -299,7 +299,7 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
       - 아포피스 `404 ~ 904 m` ─ 바깥 점선 원(최댓값) + 안쪽 채운 원(최솟값), 로그 눈금에선 최솟값~최댓값 막대. 크기 모르는 천체는 점선 원 + "크기 미측정"(축척 계산에서 제외)
 - [x] 산점도에서 위험 소행성이 색으로 구분된다
       - 10-27 실측: `2029-04-13` 점 9개 중 hazard 삼각형 1(아포피스)·고리 1, `2026-09-15` hazard 삼각형 1(2011 EU29, 52.45 LD)·고리 0 ─ 둘 다 API의 `is_hazardous` 건수와 일치
-- [x] `01_requirements_and_features.md` 9장 체크박스 19개가 전부 체크되었다
+- [x] `REQUIREMENTS.md` 9장 체크박스 19개가 전부 체크되었다
       - 10-28 실측 대조 ─ NASA 원본 직접 호출·독립 DB 쿼리와 비교 (01 문서 9장 "대조 결과" 표). 대조 중 처음 조회 날짜 503 버그 발견·수정
 
 > 이 시점이 **v1.0**이다. 여기서 태그를 남긴다: `git tag v1.0`
@@ -535,13 +535,13 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 ### 12.1 새 기능이 떠올랐을 때
 
-**구현하지 않는다.** `01_requirements_and_features.md` 3.2절(MVP 제외 범위)에 항목만 추가한다.
+**구현하지 않는다.** `REQUIREMENTS.md` 3.2절(MVP 제외 범위)에 항목만 추가한다.
 
 3개월 프로젝트에서 기능이 늘어나면 반드시 마지막에 무언가를 못 끝낸다. 그리고 못 끝낸 것은 대개 **핵심 기능**이다. 예쁜 것부터 만들고 싶어지기 때문이다.
 
 ### 12.2 일정이 밀렸을 때 자르는 순서
 
-우선순위는 `01_requirements_and_features.md` 6장을 따른다.
+우선순위는 `REQUIREMENTS.md` 6장을 따른다.
 
 ```text
 먼저 자른다  ←────────────────────────→  마지막까지 지킨다
@@ -551,7 +551,7 @@ M2가 끝나는 시점에는 브라우저에서 `http://localhost:8000/api/neo/`
 
 - **P2를 먼저 자른다.** 산점도 차트는 없어도 서비스가 성립한다.
 - **P0는 자르지 않는다.** NASA 수집과 다중 조건 검색이 빠지면 이 프로젝트는 존재 이유가 없다.
-- 자른 항목은 지우지 말고 `01_requirements_and_features.md` 변경 이력에 **사유와 함께** 남긴다.
+- 자른 항목은 지우지 말고 `REQUIREMENTS.md` 변경 이력에 **사유와 함께** 남긴다.
 
 ### 12.3 마일스톤 간 작업 이관
 
@@ -570,7 +570,7 @@ M3에 있던 작업을 M4에서 했다면, M3의 원래 위치에는 체크박�
 | 문서 | 이 문서와의 관계 |
 |---|---|
 | `DEVLOG.md` | 실측 소요 시간의 출처. 이 문서의 추정치를 보정한다 |
-| `01_requirements_and_features.md` | M4 완료 기준(9장)과 우선순위(6장)의 출처 |
-| `02_database_design.md` | M1 완료 기준(DDL 대조)의 출처 |
-| `03_user_scenarios_and_uiux.md` | M3~M5 화면 작업 범위의 출처 |
+| `REQUIREMENTS.md` | M4 완료 기준(9장)과 우선순위(6장)의 출처 |
+| `DATA_MODEL.md` | M1 완료 기준(DDL 대조)의 출처 |
+| `DESIGN.md` | M3~M5 화면 작업 범위의 출처 |
 | `04_api_specification.md` | M2 완료 기준(엔드포인트 17개)의 출처 |
