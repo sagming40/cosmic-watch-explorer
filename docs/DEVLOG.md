@@ -17,7 +17,7 @@
 ### 한 일
 
 - `docs/`를 전역 "문서 체계" 절에 맞췄다: 01 → REQUIREMENTS, 02 → DATA_MODEL, 03 → DESIGN, 05 → PLAN, 04 → ARCHITECTURE + `archive/API_SPEC_old`. 절 번호는 유지했다. 대응표는 [archive/README](archive/README.md)
-- 끝난 단계를 archive로: DEVLOG M0 ~ M4, PLAN M0 ~ M5. DEVLOG 1,761줄 → 약 330줄
+- 끝난 단계를 archive로: DEVLOG M0 ~ M4, PLAN M0 ~ M5. DEVLOG 1,761줄 → 약 300줄(이 블록 제외)
 - `decisions/` 10개, `mockups/README` 신설. 머리 표 · 변경 이력은 `archive/CHANGELOG_old_docs`로
 - 코드 주석 232줄(87개 파일)의 옛 문서 번호를 새 이름으로 치환
 
