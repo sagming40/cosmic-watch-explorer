@@ -24,7 +24,7 @@ Backend: Django 6.1 + DRF + MariaDB / Frontend: React 19 + TypeScript 6.0 + Vite
 전역의 사전 검증 순서에 아래를 더한다.
 - **오류**: 엣지 케이스에 NULL · 빈 응답(NASA API), 기존 코드 · API 응답 형태와의 불일치
 - **더 나은 방식**: 더 단순하거나 이 코드베이스 관례에 더 맞는 방법이 있는지
-- **보완할 점**: 문서(01~05) 스펙·완료 기준과 어긋나는 곳, 빠진 상태 처리(로딩/오류/빈 화면), 접근성, 설계 원칙 위반(3.3절)
+- **보완할 점**: 문서(REQUIREMENTS · DESIGN · ARCHITECTURE · PLAN) 스펙·완료 기준과 어긋나는 곳, 빠진 상태 처리(로딩/오류/빈 화면), 접근성, 설계 원칙 위반(3.3절)
 - 설계가 문서와 달라졌으면 1.4절대로 문서에 흔적을 남긴다. 실제 확인은 서버 실행 · 화면 확인으로 한다.
 
 ### 1.3 커밋 규칙
@@ -35,15 +35,16 @@ Backend: Django 6.1 + DRF + MariaDB / Frontend: React 19 + TypeScript 6.0 + Vite
 - 세션이 중간에 끊길 것 같으면 `wip:` 커밋으로 push해 둔다(다른 기기에서 이어가기 위해). 다음 세션에서 정식 커밋으로 정리할지는 사용자에게 묻는다(`main`이라 재작성은 force push가 필요하기 때문).
 
 ### 1.4 문서 갱신 규칙
-- 세션(작업 단위) 종료 시: `docs/DEVLOG.md` → `docs/PLAN.md` → 필요 시 01~04 문서 → `docs(M{n})` 커밋 → push.
-- DEVLOG: 날짜 블록, **최신이 위**. 항목 형식은 `증상 / 원인 / 해결 / 배운 것`(막혔던 일), 블록 끝에 **`이번 세션 커밋`과 `다음에 할 일` 필수**. 맨 위 "현재 상태" 표도 갱신.
-- 05_milestones: 체크박스 갱신, 계획에 없던 작업은 `— *계획에 없던 작업*` 표시. 문서 상단 **버전 = 변경 이력 마지막 줄 버전**.
+- 문서 형식은 **전역 설정의 "문서 체계" 절**을 따른다 (2026-11-04부터, [decisions/0001](docs/decisions/0001-docs-refactor.md)). 이 절에는 이 프로젝트 세부만 적는다.
+- 세션(작업 단위) 종료 시: `docs/DEVLOG.md` → `docs/PLAN.md` → 필요 시 나머지 문서 → `docs(M{n})` 커밋 → push.
+- DEVLOG: 날짜 블록, **최신이 위**. 항목 형식은 `증상 / 원인 / 해결 / 배운 것`(막혔던 일), 블록 끝에 **`이번 세션 커밋`과 `다음에 할 일` 필수**. 맨 위 "현재 상태"도 짧게 갱신.
+- PLAN: 체크박스 갱신, 계획에 없던 작업은 `— *계획에 없던 작업*` 표시.
 - 완료 기준은 "속을 수 없는 형태"로만 체크한다(실측 증거가 있어야 ✅).
 - 오기를 고칠 때는 다른 문서에도 같은 오기가 있는지 전부 검색한다.
-- 설계를 구현 중에 바꿨으면(예: 명세와 다른 방식) 해당 문서 변경 이력 + DEVLOG `[설계]` 항목에 이유를 남긴다.
+- 설계를 구현 중에 바꿨으면(예: 명세와 다른 방식) 해당 문서를 고치고 이유를 DEVLOG `[설계]` 항목 또는 `decisions/`에 남긴다.
 
 ### 1.5 소통 방식
-- 한국어, **반말**, 일상 비유를 섞어 설명. 비교는 표로. 근거는 문서 절 번호(예: "04 문서 5.1절")로 든다.
+- 한국어, **반말**, 일상 비유를 섞어 설명. 비교는 표로. 근거는 문서 절 번호(예: "ARCHITECTURE 3.4절")로 든다.
 - 추천안을 명시하되 결정은 사용자가 한다. 사용자가 추천과 다르게 정하면 그대로 따르고 문서에 흔적을 남긴다.
 - **추측으로 말하지 않는다.** 필드명·코드·상태는 실제 파일과 명령 결과를 확인한 뒤 말한다.
 - 코드 주석은 사용자 스타일 유지: 한국어 + 비유, 섹션 배너(`─`, `═══`).
@@ -172,11 +173,14 @@ Vite 프록시가 `/api` → `localhost:8000`으로 넘겨서 CORS 설정이 필
 | 문서 | 내용 | 갱신 빈도 |
 |---|---|---|
 | `DEVLOG.md` | 현재 상태, 날짜별 작업·트러블슈팅 기록 | Tier 1 (매 세션) |
-| `PLAN.md` | M0~M8 작업 목록·완료 기준 (M7 확장·M8 데스크톱 앱은 10-28 계획) | Tier 1 (매 세션) |
-| `DATA_MODEL.md` | ERD, 테이블 10개(+ Django auth_user), DDL | Tier 2 (구현과 어긋날 때) |
-| `04_api_specification.md` | 엔드포인트 26개(마이페이지 8개·카운트다운 1개 포함), 오류 봉투, 페이징 | Tier 2 |
-| `REQUIREMENTS.md` | 요구사항, MVP 범위, 우선순위 | Tier 3 (드물게) |
-| `DESIGN.md` | 화면 설계, 디자인 토큰, 컴포넌트 목록 | Tier 3 |
+| `PLAN.md` | M0~M8 진행 현황, 남은 단계 작업·완료 기준 | Tier 1 (매 세션) |
+| `ARCHITECTURE.md` | 구조·요청 흐름, 인증, API 계약과 결정 이유 (엔드포인트는 코드가 원본) | Tier 2 (구현과 어긋날 때) |
+| `DATA_MODEL.md` | 무엇을 어디에 왜 저장하는지, 관계도 (컬럼은 models.py가 원본) | Tier 2 |
+| `REQUIREMENTS.md` | 범위, 하지 않을 것, 기능 번호·우선순위(M/S/L) | Tier 3 (드물게) |
+| `DESIGN.md` | 화면 목록·흐름, 화면별 규칙, 디자인 토큰, 상태 화면 | Tier 3 |
+| `mockups/` | 화면 그림. 지금은 README만, 실제 파일은 M6 마지막 작업 | M6 끝 |
+| `decisions/` | "왜 이걸로?" 결정 하나 = 파일 하나 | 결정할 때 |
+| `archive/` | 옛 문서 · 끝난 단계 기록, 옛 이름 대응표. 고치지 않는다 | ─ |
 
 ### 3.2 코드 구조
 ```text
@@ -197,7 +201,7 @@ frontend/src/
   api/client.ts      axios 인스턴스 (withCredentials, CSRF, 오류 봉투 → AppError {code, message, fields, status})
   auth/              AuthProvider(앱 시작 시 CSRF + /me/ → status·user·login/signup/logout), useAuth(),
                      next.ts(safeNext ─ ?next=는 앱 내부 주소만, loginPath, nextLabel)
-  types/api.ts       백엔드 응답 타입 전부 (04 문서 + serializers.py 기준) — API 호출은 api.get<타입>()으로
+  types/api.ts       백엔드 응답 타입 전부 (serializers.py 기준) — API 호출은 api.get<타입>()으로
   components/ui/     shadcn/ui가 생성한 원본 부품 (Button …) — 직접 고치지 말고 감싸서 쓴다
   lib/utils.ts       cn() — className 합치기 (shadcn 공용)
   components/common/ UserAvatar(사진 또는 머리글자), ErrorBoundary, Panel·PanelTitle(카드 틀), StatCard(요약 칸), Field(라벨+수치), HazardBadge(위험 3중 표시),
@@ -236,12 +240,12 @@ frontend/src/
 - 백엔드 기능을 바꾸면 테스트도 같이 추가한다(`apps/*/tests.py`).
 - `--hazard` 색(#F43F5E)은 위험 표시 전용. 버튼·링크에 쓰지 않는다.
 - 접근성(10-28 M5): 입력칸·버튼 테두리는 shadcn `--input`(= `--dim`, 대비 5.59). `--line`은 장식 테두리 전용(1.23). `outline-none`을 새로 쓰면 감싼 요소에 `focus-within` 링을 준다. 전역 `:focus-visible` 링·reduced-motion 규칙은 `index.css` `@layer base`.
-- 범위 관리: 새 기능이 떠오르면 구현하지 않고 `01` 문서 3.2절(MVP 제외 범위)에 적는다. 확정됐던 "나중에" 항목(error boundary·커스텀 달력)은 10-28 M5에서 구현 완료.
+- 범위 관리: 새 기능이 떠오르면 구현하지 않고 REQUIREMENTS 3.2절(하지 않을 것)에 적는다. 확정됐던 "나중에" 항목(error boundary·커스텀 달력)은 10-28 M5에서 구현 완료.
 
 ### 3.4 스타일 규칙 (Tailwind CSS v4 + shadcn/ui, 2026-10-27 도입)
-- **새 코드는 Tailwind 유틸리티로 쓴다.** 색·서체·크기는 토큰 이름 유틸리티만: `bg-ink`/`bg-panel`/`border-line`/`text-bone`/`text-dim`/`text-signal`/`text-hazard`, `font-sans`/`font-display`/`font-mono`, `text-display`/`text-h1`/`text-h2`/`text-body`/`text-label`. `bg-[#...]` 같은 임의 색 금지 — 색 값은 `index.css` `:root` 토큰 7개뿐(03 문서 2.5절).
+- **새 코드는 Tailwind 유틸리티로 쓴다.** 색·서체·크기는 토큰 이름 유틸리티만: `bg-ink`/`bg-panel`/`border-line`/`text-bone`/`text-dim`/`text-signal`/`text-hazard`, `font-sans`/`font-display`/`font-mono`, `text-display`/`text-h1`/`text-h2`/`text-body`/`text-label`. `bg-[#...]` 같은 임의 색 금지 — 색 값은 `index.css` `:root` 토큰 7개뿐(DESIGN 2.5절).
 - shadcn 역할 이름(`bg-primary`, `text-muted-foreground`, `border-border` …)도 토큰에 연결돼 있으니 써도 된다.
-- **색은 C 그래파이트(10-27 확정)**: 무채색 + 신호색 `--signal`(라임, 옛 이름 `--sodium`) + 경고색 `--hazard`. 값은 03 문서 2.1절.
+- **색은 C 그래파이트(10-27 확정)**: 무채색 + 신호색 `--signal`(라임, 옛 이름 `--sodium`) + 경고색 `--hazard`. 값은 DESIGN 2.1절.
 - **`--hazard`/`text-hazard`/`bg-hazard`는 위험 표시(PHA·1 LD 안쪽) 전용.** shadcn `destructive` 역할은 `--bone`(폼 오류용)이고, `variant="destructive"` 버튼은 금지. **폼 오류도 hazard 금지** → 아이콘 + `text-bone` + 테두리 강조, shadcn `destructive` 역할이 `--bone`에 연결돼 있어 입력칸 오류는 자동으로 흰색이 된다(10-27 확정).
 - 위험은 색만으로 표시하지 않는다: 색 + 모양(고리·띠) + 아이콘·글자 (라임/빨강은 적록색약에서 헷갈림).
 - 링크(`<a>`)는 `@layer base`에서 `--signal` 색이 기본이라, 이름·제목 링크에는 `text-bone`을 직접 붙인다.

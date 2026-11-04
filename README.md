@@ -64,13 +64,15 @@ NASA API는 소행성의 접근 거리를 `4,821,033 km` 같은 숫자로 준다
 
 | 문서 | 내용 |
 |---|---|
-| [`REQUIREMENTS.md`](docs/REQUIREMENTS.md) | 요구사항, 기능 명세, MVP 범위, 우선순위 |
-| [`DATA_MODEL.md`](docs/DATA_MODEL.md) | ERD, 테이블 10개(+ Django auth_user) 정의, DDL, 인덱스 전략, NASA 필드 매핑 |
-| [`DESIGN.md`](docs/DESIGN.md) | 사용자 시나리오, 화면 설계, 디자인 토큰, 컴포넌트 목록 |
-| [`04_api_specification.md`](docs/04_api_specification.md) | 엔드포인트 26개, 요청/응답 형식, 오류 규약 |
+| [`PLAN.md`](docs/PLAN.md) | 단계별 진행 현황과 완료 기준 |
+| [`REQUIREMENTS.md`](docs/REQUIREMENTS.md) | 범위, 하지 않을 것, 기능 우선순위 |
+| [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 구조, 인증, API 계약과 결정 이유 |
+| [`DATA_MODEL.md`](docs/DATA_MODEL.md) | 무엇을 어디에 왜 저장하는지, 관계도 |
+| [`DESIGN.md`](docs/DESIGN.md) | 사용자 시나리오, 화면 설계, 디자인 토큰 |
+| [`decisions/`](docs/decisions/README.md) | 기술 · 설계 결정 기록 |
 | [`DEVLOG.md`](docs/DEVLOG.md) | 개발 기록 |
 
-> **UI 목업**: [Figma — `1. Cosmic Watch UI MockUp`](https://www.figma.com/design/vGgPqDdYg7LPX4vG8eSx95/cosmic-watch-explorer?node-id=3-2) — 화면 7개(NEO 대시보드·상세, 외계행성 카탈로그, 크기 비교, 로그인·회원가입, Watchlist), 디자인 토큰을 Figma 변수로 연결
+> **화면 그림**: [`docs/mockups/`](docs/mockups/README.md) ─ 옛 Figma 목업 링크도 여기 있다.
 
 ---
 
@@ -196,7 +198,7 @@ NASA_API_KEY=your-nasa-api-key
 
 ## API 요약
 
-전체 명세는 [`04_api_specification.md`](docs/04_api_specification.md) 참조.
+공통 규칙과 결정 이유는 [`ARCHITECTURE.md`](docs/ARCHITECTURE.md), 응답 필드는 `serializers.py`와 `frontend/src/types/api.ts`가 원본이다.
 
 | Method | 경로 | 설명 |
 |---|---|---|
