@@ -1,5 +1,8 @@
 # Cosmic Watch & Explorer — API 명세서
 
+> **옛 `04 문서` 전체를 그대로 옮긴 문서다.** 고치지 않는다. 어긋나면 코드가 맞다(원본은 [ARCHITECTURE](../ARCHITECTURE.md) 맨 위). `drf-spectacular`가 붙으면 `/api/docs`가 대신한다.
+> 절 번호는 옛 번호 그대로이고, 옛 문서 이름은 [대응표](README.md)를 본다.
+
 ## 1. 공통 규약
  
 ### 1.1 기본 정보
