@@ -30,7 +30,7 @@ export type AppError = Error & {
   status: number | null;
 };
 
-// 백엔드 config/exception_handler.py가 씌우는 봉투 모양 (04 문서 1.4절)
+// 백엔드 config/exception_handler.py가 씌우는 봉투 모양 (ARCHITECTURE 3.4절)
 interface ErrorEnvelope {
   error?: {
     code: ApiErrorCode;

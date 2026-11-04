@@ -1,4 +1,4 @@
-// ProfileSection.tsx ─ 마이페이지 ① 내 정보 (04 문서 4.6절)
+// ProfileSection.tsx ─ 마이페이지 ① 내 정보 (옛 API 명세 4.6절)
 // 아이디·가입일은 보기만, 이메일은 비밀번호를 한 번 더 받고 바꾼다 (세션만 훔친 사람이 계정을 못 가져가게)
 
 import { useState, type FormEvent } from "react";

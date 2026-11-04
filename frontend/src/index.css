@@ -17,7 +17,7 @@ Tailwind CSS v4 + shadcn/ui
 
 /*
 =============================================================================
-디자인 토큰 (03_user_scenarios_and_uiux.md 2장)
+디자인 토큰 (DESIGN 2장)
 :root = "프로젝트 화면 전체에 적용되는 전역 변수 선언 구역"
 등록된 값은 어떤 CSS 파일, 컴포넌트에서든 var(--토큰이름) 으로 불러 사용할 수 있다.
 =============================================================================
@@ -80,7 +80,7 @@ Tailwind CSS v4 + shadcn/ui
   --accent: var(--line);
   --accent-foreground: var(--bone);
   /* ⚠️ destructive = --bone (10-27 확정). shadcn은 입력칸 오류(aria-invalid) 등을 destructive로 칠한다.
-     빨강(--hazard)은 "위험 소행성 표시 전용"(03 문서 2.1절)이라, 폼 오류는 흰 테두리 + 아이콘으로 표시한다.
+     빨강(--hazard)은 "위험 소행성 표시 전용"(DESIGN 2.1절)이라, 폼 오류는 흰 테두리 + 아이콘으로 표시한다.
      → 역할 자체를 bone에 연결해 두면 부품마다 덮어쓰지 않아도 빨강이 새어 나오지 않는다.
      위험 표시는 항상 text-hazard / bg-hazard 로 "직접" 쓴다. variant="destructive" 버튼은 여전히 금지. */
   --destructive: var(--bone);
@@ -256,7 +256,7 @@ a {
   color: var(--signal);
 }
 
-/* 실시간 표시 점 ─ 움직임 최소화 설정을 켠 사용자에게는 깜빡이지 않는다 (03 문서 9장) */
+/* 실시간 표시 점 ─ 움직임 최소화 설정을 켠 사용자에게는 깜빡이지 않는다 (DESIGN 9장) */
 @keyframes live-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }

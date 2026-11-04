@@ -1,4 +1,4 @@
-// SiblingPlanets.tsx ─ 같은 별을 도는 다른 행성 (04 문서 6.2절 sibling_planets)
+// SiblingPlanets.tsx ─ 같은 별을 도는 다른 행성 (옛 API 명세 6.2절 sibling_planets)
 // "이 별에는 다른 행성도 있구나" → 눌러서 바로 이동. 원 크기는 반지름 비율(같은 계 안에서 가장 큰 행성 기준).
 // 반지름이 측정되지 않은 행성은 점선 + "—"
 

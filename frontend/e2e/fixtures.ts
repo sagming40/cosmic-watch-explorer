@@ -11,7 +11,7 @@ export function uniqueUsername(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`.slice(0, 30);
 }
 
-/** 화면에서 가입 ─ 가입 = 로그인 (04 문서 4.3절) */
+/** 화면에서 가입 ─ 가입 = 로그인 (옛 API 명세 4.3절) */
 export async function signUp(page: Page, username: string, password = "Nebula-e2e-7788") {
   await page.locator("input[name=username]").fill(username);
   await page.locator("input[name=email]").fill(`${username}@example.com`);

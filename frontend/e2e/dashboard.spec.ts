@@ -1,4 +1,4 @@
-// dashboard.spec.ts ─ 날짜별 소행성 목록·위험 표시·달력 (01 문서 9장 NEO, M5 달력)
+// dashboard.spec.ts ─ 날짜별 소행성 목록·위험 표시·달력 (PLAN_M0_M5 MVP 완료 기준 NEO, M5 달력)
 
 import { expect, test } from "@playwright/test";
 import { E2E_DATE } from "./fixtures";
@@ -7,7 +7,7 @@ test("정해진 날짜의 소행성 3개, 위험 표시는 1개", async ({ page 
   await page.goto(`/?date=${E2E_DATE}`);
   const items = page.locator('main a[href^="/neo/9000"]');
   await expect(items).toHaveCount(3);
-  // 위험은 색만이 아니라 글자로도 (03 문서 9장) ─ "잠재적 위험" 배지가 정확히 1개
+  // 위험은 색만이 아니라 글자로도 (DESIGN 9장) ─ "잠재적 위험" 배지가 정확히 1개
   await expect(page.locator("main ul").getByText("잠재적 위험", { exact: true })).toHaveCount(1);
   await expect(items.first()).toContainText("(2031 E2E-A)"); // 기본 정렬 = 거리순, 가장 가까운 0.5 LD가 맨 위
 });

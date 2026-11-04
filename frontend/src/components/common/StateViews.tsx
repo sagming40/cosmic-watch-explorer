@@ -1,4 +1,4 @@
-// StateViews.tsx ─ 로딩 / 오류 화면 (03 문서 7장 ─ 외부 API에 의존하는 화면에서 이 둘은 예외가 아니라 일상)
+// StateViews.tsx ─ 로딩 / 오류 화면 (DESIGN 7장 ─ 외부 API에 의존하는 화면에서 이 둘은 예외가 아니라 일상)
 // 대시보드·상세가 같이 쓴다.
 
 import type { ReactNode } from "react";

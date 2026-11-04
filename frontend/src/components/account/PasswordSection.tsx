@@ -1,4 +1,4 @@
-// PasswordSection.tsx ─ 마이페이지 ③ 보안: 비밀번호 변경 (04 문서 4.6절)
+// PasswordSection.tsx ─ 마이페이지 ③ 보안: 비밀번호 변경 (옛 API 명세 4.6절)
 // 바꾸면 지금 기기는 로그인 유지, 다른 기기는 로그아웃된다 (서버 update_session_auth_hash) ─ 그 사실을 화면에 미리 알린다.
 
 import { useState, type FormEvent } from "react";

@@ -1,4 +1,4 @@
-// Pagination ─ 페이지 이동 (03 문서 10장). 페이지가 수백 개여도 버튼은 7개 안팎만:
+// Pagination ─ 페이지 이동. 페이지가 수백 개여도 버튼은 7개 안팎만:
 // [◀] 1 … 4 5 [6] 7 8 … 323 [▶]
 
 import { ChevronLeft, ChevronRight } from "lucide-react";

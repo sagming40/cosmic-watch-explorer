@@ -1,5 +1,5 @@
 // HazardBadge ─ "잠재적 위험" 배지
-// 색 + 아이콘 + 글자 3중 표시 (03 문서 9장 ─ 위험 여부를 색으로만 표시하지 않는다)
+// 색 + 아이콘 + 글자 3중 표시 (DESIGN 9장 ─ 위험 여부를 색으로만 표시하지 않는다)
 
 import { TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";

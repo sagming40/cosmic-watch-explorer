@@ -51,7 +51,7 @@ function App() {
 
             {/* "*" = 위 어느 것에도 걸리지 않은 나머지 전부.
                 404도 Layout 안에 두는 이유: Header가 있어야 다른 곳으로 갈 수 있기 때문
-                문서 7.1절 ─ "빈 화면은 막다른 길이 아니다" */}
+                DESIGN 7.1절 ─ "빈 화면은 막다른 길이 아니다" */}
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

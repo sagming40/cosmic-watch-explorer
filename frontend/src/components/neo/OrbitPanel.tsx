@@ -1,4 +1,4 @@
-// OrbitPanel.tsx ─ 궤도 정보 (03 문서 6.2절): 궤도 모식도 + 궤도 요소 6개
+// OrbitPanel.tsx ─ 궤도 정보 (DESIGN 6.2절): 궤도 모식도 + 궤도 요소 6개
 //
 // 모식도는 태양을 초점에 둔 타원(소행성 궤도)과 반지름 1 AU 원(지구 궤도)을 같은 축척으로 그린 "평면 투영"이다.
 // 경사각은 생략한다(화면에 명시). 그림을 위한 위치 계산이지 도메인 값 계산이 아니다 ─ 수치는 서버가 준 그대로.
@@ -53,7 +53,7 @@ function OrbitPanel({ orbit, status, onRetry }: OrbitPanelProps) {
           </div>
         </>
       ) : (
-        // 값이 없으면 없는 대로 (02 문서 1.1절). 오류색(hazard)은 쓰지 않는다 ─ 위험 표시 전용
+        // 값이 없으면 없는 대로 (DATA_MODEL 1.1절). 오류색(hazard)은 쓰지 않는다 ─ 위험 표시 전용
         <div className="flex flex-col items-center py-10 text-center" role={status === "missing" ? undefined : "status"}>
           {status !== "missing" && <CircleAlert className="mb-3 size-5 text-dim" aria-hidden />}
           <p className="max-w-sm text-sm text-dim">{EMPTY_TEXT[status === "ok" ? "missing" : status]}</p>

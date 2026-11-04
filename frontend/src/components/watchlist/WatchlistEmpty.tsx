@@ -1,4 +1,4 @@
-// WatchlistEmpty.tsx ─ 저장한 천체가 없을 때. 빈 화면은 막다른 길이 아니라 다음 행동을 안내하는 자리 (03 문서 7.1절)
+// WatchlistEmpty.tsx ─ 저장한 천체가 없을 때. 빈 화면은 막다른 길이 아니라 다음 행동을 안내하는 자리 (DESIGN 7.1절)
 
 import type { ReactNode } from "react";
 import { Link } from "react-router";

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// NeoDetailPage.tsx ─ Path = '/neo/:id' (03 문서 6.2절, 04 문서 5.2·5.3절)
+// NeoDetailPage.tsx ─ Path = '/neo/:id' (DESIGN 6.2절, 옛 API 명세 5.2·5.3절)
 // 10-27 /mockup 디자인 + 실제 API로 구현.
 // - 처음 보는 소행성이면 서버가 이 순간 NASA Lookup을 부른다 → 몇 초 걸릴 수 있다 (3초 안내)
 // - "다음 접근 5건"은 미래 기준 (5.2 설계 결정 ③), 전체 기록은 과거→미래 순 (5.3)
@@ -112,7 +112,7 @@ function NeoDetail({ neo, onRetry }: { neo: NeoDetailResponse; onRetry: () => vo
         </div>
         <div className="flex flex-wrap gap-2">
           <WatchlistButton target={{ kind: "neo", nasaId: neo.nasa_id }} initialSaved={neo.is_watchlisted} />
-          {/* 데이터의 출처를 숨기지 않는다 ─ 원본 링크는 항상 노출 (03 문서 6.2절) */}
+          {/* 데이터의 출처를 숨기지 않는다 ─ 원본 링크는 항상 노출 (DESIGN 6.2절) */}
           {neo.jpl_url && (
             <Button variant="outline" asChild>
               <a href={neo.jpl_url} target="_blank" rel="noreferrer" className="text-bone">
@@ -144,7 +144,7 @@ function NeoDetail({ neo, onRetry }: { neo: NeoDetailResponse; onRetry: () => vo
 
       {/* ─── 궤도 / 크기·신뢰도 ─── */}
       <section className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        {/* 궤도만 못 가져왔으면 그 칸에서만 다시 시도 ─ 상세 전체를 다시 받는다 (04 문서 5.2절 orbit_status) */}
+        {/* 궤도만 못 가져왔으면 그 칸에서만 다시 시도 ─ 상세 전체를 다시 받는다 (옛 API 명세 5.2절 orbit_status) */}
         <OrbitPanel orbit={neo.orbital_data} status={neo.orbit_status} onRetry={onRetry} />
         <div className="flex flex-col gap-3">
           <NeoSizePanel nasaId={neo.nasa_id} min={neo.diameter_min_m} max={neo.diameter_max_m} />
@@ -165,7 +165,7 @@ function NeoDetail({ neo, onRetry }: { neo: NeoDetailResponse; onRetry: () => vo
         ) : (
           <p className="px-6 pb-8 text-sm text-dim">오늘 이후 예정된 접근이 없어요. 지난 기록은 전체 기록에서 볼 수 있어요.</p>
         )}
-        {/* "더 보기"는 전체 기록이 5건보다 많을 때만 (04 문서 5.2절 설계 결정 ② / M3 완료 기준) */}
+        {/* "더 보기"는 전체 기록이 5건보다 많을 때만 (옛 API 명세 5.2절 설계 결정 ② / M3 완료 기준) */}
         {neo.approach_count > RECENT_LIMIT && <ApproachHistory nasaId={neo.nasa_id} total={neo.approach_count} />}
       </Panel>
     </>

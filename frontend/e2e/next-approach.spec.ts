@@ -1,4 +1,4 @@
-// next-approach.spec.ts ─ 대시보드 "다음 근접 접근까지" 카운트다운 (03 문서 6.1절, 05 문서 M6 ─ M7-2에서 당김)
+// next-approach.spec.ts ─ 대시보드 "다음 근접 접근까지" 카운트다운 (DESIGN 6.1절, PLAN M6 ─ M7-2에서 당김)
 //
 // E2E 서버는 JPL에 닿지 않는다(playwright.config.ts JPL_API_BASE) → 실제 서버 응답은 503.
 // 화면 모양은 /api/neo/next-approach/ 응답만 가짜로 끼워서 본다 (계산·캐시는 백엔드 테스트 NeoNextApproachTests가 검증)

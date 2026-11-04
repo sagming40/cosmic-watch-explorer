@@ -1,5 +1,5 @@
 // AuthLayout.tsx ─ 로그인·회원가입 공통 틀: 왼쪽 소개 패널(넓은 화면만) + 오른쪽 폼
-// 03 문서 4.3절 ─ ?next= 로 들어왔으면 폼 위에 "로그인하면 보던 ○○로 돌아가요"를 먼저 보여준다.
+// DESIGN 4.3절 ─ ?next= 로 들어왔으면 폼 위에 "로그인하면 보던 ○○로 돌아가요"를 먼저 보여준다.
 
 import type { ReactNode } from "react";
 import { ArrowLeft, Check, Orbit } from "lucide-react";

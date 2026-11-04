@@ -1,5 +1,5 @@
-// NeoWatchItem.tsx ─ 내 관심 천체 > 소행성 한 줄 (03 문서 시나리오 4 ─ "저장한 NEO 목록 + 각각의 다음 접근 예정일")
-// next_approach = 오늘 이후 "지구" 접근 중 가장 빠른 것 (04 문서 7.2절). 없으면 null → "예정된 지구 접근 없음".
+// NeoWatchItem.tsx ─ 내 관심 천체 > 소행성 한 줄 (DESIGN 시나리오 4 ─ "저장한 NEO 목록 + 각각의 다음 접근 예정일")
+// next_approach = 오늘 이후 "지구" 접근 중 가장 빠른 것 (옛 API 명세 7.2절). 없으면 null → "예정된 지구 접근 없음".
 // 휴대폰 폭에서는 다음 접근을 이름 아래로 내린다 (칸 3개가 375px에 안 들어간다).
 
 import { Link } from "react-router";
@@ -59,7 +59,7 @@ function NextApproach({ next, today }: { next: NeoWatchlistItem["next_approach"]
       </div>
       <div className="mt-0.5 font-mono text-sm">
         {date}{" "}
-        {/* 1 LD 안쪽은 색 + 아이콘 + 읽히는 글자 (색만으로 위험을 표시하지 않는다 ─ 03 문서 9장) */}
+        {/* 1 LD 안쪽은 색 + 아이콘 + 읽히는 글자 (색만으로 위험을 표시하지 않는다 ─ DESIGN 9장) */}
         <span className={cn("inline-flex items-center gap-1", nearMoon ? "text-hazard" : "text-dim")}>
           {nearMoon && <TriangleAlert className="size-3.5" aria-hidden />}
           {ld === null ? DASH : `${dec2(ld)} LD`}

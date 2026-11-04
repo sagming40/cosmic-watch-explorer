@@ -1,4 +1,4 @@
-// FilterPanel.tsx ─ 외계행성 검색 조건 9종 입력 (01 문서 4.3절, 03 문서 6.3절)
+// FilterPanel.tsx ─ 외계행성 검색 조건 9종 입력 (REQUIREMENTS 4.3절, DESIGN 6.3절)
 //
 // 입력칸 값(draft)은 이 컴포넌트 안에만 있고, "검색"을 눌러야 주소에 반영된다.
 // 주소가 바뀌면(칩 해제·뒤로 가기) 부모가 key를 바꿔 이 컴포넌트를 새로 만든다 → 입력칸도 주소 값으로 다시 맞춰진다.
@@ -24,7 +24,7 @@ interface FilterPanelProps {
 
 function FilterPanel({ initialDraft, meta, fieldErrors, onSubmit, onReset }: FilterPanelProps) {
   const [draft, setDraft] = useState(initialDraft);
-  // 1024px 미만에서는 접었다 폈다 (03 문서 8장 ─ 태블릿: 필터 패널이 상단 접이식)
+  // 1024px 미만에서는 접었다 폈다 (DESIGN 8장 ─ 태블릿: 필터 패널이 상단 접이식)
   const [open, setOpen] = useState(false);
 
   const set = (k: FilterKey) => (v: string) => setDraft((d) => ({ ...d, [k]: v }));
@@ -85,7 +85,7 @@ function FilterPanel({ initialDraft, meta, fieldErrors, onSubmit, onReset }: Fil
                   aria-invalid={fieldErrors?.[f.max] ? true : undefined}
                 />
               </div>
-              {/* 실제 데이터 범위를 보여줘서 "없는 범위"를 덜 입력하게 (04 문서 6.3절) */}
+              {/* 실제 데이터 범위를 보여줘서 "없는 범위"를 덜 입력하게 (옛 API 명세 6.3절) */}
               {range && range.min !== null && range.max !== null && (
                 <div className="mt-1 font-mono text-[11px] text-dim">
                   데이터 범위 {range.min} ~ {int(range.max)}

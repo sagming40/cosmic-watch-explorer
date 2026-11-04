@@ -1,4 +1,4 @@
-// NeoScatterChart.tsx ─ 거리 × 속도 산점도 (03 문서 6.1절 ─ 한 차트에 4개 변수)
+// NeoScatterChart.tsx ─ 거리 × 속도 산점도 (DESIGN 6.1절 ─ 한 차트에 4개 변수)
 // X: 접근 거리(LD, 로그) / Y: 상대속도 / 점 크기: 추정 직경 / 점 색·모양: PHA 여부 + 1 LD 안쪽은 고리
 //
 // 점 색은 스케일 바(1 LD 기준)와 다르게 PHA(is_hazardous) 기준이다 (10-27 결정).
@@ -17,7 +17,7 @@ interface NeoScatterChartProps {
   onHover: (id: string | null) => void;
 }
 
-// PHA 점은 삼각형 ─ 목록의 ⚠ 아이콘과 같은 모양, 색을 구분하기 어려운 사람도 모양으로 (03 문서 9장)
+// PHA 점은 삼각형 ─ 목록의 ⚠ 아이콘과 같은 모양, 색을 구분하기 어려운 사람도 모양으로 (DESIGN 9장)
 // size = 원의 반지름과 비슷한 크기로 보이게 꼭짓점까지 거리를 1.3배
 function trianglePath(cx: number, cy: number, size: number): string {
   const R = size * 1.3;

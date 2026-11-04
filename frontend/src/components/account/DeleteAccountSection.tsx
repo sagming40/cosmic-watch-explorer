@@ -1,6 +1,6 @@
-// DeleteAccountSection.tsx ─ 마이페이지 ④ 계정 삭제 (04 문서 4.6절)
+// DeleteAccountSection.tsx ─ 마이페이지 ④ 계정 삭제 (옛 API 명세 4.6절)
 //
-// 되돌릴 수 없는 동작이라 확인창 + 비밀번호. (관심 천체 삭제는 "실행 취소"로 충분했지만 계정은 다르다 ─ 03 문서 시나리오 4 각주)
+// 되돌릴 수 없는 동작이라 확인창 + 비밀번호. (관심 천체 삭제는 "실행 취소"로 충분했지만 계정은 다르다 ─ DESIGN 시나리오 4 각주)
 // 색: 빨강(hazard)은 위험 소행성 전용, variant="destructive" 버튼은 금지 (CLAUDE.md 3.4절) → 흰 테두리로 강조
 
 import { useState, type FormEvent } from "react";

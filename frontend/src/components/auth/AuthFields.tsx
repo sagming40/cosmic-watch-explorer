@@ -1,5 +1,5 @@
 // AuthFields.tsx ─ 로그인·회원가입 입력 부품
-// 폼 오류는 빨강(--hazard) 대신 아이콘 + 흰 글자 + 흰 테두리 (03 문서 2.5절, 10-27 확정).
+// 폼 오류는 빨강(--hazard) 대신 아이콘 + 흰 글자 + 흰 테두리 (DESIGN 2.5절, 10-27 확정).
 // aria-invalid를 주면 shadcn Input이 destructive(=bone) 테두리를 자동으로 그린다.
 
 import { useState, type ComponentProps, type ReactNode } from "react";

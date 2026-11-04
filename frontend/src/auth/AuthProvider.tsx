@@ -1,12 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════
-// AuthProvider.tsx ─ 로그인 상태를 한 곳에서 들고 있다가 앱 전체에 나눠 준다 (04 문서 4장, 8장)
+// AuthProvider.tsx ─ 로그인 상태를 한 곳에서 들고 있다가 앱 전체에 나눠 준다 (옛 API 명세 4장, 8장)
 //
 // 앱이 뜰 때: GET /api/auth/csrf/ (쿠키 받기) → GET /api/auth/me/ (지금 로그인돼 있나?)
 //   비유: 식당에 들어가면 번호표부터 뽑고(CSRF), 회원 카드가 있는지 확인(me)한다.
 // 로그인·가입·로그아웃은 여기 함수로만 한다 → 헤더·저장 버튼이 같은 상태를 본다.
 //
 // 세션은 서버(httpOnly 쿠키)에 있고, 여기 user는 "화면 표시용 사본"이다.
-// 새로고침하면 사본은 사라지지만 쿠키는 남아서, /me/로 다시 받아온다 (04 문서 4.2절).
+// 새로고침하면 사본은 사라지지만 쿠키는 남아서, /me/로 다시 받아온다 (옛 API 명세 4.2절).
 //
 // 10-27부터 화면·API 전부 로그인 필요 → 어느 요청이든 401(AUTH_REQUIRED)이 오면 "세션이 끝났다"는 뜻.
 // 아래 응답 감시(interceptor)가 사본을 지우면 ProtectedRoute가 /login?next=지금 주소 로 보낸다.
@@ -29,7 +29,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let ignore = false;
-    // CSRF 쿠키가 먼저 있어야 이후 POST(로그인·저장)가 403 CSRF_FAILED로 튕기지 않는다 (04 문서 2.2절)
+    // CSRF 쿠키가 먼저 있어야 이후 POST(로그인·저장)가 403 CSRF_FAILED로 튕기지 않는다 (ARCHITECTURE 2.2절)
     ensureCsrf()
       .then(() => api.get<AuthStatus>("/auth/me/"))
       .then((res) => {
@@ -69,7 +69,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.data.user);
   }, []);
 
-  // 가입과 동시에 로그인된다 (04 문서 4.3절) → 가입 직후 바로 저장 가능
+  // 가입과 동시에 로그인된다 (옛 API 명세 4.3절) → 가입 직후 바로 저장 가능
   const signup = useCallback(async (input: Parameters<AuthContextValue["signup"]>[0]) => {
     const res = await api.post<AuthStatus>("/auth/signup/", input);
     setUser(res.data.user);
@@ -96,7 +96,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 // 서버에 닿지 못했을 때 ─ 로그인 화면 대신. 헤더가 없는 이유: 메뉴를 눌러도 어차피 같은 상태라서
-// (M5 완료 기준 "Django 서버를 끈 상태로 접속하면 오류 화면 + 재시도 버튼", 05 문서 8장)
+// (M5 완료 기준 "Django 서버를 끈 상태로 접속하면 오류 화면 + 재시도 버튼", PLAN_M0_M5 8장)
 function OfflineScreen({ error, onRetry }: { error: AppError; onRetry: () => void }) {
   return (
     <div className="app-backdrop min-h-screen px-4 pt-24 text-bone">

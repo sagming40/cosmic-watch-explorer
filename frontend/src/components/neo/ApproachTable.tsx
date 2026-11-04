@@ -1,7 +1,7 @@
-// ApproachTable.tsx ─ 접근 기록 표 (03 문서 10장)
+// ApproachTable.tsx ─ 접근 기록 표
 // 상세의 "다음 접근 5건"과 "전체 접근 기록"이 같은 표를 쓴다 ─ 그래서 백엔드도 두 응답의 행 모양을
 // ApproachRowSerializer 하나로 통일했다 (DEVLOG 9/2).
-// 모바일에서는 표를 카드로 바꾸지 않고 가로 스크롤 (03 문서 8장 ─ 값끼리 비교가 돼야 한다)
+// 모바일에서는 표를 카드로 바꾸지 않고 가로 스크롤 (DESIGN 8장 ─ 값끼리 비교가 돼야 한다)
 
 import { Badge } from "@/components/ui/badge";
 import type { NeoApproachRow } from "@/types/api";

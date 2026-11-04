@@ -27,7 +27,7 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${FRONTEND_PORT}`,
     // Windows에 기본으로 있는 Edge를 쓴다 → Playwright 전용 브라우저(약 150MB)를 받지 않아도 된다.
-    // CI(리눅스)에선 PW_CHANNEL=chromium 등으로 바꾼다 (05 문서 M6 CI 항목)
+    // CI(리눅스)에선 PW_CHANNEL=chromium 등으로 바꾼다 (PLAN M6 CI 항목)
     channel: process.env.PW_CHANNEL ?? "msedge",
     locale: "ko-KR",
     timezoneId: "Asia/Seoul",

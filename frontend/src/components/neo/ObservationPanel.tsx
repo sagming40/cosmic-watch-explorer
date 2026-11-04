@@ -1,4 +1,4 @@
-// ObservationPanel.tsx ─ 데이터 신뢰도 (03 문서 6.2절: "이 데이터를 얼마나 믿을 수 있나")
+// ObservationPanel.tsx ─ 데이터 신뢰도 (DESIGN 6.2절: "이 데이터를 얼마나 믿을 수 있나")
 // 425회 관측된 궤도와 12회 관측된 궤도는 신뢰도가 다르다 → 관측 기간·횟수를 숨기지 않는다.
 
 import Field from "@/components/common/Field";

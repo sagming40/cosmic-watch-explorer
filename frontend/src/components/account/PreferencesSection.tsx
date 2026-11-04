@@ -1,4 +1,4 @@
-// PreferencesSection.tsx ─ 마이페이지 ② 표시 설정 (04 문서 4.6절)
+// PreferencesSection.tsx ─ 마이페이지 ② 표시 설정 (옛 API 명세 4.6절)
 // 누르는 즉시 화면에 반영하고 서버에 저장한다 ─ "저장" 버튼 없이. 실패하면 되돌리고 알린다.
 // 서버(DB)에 두므로 회사 PC·집 PC 어디서 로그인해도 같은 설정 (localStorage는 기기마다 따로라 안 씀)
 

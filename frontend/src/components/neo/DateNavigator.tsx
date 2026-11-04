@@ -24,7 +24,7 @@ interface DateNavigatorProps {
 
 const weekdayFmt = new Intl.DateTimeFormat("ko-KR", { weekday: "short" });
 
-// 고를 수 있는 범위 = 서버가 받는 범위(NASA/JPL 예측 범위, 04 문서 5.1절). 연·월 드롭다운도 이 안에서만
+// 고를 수 있는 범위 = 서버가 받는 범위(NASA/JPL 예측 범위, 옛 API 명세 5.1절). 연·월 드롭다운도 이 안에서만
 const FIRST_MONTH = new Date(1900, 0, 1);
 const LAST_MONTH = new Date(2200, 11, 1);
 

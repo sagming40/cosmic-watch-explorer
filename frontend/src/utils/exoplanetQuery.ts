@@ -1,7 +1,7 @@
 // exoplanetQuery.ts ─ 외계행성 검색 조건 ↔ 주소(쿼리스트링) 변환
 //
-// 검색 조건은 주소에 둔다 (03 문서 6.3절) ─ 결과를 그대로 공유·북마크할 수 있고, 뒤로 가기가 자연스럽다.
-// 파라미터 이름은 백엔드(04 문서 6.1절, filters.py)와 똑같이 쓴다 → 주소를 그대로 API에 넘긴다.
+// 검색 조건은 주소에 둔다 (DESIGN 6.3절) ─ 결과를 그대로 공유·북마크할 수 있고, 뒤로 가기가 자연스럽다.
+// 파라미터 이름은 백엔드(옛 API 명세 6.1절, filters.py)와 똑같이 쓴다 → 주소를 그대로 API에 넘긴다.
 
 /** 범위 조건 6종 ─ meta가 있으면 ExoplanetMetaResponse.ranges의 키 (입력칸에 "데이터 범위" 힌트) */
 export const RANGE_FIELDS = [
@@ -27,7 +27,7 @@ export const FILTER_KEYS = [
 export type FilterKey = (typeof FILTER_KEYS)[number];
 export type Draft = Record<FilterKey, string>;
 
-/** 정렬 ─ 앞에 "-"면 내림차순. 값이 없는(null) 행성은 서버가 항상 뒤로 보낸다 (04 문서 6.1 설계 결정 ④) */
+/** 정렬 ─ 앞에 "-"면 내림차순. 값이 없는(null) 행성은 서버가 항상 뒤로 보낸다 (옛 API 명세 6.1 설계 결정 ④) */
 export const SORT_OPTIONS = [
   { value: "", label: "이름순" },
   { value: "distance", label: "가까운 순" },
@@ -85,7 +85,7 @@ export interface Chip {
   label: string;
 }
 
-/** applied_filters → 칩 목록. 같은 항목의 최소·최대는 "반지름 0.8 ~ 1.5" 칩 하나로 합친다 (03 문서 6.3절 와이어프레임) */
+/** applied_filters → 칩 목록. 같은 항목의 최소·최대는 "반지름 0.8 ~ 1.5" 칩 하나로 합친다 (DESIGN 6.3절 와이어프레임) */
 export function chipsFrom(applied: Record<string, string | number>): Chip[] {
   const chips: Chip[] = [];
   const used = new Set<string>();

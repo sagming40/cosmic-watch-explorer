@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
-// ExoplanetDetailPage.tsx ─ Path = '/exoplanets/:id' (01 문서 4.4절, 04 문서 6.2절)
-// 03 문서엔 와이어프레임이 없던 화면 → 10-27 /mockup에서 설계한 모양으로 구현.
+// ExoplanetDetailPage.tsx ─ Path = '/exoplanets/:id' (REQUIREMENTS 4.4절, 옛 API 명세 6.2절)
+// 와이어프레임이 없던 화면 → 10-27 /mockup에서 설계한 모양으로 구현.
 // NASA를 부르지 않는 순수 DB 조회라 대체로 빠르다.
 // ═══════════════════════════════════════════════════════════════════
 
@@ -112,7 +112,7 @@ function ExoplanetDetail({ planet: p }: { planet: ExoplanetDetailResponse }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <WatchlistButton target={{ kind: "exoplanet", id: p.id }} initialSaved={p.is_watchlisted} />
-          {/* 이 행성을 고른 채로 크기 비교에 들어간다 (03 문서 시나리오 2 ⑥) */}
+          {/* 이 행성을 고른 채로 크기 비교에 들어간다 (DESIGN 시나리오 2 ⑥) */}
           <Button variant="outline" asChild>
             <Link to={comparePath("exo", p.id)} className="text-bone">
               지구와 크기 비교

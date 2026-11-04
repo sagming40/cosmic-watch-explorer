@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// NeoDashboardPage.tsx ─ Path = '/' (03 문서 6.1절, 04 문서 5.1절)
+// NeoDashboardPage.tsx ─ Path = '/' (DESIGN 6.1절, 옛 API 명세 5.1절)
 // 10-27 /mockup 디자인으로 다시 씀. "다음 근접 접근까지" 카운트다운은 10-28 M6에 API(/neo/next-approach/, JPL CAD)와 함께 붙임.
 // ═══════════════════════════════════════════════════════════════════
 
@@ -33,7 +33,7 @@ interface ViewOptions {
   hazardOnly: boolean;
 }
 
-// 정렬은 서버를 다시 부르지 않고 받아 둔 배열로 한다 (04 문서 8.1절 ─ 하루치는 5~20건)
+// 정렬은 서버를 다시 부르지 않고 받아 둔 배열로 한다 (옛 API 명세 8.1절 ─ 하루치는 5~20건)
 // 값이 없는(null) 항목은 오름·내림 상관없이 항상 뒤로 (외계행성 정렬과 같은 원칙)
 const SORTERS: Record<SortKey, (n: NeoDashboardItem) => number> = {
   distance: (n) => n.approach.miss_distance_ld ?? Infinity,
@@ -84,7 +84,7 @@ function NeoDashboardPage() {
       .catch((err: AppError) => {
         if (!ignore) setLoaded({ key, data: null, error: err });
       });
-    // 3초가 넘으면 "NASA에서 가져오는 중" 안내 (03 문서 7.2절 ─ 왜 기다리는지 알려주면 덜 지루하다)
+    // 3초가 넘으면 "NASA에서 가져오는 중" 안내 (DESIGN 7.2절 ─ 왜 기다리는지 알려주면 덜 지루하다)
     const slow = setTimeout(() => setSlowKey(key), 3000);
     return () => {
       ignore = true;
@@ -118,7 +118,7 @@ function NeoDashboardPage() {
         </div>
       </section>
 
-      {/* 오늘을 볼 때만 (03 문서 6.1절) ─ 자기 데이터를 따로 받아서, 대시보드 로딩·오류와 상관없이 보인다 */}
+      {/* 오늘을 볼 때만 (DESIGN 6.1절) ─ 자기 데이터를 따로 받아서, 대시보드 로딩·오류와 상관없이 보인다 */}
       {isToday && (
         <section aria-label="다음 근접 접근 카운트다운" className="mb-3">
           <NextApproachCountdown />
@@ -168,7 +168,7 @@ function Dashboard({ data, isToday, date, view, onViewChange, onMove }: Dashboar
     return list.sort((a, b) => SORTERS[sort](a) - SORTERS[sort](b));
   }, [data.results, hazardOnly, sort]);
 
-  // 빈 화면은 막다른 길이 아니라 다음 행동을 안내하는 자리 (03 문서 7.1절)
+  // 빈 화면은 막다른 길이 아니라 다음 행동을 안내하는 자리 (DESIGN 7.1절)
   if (data.summary.total_count === 0) {
     return (
       <Panel className="flex flex-col items-center py-16 text-center">

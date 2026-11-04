@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════
-// ComparePage.tsx ─ Path = '/compare' (03 문서 6.4절, 01 문서 4.5절). 디자인은 /mockup?screen=compare 였다 (목업 폴더는 10-27 삭제 ─ git 기록에 있음)
+// ComparePage.tsx ─ Path = '/compare' (DESIGN 6.4절, REQUIREMENTS 4.5절). 디자인은 /mockup?screen=compare 였다 (목업 폴더는 10-27 삭제 ─ git 기록에 있음)
 //
 // - 비교 대상은 주소에: /compare?exo=72,6400&neo=2099942 (utils/compareQuery.ts)
-// - 전용 API 없음 → 대상마다 상세 API(#7 /neo/{id}/, #10 /exoplanets/{id}/)를 부른다 (04 문서 3.1절)
+// - 전용 API 없음 → 대상마다 상세 API(#7 /neo/{id}/, #10 /exoplanets/{id}/)를 부른다 (옛 API 명세 3.1절)
 //   목록에서 고른 대상은 크기를 이미 알고 있으니 미리 넣어 둔다(cache) → 상세 API를 다시 안 부른다.
 //   ⚠️ NEO 상세는 처음 열 때 NASA Lookup을 불러 스로틀(30회/시간)에 걸린다 → 아낄 수 있으면 아낀다
 // - 지구는 항상 있다. 그림: 행성끼리 / 소행성끼리만 실제 비율, 둘 사이는 로그 눈금 한 줄로 잇는다

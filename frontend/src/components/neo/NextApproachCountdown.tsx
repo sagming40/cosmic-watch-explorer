@@ -1,5 +1,5 @@
-// NextApproachCountdown.tsx ─ "다음 근접 접근까지 02일 14시간 22분 08초" (03 문서 6.1절 와이어프레임, 10-28 M6)
-// 대시보드가 "오늘"을 볼 때만 붙는다 ─ 다른 날짜를 보는 중엔 "다음 접근까지"가 뜻이 없다 (03 문서 6.1절 설계 결정)
+// NextApproachCountdown.tsx ─ "다음 근접 접근까지 02일 14시간 22분 08초" (DESIGN 6.1절 와이어프레임, 10-28 M6)
+// 대시보드가 "오늘"을 볼 때만 붙는다 ─ 다른 날짜를 보는 중엔 "다음 접근까지"가 뜻이 없다 (DESIGN 6.1절 설계 결정)
 //
 // 데이터는 대시보드(/neo/?date=)와 따로 받는다 → 카운트다운이 실패해도 목록·차트는 멀쩡하다.
 // 서버가 주는 건 "언제(UTC)"뿐이고 남은 시간은 여기서 1초마다 다시 잰다 ─ 매초 서버를 부르지 않는다.
@@ -125,7 +125,7 @@ function Upcoming({ next, remainingMs }: { next: NextApproach; remainingMs: numb
           </span>
         )}
         <div className="mt-1 flex flex-wrap items-center justify-end gap-x-2 text-sm text-dim">
-          {/* 1 LD 안쪽은 색 + 고리 점 + 글자 3중 표시 (03 문서 9장 ─ 대시보드 스케일 바와 같은 표시) */}
+          {/* 1 LD 안쪽은 색 + 고리 점 + 글자 3중 표시 (DESIGN 9장 ─ 대시보드 스케일 바와 같은 표시) */}
           {near && (
             <span className="flex items-center gap-1.5 text-hazard">
               <span className="size-2 rounded-full bg-hazard ring-2 ring-hazard ring-offset-2 ring-offset-panel" />

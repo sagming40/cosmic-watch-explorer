@@ -1,6 +1,6 @@
 // StatCard ─ 요약 칸 하나 (라벨 + 큰 수치 + 보조 줄)
-// 수치는 항상 Mono 서체 (03 문서 2.2절 ─ 자릿수가 세로로 맞아떨어지게). 옛 DataField의 역할을 이어받는다.
-// hazard=true 는 "위험 분류 건수"처럼 위험 표시일 때만 쓴다 (03 문서 2.1절 ─ hazard 전용 규칙).
+// 수치는 항상 Mono 서체 (DESIGN 2.2절 ─ 자릿수가 세로로 맞아떨어지게). 옛 DataField의 역할을 이어받는다.
+// hazard=true 는 "위험 분류 건수"처럼 위험 표시일 때만 쓴다 (DESIGN 2.1절 ─ hazard 전용 규칙).
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";

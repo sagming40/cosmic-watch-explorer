@@ -1,4 +1,4 @@
-// NeoFaq.tsx ─ "알아두면 좋은 것" (03 문서 6.1절 ─ API 호출 없는 정적 콘텐츠)
+// NeoFaq.tsx ─ "알아두면 좋은 것" (DESIGN 6.1절 ─ API 호출 없는 정적 콘텐츠)
 // 세 번째 항목은 데이터의 출처뿐 아니라 한계(실제 충돌 예측용 아님)도 숨기지 않는다.
 
 import { ChevronRight } from "lucide-react";

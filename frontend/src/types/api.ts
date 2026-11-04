@@ -1,18 +1,18 @@
 // ═══════════════════════════════════════════════════════════════════
 // api.ts ─ 백엔드(Django) 응답 모양을 TypeScript로 옮겨 적은 "계약서"
 //
-// 출처: docs/04_api_specification.md + backend/apps/*/serializers.py (실제 구현 기준)
+// 출처: backend/apps/*/serializers.py (실제 구현 기준, 옛 예시는 docs/archive/API_SPEC_old.md)
 // 비유: 택배 상자에 붙은 내용물 목록표. 상자를 열기 전에(=실행 전에)
 //       "이 상자엔 miss_distance_ld가 들어 있고, 비어 있을 수도 있다"를 알 수 있다.
 //
 // ⚠️ number | null 이 많은 이유 ─ NASA가 측정하지 못한 값은 null 그대로 내려온다.
-//    (02 문서 1.1절 NULL 보존 원칙) 화면에서 "—"로 바꾸는 건 DataField의 몫이다.
-// ⚠️ 필드 이름은 전부 snake_case ─ 04 문서 1.2절. 백엔드 이름 그대로 쓴다.
+//    (DATA_MODEL 1.1절 NULL 보존 원칙) 화면에서 "—"로 바꾸는 건 DataField의 몫이다.
+// ⚠️ 필드 이름은 전부 snake_case ─ ARCHITECTURE 3.2절. 백엔드 이름 그대로 쓴다.
 // ═══════════════════════════════════════════════════════════════════
 
 // ─── 공통 ─────────────────────────────────────────────────────────
 
-/** 04 문서 1.4절 오류 코드 목록 + client.ts가 붙이는 2종 */
+/** ARCHITECTURE 3.4절 오류 코드 목록 + client.ts가 붙이는 2종 */
 export type ApiErrorCode =
   | "VALIDATION_ERROR"
   | "INVALID_DATE"
@@ -29,7 +29,7 @@ export type ApiErrorCode =
 /** 필드별 오류 ─ { "password": ["8자 이상 …"] } */
 export type FieldErrors = Record<string, string[]>;
 
-/** 04 문서 1.5절 페이징 형식 */
+/** ARCHITECTURE 3.5절 페이징 형식 */
 export interface Paginated<T> {
   count: number;
   page: number;
@@ -38,7 +38,7 @@ export interface Paginated<T> {
   results: T[];
 }
 
-// ─── NEO (04 문서 5장) ─────────────────────────────────────────────
+// ─── NEO (옛 API 명세 5장) ─────────────────────────────────────────────
 
 /** 접근 사건 한 건 ─ ApproachDetailSerializer */
 export interface NeoApproach {
@@ -106,7 +106,7 @@ export interface OrbitalData {
 
 /**
  * ok: 궤도 있음 / missing: NASA에도 없음 / unavailable: NASA 연결 실패 / rate_limited: 우리 쪽 NASA 호출 한도
- * unavailable·rate_limited여도 나머지(이름·크기·접근 기록)는 DB 값으로 정상 응답한다 (04 문서 5.2절)
+ * unavailable·rate_limited여도 나머지(이름·크기·접근 기록)는 DB 값으로 정상 응답한다 (옛 API 명세 5.2절)
  */
 export type OrbitStatus = "ok" | "missing" | "unavailable" | "rate_limited";
 
@@ -131,7 +131,7 @@ export interface NeoDetailResponse {
 /** GET /api/neo/{nasa_id}/approaches/ ─ 5.3절 */
 export type NeoApproachListResponse = Paginated<NeoApproachRow>;
 
-// ─── Exoplanet (04 문서 6장) ──────────────────────────────────────
+// ─── Exoplanet (옛 API 명세 6장) ──────────────────────────────────────
 
 export interface HostStarBrief {
   name: string;
@@ -197,9 +197,9 @@ export interface ExoplanetMetaResponse {
   total_count: number;
 }
 
-// ─── 인증 (04 문서 4장) ───────────────────────────────────────────
+// ─── 인증 (옛 API 명세 4장) ───────────────────────────────────────────
 
-/** 마이페이지 "표시 설정" ─ 대시보드를 열 때 처음 보일 모양 (04 문서 4.6절, 10-28) */
+/** 마이페이지 "표시 설정" ─ 대시보드를 열 때 처음 보일 모양 (옛 API 명세 4.6절, 10-28) */
 export interface Preferences {
   distance_unit: "km" | "au"; // 목록의 보조 거리 단위 (기본 단위 LD는 고정)
   dashboard_sort: "distance" | "velocity" | "size";
@@ -227,7 +227,7 @@ export interface AuthStatus {
   user: AuthUser | null;
 }
 
-// ─── Watchlist (04 문서 7장) ──────────────────────────────────────
+// ─── Watchlist (옛 API 명세 7장) ──────────────────────────────────────
 
 /** Watchlist 목록은 페이징하지 않는다 (count + results만) */
 export interface WatchlistResponse<T> {
@@ -263,7 +263,7 @@ export interface ExoplanetWatchlistCreated {
   saved_at: string;
 }
 
-/** GET /api/neo/next-approach/ ─ 04 문서 5.4절 (10-28 카운트다운). 원본 NASA/JPL CAD, 환산은 서버(units.py) */
+/** GET /api/neo/next-approach/ ─ 옛 API 명세 5.4절 (10-28 카운트다운). 원본 NASA/JPL CAD, 환산은 서버(units.py) */
 export interface NextApproach {
   designation: string; // "2025 UK9"
   name: string; // "(2025 UK9)" ─ NeoWs 이름과 같은 모양

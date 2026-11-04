@@ -1,5 +1,5 @@
 // NeoSummary.tsx ─ 대시보드 상단 요약 4칸
-// 값을 직접 계산하지 않는다 ─ 요약과 목록은 같은 데이터에서 서버가 미리 계산해 보낸다 (04 문서 5.1절 설계 결정 ①).
+// 값을 직접 계산하지 않는다 ─ 요약과 목록은 같은 데이터에서 서버가 미리 계산해 보낸다 (옛 API 명세 5.1절 설계 결정 ①).
 
 import { Moon, Radar, Ruler, TriangleAlert } from "lucide-react";
 

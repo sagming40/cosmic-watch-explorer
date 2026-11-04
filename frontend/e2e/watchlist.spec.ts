@@ -1,4 +1,4 @@
-// watchlist.spec.ts ─ 상세에서 저장 → 관심 천체에서 확인 → 삭제 → 실행 취소 (01 문서 9장 사용자, 03 문서 시나리오 4)
+// watchlist.spec.ts ─ 상세에서 저장 → 관심 천체에서 확인 → 삭제 → 실행 취소 (PLAN_M0_M5 MVP 완료 기준 사용자, DESIGN 시나리오 4)
 
 import { expect, test } from "@playwright/test";
 

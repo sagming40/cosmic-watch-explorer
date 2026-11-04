@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// LoginPage.tsx ─ Path = '/login' (03 문서 4.3절·시나리오 3, 04 문서 4.4절)
+// LoginPage.tsx ─ Path = '/login' (DESIGN 4.3절·시나리오 3, 옛 API 명세 4.4절)
 // 로그인에 성공하면 ?next= 주소로 돌아간다 (예: 저장 버튼을 누르던 소행성 상세).
 // ═══════════════════════════════════════════════════════════════════
 
@@ -39,7 +39,7 @@ function LoginPage() {
       navigate(next, { replace: true }); // 로그인 화면은 기록에서 지운다 ─ 뒤로 가기로 다시 오지 않게
     } catch (err) {
       const e2 = err as AppError;
-      // 아이디·비밀번호 중 무엇이 틀렸는지 구분하지 않는다 (04 문서 4.4절 ─ 계정 열거 방지)
+      // 아이디·비밀번호 중 무엇이 틀렸는지 구분하지 않는다 (옛 API 명세 4.4절 ─ 계정 열거 방지)
       if (e2.code === "INVALID_CREDENTIALS") setFormError(e2.message);
       else if (e2.code === "VALIDATION_ERROR") setFieldErrors(e2.fields);
       // 같은 곳에서 분당 10번 넘게 시도하면 서버가 막는다 (비밀번호 무한 대입 방지, 10-28)

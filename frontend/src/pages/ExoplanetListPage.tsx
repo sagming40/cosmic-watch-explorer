@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// ExoplanetListPage.tsx ─ Path = '/exoplanets' (03 문서 6.3절, 04 문서 6.1·6.3절)
+// ExoplanetListPage.tsx ─ Path = '/exoplanets' (DESIGN 6.3절, 옛 API 명세 6.1·6.3절)
 // 이 프로젝트 백엔드의 핵심 기능(다중 조건 검색)을 쓰는 화면.
 // - 검색 조건·정렬·페이지는 전부 주소(?radius_min=0.8&...)에 있다 → 새 탭에서 열어도 같은 결과 (M4 완료 기준)
 // - 주소의 쿼리스트링을 그대로 API에 넘긴다 (파라미터 이름이 백엔드와 같다)
@@ -34,7 +34,7 @@ function ExoplanetListPage() {
   const [meta, setMeta] = useState<ExoplanetMetaResponse | null>(null);
   const resultsTop = useRef<HTMLDivElement>(null);
 
-  // 필터 선택지(발견 방법·데이터 범위) ─ 화면에 들어올 때 한 번 (서버가 1시간 캐싱, 04 문서 6.3절)
+  // 필터 선택지(발견 방법·데이터 범위) ─ 화면에 들어올 때 한 번 (서버가 1시간 캐싱, 옛 API 명세 6.3절)
   // 실패해도 검색은 된다 → 오류 화면을 띄우지 않고 힌트만 빠진다
   useEffect(() => {
     let ignore = false;
@@ -178,7 +178,7 @@ function ExoplanetListPage() {
   );
 }
 
-// 검색 0건 ─ 막다른 길이 아니라 "어떤 조건을 빼면 되는지" 안내 (03 문서 7.1절)
+// 검색 0건 ─ 막다른 길이 아니라 "어떤 조건을 빼면 되는지" 안내 (DESIGN 7.1절)
 function EmptyResult({ applied, onRemove, onClear }: { applied: Record<string, string | number>; onRemove: (keys: string[]) => void; onClear: () => void }) {
   const chips = chipsFrom(applied);
   return (

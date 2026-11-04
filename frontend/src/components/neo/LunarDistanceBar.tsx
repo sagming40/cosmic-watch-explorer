@@ -1,4 +1,4 @@
-// LunarDistanceBar.tsx ─ "COSMIC WATCH의 시그니처" 달 거리 스케일 (03 문서 3장)
+// LunarDistanceBar.tsx ─ "COSMIC WATCH의 시그니처" 달 거리 스케일 (DESIGN 3장)
 // 비유: 자(ruler) 위에 오늘 지나간 소행성들을 점으로 콕콕 찍어 두는 것.
 // 단, 이 자는 눈금이 등 간격이 아니라 "몇 배 차이나는가"로 벌어지는 로그 자다.
 //
@@ -55,7 +55,7 @@ function LunarDistanceBar({ results, hoveredId, onHover }: LunarDistanceBarProps
             const r = active ? 8 : 5.5;
             return (
               <g onMouseEnter={() => onHover(payload.id)} onMouseLeave={() => onHover(null)}>
-                {/* 1 LD 안쪽 점은 바깥 고리를 하나 더 ─ 색을 구분하기 어려운 사람도 모양으로 (03 문서 9장) */}
+                {/* 1 LD 안쪽 점은 바깥 고리를 하나 더 ─ 색을 구분하기 어려운 사람도 모양으로 (DESIGN 9장) */}
                 {payload.nearMoon && <circle cx={cx} cy={cy} r={r + 5} fill="none" stroke={color} strokeWidth={1.5} />}
                 <circle
                   cx={cx}

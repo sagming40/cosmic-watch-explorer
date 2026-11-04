@@ -1,5 +1,5 @@
-// HostStarPanel.tsx ─ 모항성 정보 (01 문서 4.4절, 03 문서 10장)
-// 값이 없는 항목은 "—" (NASA가 모든 항성을 다 측정하지 않았다, 02 문서 1.1절)
+// HostStarPanel.tsx ─ 모항성 정보 (REQUIREMENTS 4.4절)
+// 값이 없는 항목은 "—" (NASA가 모든 항성을 다 측정하지 않았다, DATA_MODEL 1.1절)
 
 import Field from "@/components/common/Field";
 import { Panel, PanelTitle } from "@/components/common/Panel";

@@ -14,7 +14,7 @@ export type SubUnit = "km" | "au";
 
 interface NeoListItemProps {
   neo: NeoDashboardItem;
-  subUnit: SubUnit; // 보조 단위 토글 ─ LD는 항상 크게, km/AU 중 하나를 작게 (03 문서 6.1절)
+  subUnit: SubUnit; // 보조 단위 토글 ─ LD는 항상 크게, km/AU 중 하나를 작게 (DESIGN 6.1절)
   active: boolean; // 차트에서 이 소행성에 마우스를 올렸는지
   onHover: (id: string | null) => void;
 }
@@ -39,7 +39,7 @@ function NeoListItem({ neo, subUnit, active, onHover }: NeoListItemProps) {
           active ? "bg-line/40" : "hover:bg-line/40",
         )}
       >
-        {/* 위험 분류는 왼쪽 세로 띠 + 아이콘 + 글자 3중 표시 (03 문서 9장 ─ 색만으로 구분하지 않는다) */}
+        {/* 위험 분류는 왼쪽 세로 띠 + 아이콘 + 글자 3중 표시 (DESIGN 9장 ─ 색만으로 구분하지 않는다) */}
         {neo.is_hazardous && <span className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-hazard" />}
 
         <div className="min-w-0">

@@ -1,4 +1,4 @@
-// exoplanets.spec.ts ─ 다중 조건 검색 → 상세 → 크기 비교 (M4 완료 기준: 검색 결과·칩 2개, 01 문서 9장 공통 "크기 비교")
+// exoplanets.spec.ts ─ 다중 조건 검색 → 상세 → 크기 비교 (M4 완료 기준: 검색 결과·칩 2개, PLAN_M0_M5 MVP 완료 기준 공통 "크기 비교")
 
 import { expect, test } from "@playwright/test";
 
