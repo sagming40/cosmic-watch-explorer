@@ -1,29 +1,5 @@
 # Cosmic Watch & Explorer — DB 설계서
- 
-| 항목 | 내용 |
-|---|---|
-| 문서 번호 | 02 |
-| 문서명 | DB 설계서 |
-| 프로젝트명 | Cosmic Watch & Explorer |
-| 작성자 | 사공민규 |
-| 버전 | v1.4 |
-| 최종 수정일 | 2026-08-31 |
-| DBMS | MariaDB (InnoDB / utf8mb4) |
-| 상태 | 확정 |
 
-**변경 이력**
-
-| 버전 | 일자 | 내용 |
-|---|---|---|
-| v1.0 | 2026-08-21 | 최초 작성 |
-| v1.1 | 2026-08-31 | 7장 Django 모델 코드블록을 `apps/astronomy/models.py` / `apps/watchlist/models.py` 두 개로 분리 (구현 시 앱 2개로 나눈 실제 구조와 일치시킴, 원래는 코드블록 하나에 전부 포함돼 있었음) |
-| v1.2 | 2026-10-28 | neo_fetch_log.fetched_at = 마지막 수집 시각(미래 날짜 재수집 시 갱신). close_approach 저장은 update_or_create로(재수집 시 NASA가 고친 값 반영) |
-| v1.3 | 2026-10-28 | user_preference 테이블 추가(마이페이지 표시 설정, 사용자 1:1, CASCADE) |
-| v1.4 | 2026-10-28 | 3.9 user_avatar 테이블 추가(프로필 사진, DB에 WebP 바이트) ─ 프로젝트 테이블 10개 |
-
-
----
- 
 ## 0. 이 문서의 범위
  
 01번 요구사항 문서에서 확정한 기능을 저장 구조로 옮긴 문서다. 다음을 포함한다.
